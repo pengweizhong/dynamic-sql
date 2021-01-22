@@ -21,6 +21,10 @@ public class LocalDateConverterAdapter implements ConverterAdapter {
 
     private <T> T transferDate(Object currentValue) {
         Date date = (Date) currentValue;
+        if (date.getClass().equals(java.sql.Date.class)) {
+            java.sql.Date sqlDate = (java.sql.Date) date;
+            return (T) sqlDate.toLocalDate();
+        }
         return (T) date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
     }
 

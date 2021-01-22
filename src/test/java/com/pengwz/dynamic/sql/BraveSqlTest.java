@@ -1,25 +1,34 @@
 package com.pengwz.dynamic.sql;
 
-import com.pengwz.dynamic.entity.DynamicEntity;
-import com.pengwz.dynamic.utils.ConverterUtils;
+import com.pengwz.dynamic.entity.UserEntity;
 import org.junit.Test;
 
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Date;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class BraveSqlTest {
 
     @Test
-    public void test1() {
+    public void testQueryAll() {
+        List<UserEntity> select = BraveSql.build(UserEntity.class).select();
+        select.forEach(System.out::println);
+    }
 
-        List<DynamicEntity> select = BraveSql.build(DynamicEntity.class).select();
-        System.out.println(select);
-
+    @Test
+    public void testQueryBySex() {
+        DynamicSql<UserEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.andEqualTo(UserEntity::getSex, "男");
+        List<UserEntity> select = BraveSql.build(dynamicSql, UserEntity.class).select();
+        select.forEach(System.out::println);
+    }
+    @Test
+    public void testQueryByPrimaryKey() {
+        UserEntity userEntity = BraveSql.build(UserEntity.class).selectByPrimaryKey(2);
+        System.out.println(userEntity);
+    }
+    @Test
+    public void testSelectPageInfo() {
+        PageInfo<UserEntity> userEntityPageInfo = BraveSql.build(UserEntity.class).selectPageInfo(1, 1);
+        System.out.println(userEntityPageInfo);
     }
 
 

@@ -25,6 +25,9 @@ public class LocalTimeConverterAdapter implements ConverterAdapter {
 
     private <T> T transferDate(Object currentValue) {
         Date date = (Date) currentValue;
+        if (date.getClass().equals(java.sql.Date.class)) {
+            return null;
+        }
         return (T) date.toInstant().atZone(ZoneId.systemDefault()).toLocalTime();
     }
 
