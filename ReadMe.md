@@ -77,9 +77,9 @@ public class UserEntity {
 @Id必须声明，表示该表所对应的主键；  
 @GeneratedValue是可选项，表示在插入数据的操作中，是否返回该记录的主键，该注解加在主键属性上时才会生效；  
 @Column是可选项，表示该属性所对应表的字段，若不声明@Column，则默认使用驼峰命名规则匹配表字段，若声明则以注解内值为准。  
-此外，Dynamic-sql自带类型转换功能，比如当您的表字段类型为date，在实体类可以使用LocalDate接收，程序会自动转换类型。  
+此外，Dynamic-sql自带类型转换功能，比如当您的表字段类型为date，在实体类希望使用LocalDate接收，程序会自动转换类型。  
    
-##### 查询
+##### 查询示例
 1、查询全部
 ```java
     List<UserEntity> select = BraveSql.build(UserEntity.class).select();
@@ -89,7 +89,7 @@ public class UserEntity {
     运行结果
     UserEntity{id=1, username='tom', birthday=1993-07-14, createDate=2021-01-23T01:09:51, updateDate=2021-01-23T01:09:51}
     UserEntity{id=2, username='jerry', birthday=1994-01-22, createDate=2021-01-23T01:10:23, updateDate=2021-01-23T01:10:23}
-2、带条件的查询,如查询性别等于男的数据   
+2、带条件的查询，如查询性别等于男的数据   
 ```java
     DynamicSql<UserEntity> dynamicSql = DynamicSql.createDynamicSql();
     dynamicSql.andEqualTo(UserEntity::getSex, "男");
@@ -115,4 +115,6 @@ public class UserEntity {
 
 其中，DynamicSql主要用于创建where条件，BraveSql用于操作数据库。  
 #### 写在后面的话
-    由于本人很菜，所以代码中很多不规则的地方，比如变量命名不规范、代码冗余等等。希望路过的大佬多多指教，一起学习进步，谢谢~
+    由于本人很菜，所以代码中很多不规则的地方，比如变量命名不规范、代码冗余等等。希望路过的大佬多多指教，一起学习进步，谢谢~  
+    文档方面，有时间的话后续会补全的~
+    
