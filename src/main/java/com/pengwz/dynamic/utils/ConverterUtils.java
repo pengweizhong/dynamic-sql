@@ -14,6 +14,7 @@ import java.util.HashMap;
 import java.util.Objects;
 
 public class ConverterUtils {
+
     private static final HashMap<Class, ConverterAdapter> converterAdapterMap = new HashMap<>();
 
     static {

@@ -1,5 +1,6 @@
 package com.pengwz.dynamic.utils;
 
+import com.pengwz.dynamic.exception.BraveException;
 import com.pengwz.dynamic.sql.base.Fn;
 
 import java.beans.Introspector;
@@ -10,11 +11,14 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.logging.Logger;
 
 import static com.pengwz.dynamic.constant.Constant.GET_PATTERN;
 import static com.pengwz.dynamic.constant.Constant.IS_PATTERN;
 
 public class ReflectUtils {
+
+    private static final Logger log = Logger.getGlobal();
 
     public static String fnToFieldName(Fn fn) {
         try {
@@ -29,8 +33,8 @@ public class ReflectUtils {
             }
             return Introspector.decapitalize(getter);
         } catch (ReflectiveOperationException e) {
-            e.printStackTrace();
-            throw new RuntimeException(e.getMessage());
+            log.warning(e.getMessage());
+            throw new BraveException(e.getMessage());
         }
     }
 

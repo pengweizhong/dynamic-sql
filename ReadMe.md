@@ -1,7 +1,13 @@
 # 单表动态查询 Dynamic-sql
     目前项目刚刚创建，有时间的话就会去维护并更新，所以可能会有bug，烦请路过的大佬多多指教。
 ## 版本号 1.0.0(初版)
-
+```xml
+<dependency>
+  <groupId>com.pengwz</groupId>
+  <artifactId>dynamic-sql</artifactId>
+  <version>1.0.0</version>
+</dependency>
+```
 ### 项目简述
     1、基于JDBC单表增删改查，可单独启动，不依赖环境
     2、目前仅支持Mysql
