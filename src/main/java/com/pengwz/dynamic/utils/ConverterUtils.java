@@ -26,8 +26,6 @@ public class ConverterUtils {
      * 将给定的对象转换为目标类型的对象,若无法转换，则抛出异常
      *
      * @param value 不可为null
-     * @param targetType
-     * @return
      */
     @SuppressWarnings("unchecked")
     public static <T> T convert(Object value, Class<T> targetType) {

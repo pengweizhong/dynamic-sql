@@ -40,8 +40,6 @@ public class DynamicSql<T> {
     /**
      * 提供创建where子句的入口  比如查询，更新等
      *
-     * @param <T>
-     * @return
      */
     public static <T> DynamicSql<T> createDynamicSql() {
         return new DynamicSql<>();
@@ -72,8 +70,6 @@ public class DynamicSql<T> {
     /**
      * 当需要更新日期为null时
      *
-     * @param fn
-     * @return
      */
     public String setNullDate(Fn<T, Object> fn) {
         String fieldName = ReflectUtils.fnToFieldName(fn);

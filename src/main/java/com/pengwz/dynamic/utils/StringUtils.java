@@ -15,8 +15,6 @@ public class StringUtils {
 
     /**
      * 根据驼峰命名自动将字段转为带下划线的数据库字段
-     * @param field
-     * @return
      */
     public static String caseField(String field) {
         if (StringUtils.isEmpty(field)) {

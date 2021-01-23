@@ -133,7 +133,6 @@ public class BraveSql<T> {
 
     /**
      * @param data 待更新的对象
-     * @return
      */
     public Integer update(T data) {
         if (Objects.isNull(data)) {

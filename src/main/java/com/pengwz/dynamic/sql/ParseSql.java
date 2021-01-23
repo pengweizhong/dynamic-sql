@@ -69,7 +69,6 @@ public class ParseSql {
     /**
      * 去掉多余的and or，返回正确的sql
      *
-     * @return
      */
     public static String parseSql(String sql) {
         String[] split = sql.split(SPACE);

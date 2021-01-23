@@ -22,7 +22,6 @@ public interface Sqls<T> {
 
     /**
      * 方法未执行的情况或者失败，返回-1 ；否则，返回实际值
-     * @return
      */
     Integer update();
 
