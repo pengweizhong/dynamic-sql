@@ -31,7 +31,8 @@ public class ParseSql {
                 }
                 if (handleFunction instanceof OrderBy) {
                     handleFunction.execute(tableName, declaration);
-                    whereSql.append("order by " + declaration.getProperty() + " " + declaration.getSortMode());
+                    String column = ContextApplication.getColumnByField(dataSourceClass, tableName, declaration.getProperty());
+                    whereSql.append(" order by " + column + " " + declaration.getSortMode());
                     continue;
                 }
                 whereSql.append(declaration.getHandleFunction().execute(tableName, declaration)).append(SPACE);
@@ -68,7 +69,6 @@ public class ParseSql {
 
     /**
      * 去掉多余的and or，返回正确的sql
-     *
      */
     public static String parseSql(String sql) {
         String[] split = sql.split(SPACE);
@@ -94,6 +94,11 @@ public class ParseSql {
                 }
                 if ((checkStr).equals(LEFT_BRACKETS + AND) || (checkStr).equals(LEFT_BRACKETS + OR)) {
                     sb.append(list.get(i)).append(SPACE);
+                    i++;
+                    continue;
+                }
+                if (checkStr.equals(ORDER + BY) && sb.toString().contains(ORDER + " " + BY)) {
+                    sb.append(", ");
                     i++;
                     continue;
                 }
