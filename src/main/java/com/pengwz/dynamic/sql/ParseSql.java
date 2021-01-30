@@ -3,6 +3,7 @@ package com.pengwz.dynamic.sql;
 import com.pengwz.dynamic.exception.BraveException;
 import com.pengwz.dynamic.sql.base.HandleFunction;
 import com.pengwz.dynamic.sql.base.impl.Count;
+import com.pengwz.dynamic.sql.base.impl.GroupBy;
 import com.pengwz.dynamic.sql.base.impl.OrderBy;
 import com.pengwz.dynamic.utils.StringUtils;
 
@@ -33,6 +34,14 @@ public class ParseSql {
                     handleFunction.execute(tableName, declaration);
                     String column = ContextApplication.getColumnByField(dataSourceClass, tableName, declaration.getProperty());
                     whereSql.append(" order by " + column + " " + declaration.getSortMode());
+                    continue;
+                }
+                if (handleFunction instanceof GroupBy) {
+                    String property = declaration.getProperty();
+                    String[] split = property.split(",");
+                    List<String> columns = new ArrayList<>();
+                    Arrays.asList(split).forEach(field -> columns.add(ContextApplication.getColumnByField(dataSourceClass, tableName, field)));
+                    whereSql.append(SPACE + GROUP + SPACE + BY + SPACE + String.join(",", columns));
                     continue;
                 }
                 whereSql.append(declaration.getHandleFunction().execute(tableName, declaration)).append(SPACE);
@@ -140,10 +149,6 @@ public class ParseSql {
     }
 
     public static String parseAggregateFunction(String aggregateFunctionName, String tableName, Declaration declaration) {
-        //如果是group
-        if (aggregateFunctionName.equals(GROUP)) {
-            return SPACE + GROUP + SPACE + BY + SPACE + declaration.getProperty();
-        }
         StringBuilder whereFunctionSql = new StringBuilder();
         whereFunctionSql.append(declaration.getAndOr());
         // id = (

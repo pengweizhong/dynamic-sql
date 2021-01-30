@@ -1,15 +1,21 @@
 # 单表动态查询 Dynamic-sql
     
-## 版本号 1.0.1
+## 版本号 1.0.2
 ```xml
 <dependency>
   <groupId>com.pengwz</groupId>
   <artifactId>dynamic-sql</artifactId>
-  <version>1.0.1</version>
+  <version>1.0.2</version>
 </dependency>
 ```
+### 本次版本变更内容
+1、修复groupBy()函数类字段不能正确匹配表字段的问题  
+2、修复groupBy()函数代码编译警告问题  
+3、inertMany()方法更名为batchInsert()  
+4、新增insertOrUpdate()、batchInsertOrUpdate()函数  
+
 ### 项目简述
-    1、基于JDBC单表增删改查，可单独启动，不依赖环境
+    1、基于JDBC单表动态增删改查，可单独启动，不依赖环境
     2、目前仅支持Mysql
     3、支持多数据源（目前不支持默认数据源，需要明确指定）
     4、支持事务（目前不提供主动事务，考虑后期优化，可以使用其他框架加入事务，如Spring事务）
@@ -120,7 +126,5 @@ public class UserEntity {
     PageInfo{pageIndex=1, pageSize=1, realPageSize=1, totalPages=2, totalSize=2, resultList=[UserEntity{id=1, username='tom', sex='男', birthday=1993-07-14, createDate=2021-01-23T01:09:51, updateDate=2021-01-23T01:09:51}]}
 
 其中，DynamicSql主要用于创建where条件，BraveSql用于操作数据库。  
-#### 写在后面的话
-    由于本人很菜，所以代码中很多不规则的地方，比如变量命名不规范、代码冗余等等。希望路过的大佬多多指教，一起学习进步，谢谢~  
-    文档方面，有时间的话后续会补全的~
+
     

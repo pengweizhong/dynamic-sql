@@ -13,8 +13,7 @@ import java.util.List;
 import static com.pengwz.dynamic.constant.Constant.*;
 
 /**
- * 该类封装了where子句。
- * 用于select / update / delete 语句拼装 where 条件，
+ * 该类主要用于设置sql的条件语句
  *
  * @param <T>
  */
@@ -39,7 +38,6 @@ public class DynamicSql<T> {
 
     /**
      * 提供创建where子句的入口  比如查询，更新等
-     *
      */
     public static <T> DynamicSql<T> createDynamicSql() {
         return new DynamicSql<>();
@@ -69,7 +67,6 @@ public class DynamicSql<T> {
 
     /**
      * 当需要更新日期为null时
-     *
      */
     public String setNullDate(Fn<T, Object> fn) {
         String fieldName = ReflectUtils.fnToFieldName(fn);
@@ -365,7 +362,7 @@ public class DynamicSql<T> {
         return this.orMax(ReflectUtils.fnToFieldName(fn));
     }
 
-    public void groupBy(Fn<T, Object>... fn) {
+    public void groupBy(List<Fn<T, Object>> fn) {
         List<String> list = new ArrayList<>();
         for (Fn<T, Object> f : fn) {
             String s = ReflectUtils.fnToFieldName(f);
@@ -374,8 +371,13 @@ public class DynamicSql<T> {
         this.getDeclarations().add(Declaration.buildDeclaration(GROUP, String.join(",", list), new GroupBy()));
     }
 
-    public void groupBy(String... personalcode) {
-        this.getDeclarations().add(Declaration.buildDeclaration(GROUP, String.join(",", personalcode), new GroupBy()));
+    public void groupBy(Fn<T, Object> fn) {
+        String s = ReflectUtils.fnToFieldName(fn);
+        this.getDeclarations().add(Declaration.buildDeclaration(GROUP, s, new GroupBy()));
+    }
+
+    public void groupBy(String... personalCode) {
+        this.getDeclarations().add(Declaration.buildDeclaration(GROUP, String.join(",", personalCode), new GroupBy()));
     }
 
     public OrderByMode<T> orderByDesc(String property) {

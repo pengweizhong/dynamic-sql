@@ -148,7 +148,7 @@ public class SqlImpl<T> implements Sqls<T> {
                     Object object = resultSet.getObject(tableInfo.getColumn());
                     if (Objects.nonNull(object)) {
                         Object convert = ConverterUtils.convert(object, tableInfo.getField().getType());
-                        if(!convert.getClass().equals(tableInfo.getField().getType())){
+                        if (!convert.getClass().equals(tableInfo.getField().getType())) {
                             Object cast = tableInfo.getGetMethod().getReturnType().cast(convert);
                             System.out.println(cast);
                         }
@@ -176,7 +176,7 @@ public class SqlImpl<T> implements Sqls<T> {
 
 
     @Override
-    public Integer insertMany() {
+    public Integer batchInsert() {
         String columToStr = ContextApplication.formatAllColumToStr(dataSourceClass, tableName);
         List<TableInfo> tableInfos = ContextApplication.getTableInfos(dataSourceClass, tableName);
         StringBuilder sql = new StringBuilder();
@@ -186,6 +186,59 @@ public class SqlImpl<T> implements Sqls<T> {
         });
         String prepareSql = sql.substring(0, sql.length() - 1) + ")";
         log.info("insertMany SQL: " + prepareSql);
+        Iterator<T> iterator = data.iterator();
+        int successCount = 0;
+        try {
+            preparedStatement = connection.prepareStatement(prepareSql, Statement.RETURN_GENERATED_KEYS);
+            while (iterator.hasNext()) {
+                T next = iterator.next();
+                for (int i = 1; i <= tableInfos.size(); i++) {
+                    preparedStatement.setObject(i, tableInfos.get(i - 1).getGetMethod().invoke(next, new Object[]{}));
+                }
+                preparedStatement.addBatch();
+            }
+            int[] ints = preparedStatement.executeBatch();
+            successCount = ints.length;
+            TableInfo tableInfoPrimaryKey = ContextApplication.getTableInfoPrimaryKey(dataSourceClass, tableName);
+            if (tableInfoPrimaryKey.isGeneratedValue()) {
+                Iterator<T> resultIterator = data.iterator();
+                ResultSet generatedKeys = preparedStatement.getGeneratedKeys();
+                while (resultIterator.hasNext()) {
+                    generatedKeys.next();
+                    T next = resultIterator.next();
+                    Object convert = ConverterUtils.convert(generatedKeys.getObject(1), tableInfoPrimaryKey.getField().getType());
+                    tableInfoPrimaryKey.getSetMethod().invoke(next, convert);
+                }
+            }
+            connection.commit();
+        } catch (Exception ex) {
+            try {
+                connection.rollback();
+            } catch (SQLException e) {
+                throw new BraveException("SQL insert rollback fail. reason: " + ex.getMessage());
+            }
+            throw new BraveException("SQL insert fail. reason: " + ex.getMessage());
+        } finally {
+            close(connection);
+        }
+        return successCount;
+    }
+
+    @Override
+    public Integer insertOrUpdate() {
+        String columToStr = ContextApplication.formatAllColumToStr(dataSourceClass, tableName);
+        List<TableInfo> tableInfos = ContextApplication.getTableInfos(dataSourceClass, tableName);
+        StringBuilder sql = new StringBuilder();
+        sql.append("insert into " + tableName + " ( " + columToStr + " ) values ( ");
+        List<String> duplicateKeys = new ArrayList<>();
+        tableInfos.forEach(tableInfo -> {
+            sql.append(" ? ,");
+            duplicateKeys.add(tableInfo.getColumn() + " = values(" + tableInfo.getColumn() + ")");
+        });
+        String prepareSql = sql.substring(0, sql.length() - 1) + ")";
+        String join = String.join(",", duplicateKeys);
+        prepareSql = prepareSql.concat(" on duplicate key update ").concat(join);
+        log.info("insertOrUpdate SQL: " + prepareSql);
         Iterator<T> iterator = data.iterator();
         int successCount = 0;
         try {

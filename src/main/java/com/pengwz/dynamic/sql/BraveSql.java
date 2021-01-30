@@ -13,7 +13,7 @@ import com.pengwz.dynamic.utils.StringUtils;
 
 import java.util.*;
 
-//@SuppressWarnings("all")
+@SuppressWarnings("all")
 public class BraveSql<T> {
 
     private DynamicSql dynamicSql;
@@ -120,15 +120,45 @@ public class BraveSql<T> {
             throw new BraveException("必须提供待插入的数据");
         }
         this.data = Collections.singletonList(data);
-        return insertMany(this.data);
+        return batchInsert(this.data);
     }
 
-    public Integer insertMany(Iterable<T> iterable) {
+    public Integer batchInsert(Iterable<T> iterable) {
         if (Objects.isNull(iterable) || !iterable.iterator().hasNext()) {
             throw new BraveException("必须提供待插入的数据");
         }
         data = iterable;
-        return mustShare().insertMany();
+        return mustShare().batchInsert();
+    }
+
+    /**
+     * 根据唯一约束，判断表中记录是否存在。
+     * 若表中记录存在，进行更新操作，否则插入
+     *
+     * @param data 待插入的数据
+     * @return 操作成功的数量
+     */
+    public Integer insertOrUpdate(T data) {
+        if (Objects.isNull(data)) {
+            throw new BraveException("必须提供待插入的数据");
+        }
+        this.data = Collections.singletonList(data);
+        return batchInsertOrUpdate(this.data);
+    }
+
+    /**
+     * 根据唯一约束，判断表中记录是否存在。
+     * 若表中记录存在，批量进行更新操作，否则插入
+     *
+     * @param iterable 待插入的数据集合
+     * @return 操作成功的数量
+     */
+    public Integer batchInsertOrUpdate(Iterable<T> iterable) {
+        if (Objects.isNull(iterable) || !iterable.iterator().hasNext()) {
+            throw new BraveException("必须提供待插入的数据");
+        }
+        data = iterable;
+        return mustShare().insertOrUpdate();
     }
 
     /**

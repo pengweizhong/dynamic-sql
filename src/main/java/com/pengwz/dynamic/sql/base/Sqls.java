@@ -18,8 +18,9 @@ public interface Sqls<T> {
 
     PageInfo<T> selectPageInfo();
 
-    Integer insertMany();
+    Integer batchInsert();
 
+    Integer insertOrUpdate();
     /**
      * 方法未执行的情况或者失败，返回-1 ；否则，返回实际值
      */
