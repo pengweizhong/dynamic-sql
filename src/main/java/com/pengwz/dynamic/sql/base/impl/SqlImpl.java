@@ -288,9 +288,6 @@ public class SqlImpl<T> implements Sqls<T> {
             for (TableInfo tableInfo : tableInfos) {
                 try {
                     Object invoke = tableInfo.getGetMethod().invoke(next, new Object[]{});
-                    if (Objects.isNull(invoke) && !updateNullProperties.contains(tableInfo.getField().getName())) {
-                        continue;
-                    }
                     sql.append(SPACE).append(tableInfo.getColumn()).append(SPACE).append(EQ).append(SPACE);
                     sql.append(ParseSql.matchValue(invoke)).append(COMMA);
                 } catch (Exception ex) {
@@ -298,6 +295,34 @@ public class SqlImpl<T> implements Sqls<T> {
                 }
             }
         }
+        return baseUpdate(sql);
+    }
+
+    @Override
+    public Integer updateActive() {
+        List<TableInfo> tableInfos = ContextApplication.getTableInfos(dataSourceClass, tableName);
+        StringBuilder sql = new StringBuilder();
+        sql.append("update " + tableName + " set");
+        Iterator<T> iterator = data.iterator();
+        while (iterator.hasNext()) {
+            T next = iterator.next();
+            for (TableInfo tableInfo : tableInfos) {
+                try {
+                    Object invoke = tableInfo.getGetMethod().invoke(next, new Object[]{});
+                    if (Objects.isNull(invoke) && !updateNullProperties.contains(tableInfo.getField().getName())) {
+                        continue;
+                    }
+                    sql.append(SPACE).append(tableInfo.getColumn()).append(SPACE).append(EQ).append(SPACE);
+                    sql.append(ParseSql.matchValue(invoke)).append(COMMA);
+                } catch (Exception ex) {
+                    throw new BraveException("SQL updateActive fail. reason: " + ex.getMessage());
+                }
+            }
+        }
+        return baseUpdate(sql);
+    }
+
+    private Integer baseUpdate(StringBuilder sql) {
         if (sql.toString().endsWith("set")) {
             return 0;
         }

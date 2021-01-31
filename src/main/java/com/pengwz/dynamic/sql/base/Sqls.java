@@ -21,13 +21,17 @@ public interface Sqls<T> {
     Integer batchInsert();
 
     Integer insertOrUpdate();
+
     /**
      * 方法未执行的情况或者失败，返回-1 ；否则，返回实际值
      */
     Integer update();
 
+    Integer updateActive();
+
     Integer updateByPrimaryKey();
 
     Integer delete();
+
 
 }

@@ -1,18 +1,20 @@
 # 单表动态查询 Dynamic-sql
     
-## 版本号 1.0.2
+## 版本号 1.0.3
 ```xml
 <dependency>
   <groupId>com.pengwz</groupId>
   <artifactId>dynamic-sql</artifactId>
-  <version>1.0.2</version>
+  <version>1.0.3</version>
 </dependency>
 ```
 ### 本次版本变更内容
-1、修复groupBy()函数类字段不能正确匹配表字段的问题  
-2、修复groupBy()函数代码编译警告问题  
-3、inertMany()方法更名为batchInsert()  
-4、新增insertOrUpdate()、batchInsertOrUpdate()函数  
+    1、修复groupBy()函数类字段不能正确匹配表字段的问题  
+    2、修复groupBy()函数代码编译警告问题  
+    3、inertMany()方法更名为batchInsert()  
+    4、新增insertOrUpdate()、batchInsertOrUpdate()函数  
+    5、新增updateActive()函数
+    6、优化了一些其他问题
 
 ### 项目简述
     1、基于JDBC单表动态增删改查，可单独启动，不依赖环境

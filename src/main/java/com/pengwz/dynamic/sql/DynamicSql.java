@@ -55,23 +55,14 @@ public class DynamicSql<T> {
 
     /**
      * 当需要更新字符串为null时
-     *
-     * @param fn
-     * @return
+     * 该方法仅对 updateActive(T data) 语句生效
+     * 其实这个方法写在此类中是不合适的，后期考虑优化他
      */
-    public String setNullString(Fn<T, Object> fn) {
+    @Deprecated
+    public DynamicSql<T> setNullColumnByUpdate(Fn<T, Object> fn) {
         String fieldName = ReflectUtils.fnToFieldName(fn);
         this.updateNullProperties.add(fieldName);
-        return null;
-    }
-
-    /**
-     * 当需要更新日期为null时
-     */
-    public String setNullDate(Fn<T, Object> fn) {
-        String fieldName = ReflectUtils.fnToFieldName(fn);
-        this.updateNullProperties.add(fieldName);
-        return null;
+        return this;
     }
 
     public DynamicSql<T> andEqualTo(Fn<T, Object> fn, Object value) {

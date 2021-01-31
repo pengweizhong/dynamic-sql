@@ -161,15 +161,31 @@ public class BraveSql<T> {
         return mustShare().insertOrUpdate();
     }
 
+
     /**
+     * 更新对象所有属性，包括null元素
+     *
      * @param data 待更新的对象
      */
     public Integer update(T data) {
         if (Objects.isNull(data)) {
-            throw new BraveException("必须提供待更新的数据");
+            throw new BraveException("必须提供待更新的对象");
         }
         this.data = Collections.singletonList(data);
         return mustShare().update();
+    }
+
+    /**
+     * 当对象属性为null时，忽略更新
+     *
+     * @param data 待更新的对象
+     */
+    public Integer updateActive(T data) {
+        if (Objects.isNull(data)) {
+            throw new BraveException("必须提供待更新的对象");
+        }
+        this.data = Collections.singletonList(data);
+        return mustShare().updateActive();
     }
 
     public Integer updateByPrimaryKey(T data) {

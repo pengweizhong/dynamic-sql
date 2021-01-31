@@ -22,6 +22,7 @@ public class MysqlTest {
         List<UserEntity> select = BraveSql.build(dynamicSql, UserEntity.class).select();
         select.forEach(System.out::println);
     }
+
     @Test
     public void insertOrUpdate() {
         UserEntity data = new UserEntity();
@@ -38,6 +39,19 @@ public class MysqlTest {
         Integer integer = BraveSql.build(UserEntity.class).batchInsertOrUpdate(userEntities);
 //        Integer integer = BraveSql.build(UserEntity.class).insertOrUpdate(data);
         System.out.println(integer);
+    }
+
+    @Test
+    public void update() {
+        DynamicSql<UserEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.andEqualTo(UserEntity::getId, 123);
+        dynamicSql.andIsNull(UserEntity::getBirthday);
+        dynamicSql.setNullColumnByUpdate(UserEntity::getUsername);
+        dynamicSql.setNullColumnByUpdate(UserEntity::getSex);
+        UserEntity data = new UserEntity();
+        data.setId(123L);
+        Integer update = BraveSql.build(dynamicSql, UserEntity.class).updateActive(data);
+        System.out.println(update);
     }
 
 }
