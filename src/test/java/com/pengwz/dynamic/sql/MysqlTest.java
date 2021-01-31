@@ -33,7 +33,7 @@ public class MysqlTest {
         UserEntity data2 = new UserEntity();
         data2.setBirthday(LocalDate.now());
         data2.setSex("女");
-        data2.setUsername("洛天依");
+        data2.setUsername("小透明");
         data2.setId(124L);
         List<UserEntity> userEntities = Arrays.asList(data, data2);
         Integer integer = BraveSql.build(UserEntity.class).batchInsertOrUpdate(userEntities);
@@ -54,4 +54,11 @@ public class MysqlTest {
         System.out.println(update);
     }
 
+    @Test
+    public void delete() {
+        DynamicSql<UserEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.andEqualTo(UserEntity::getId,127);
+        Integer delete = BraveSql.build(dynamicSql, UserEntity.class).delete();
+        System.out.println(delete);
+    }
 }

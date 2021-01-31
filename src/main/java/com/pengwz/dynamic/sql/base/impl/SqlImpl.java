@@ -405,8 +405,9 @@ public class SqlImpl<T> implements Sqls<T> {
         sql.append("delete from ").append(tableName);
         if (StringUtils.isEmpty(whereSql)) {
             log.warning("delete 操作未发现where语句，该操作会删除全表数据");
+        } else {
+            sql.append(SPACE + WHERE + SPACE).append(whereSql);
         }
-        sql.append(SPACE + WHERE + SPACE).append(whereSql);
         String parseSql = ParseSql.parseSql(sql.toString());
         log.info("delete SQL : " + parseSql);
         try {
