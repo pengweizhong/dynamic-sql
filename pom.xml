@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.pengwz</groupId>
     <artifactId>dynamic-sql</artifactId>
-    <version>1.0.3</version>
+    <version>1.1.0</version>
     <name>pengwz-dynamic-sql</name>
 
     <inceptionYear>2020</inceptionYear>
@@ -55,17 +55,6 @@
 
 
     <dependencies>
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <version>RELEASE</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>mysql</groupId>
-            <artifactId>mysql-connector-java</artifactId>
-            <version>8.0.19</version>
-        </dependency>
         <!-- 常用的工具类 -->
         <dependency>
             <groupId>org.apache.commons</groupId>
@@ -77,6 +66,24 @@
             <groupId>commons-beanutils</groupId>
             <artifactId>commons-beanutils</artifactId>
             <version>1.9.4</version>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>RELEASE</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+            <version>8.0.19</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>log4j</groupId>
+            <artifactId>log4j</artifactId>
+            <version>1.2.17</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 
@@ -131,7 +138,6 @@
                 </configuration>
             </plugin>
 
-            <!-- 这个不知道咋说，不太理解-->
             <plugin>
                 <groupId>org.sonatype.plugins</groupId>
                 <artifactId>nexus-staging-maven-plugin</artifactId>

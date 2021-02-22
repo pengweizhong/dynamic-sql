@@ -1,28 +1,37 @@
 package com.pengwz.dynamic.config;
 
-import java.util.HashMap;
-import java.util.Map;
+import com.mysql.cj.jdbc.MysqlDataSource;
 
-import static com.pengwz.dynamic.config.DBConfigEnum.*;
+import javax.sql.DataSource;
 
 public class MyDBConfig implements DataSourceConfig {
+
+//    @Override
+//    public DataSource getDataSource() {
+//        DruidDataSource ds = new DruidDataSource();
+//        ds.setUrl("jdbc:mysql://127.0.0.1:3306/dynamic?useUnicode=true&rewriteBatchedStatements=true&serverTimezone=GMT%2B8&characterEncoding=utf-8");
+//        ds.setUsername("root");
+//        ds.setPassword("pengwz");
+//        ds.setDriverClassName("com.mysql.cj.jdbc.Driver");
+//        ds.setInitialSize(3);
+//        ds.setMaxActive(10);
+//        ds.setMinIdle(5);
+//        ds.setValidationQuery("select 1");
+//        ds.setTestOnBorrow(true);
+//        ds.setTestOnReturn(false);
+//        ds.setUseUnfairLock(true);
+//        ds.setTestWhileIdle(true);
+//        ds.setMinEvictableIdleTimeMillis(10 * 60 * 1000L);
+//        ds.setTimeBetweenEvictionRunsMillis(5 * 60 * 1000L);
+//        return ds;
+//    }
+
     @Override
-    public Properties getProperties() {
-        //必须的配置
-        Properties properties = new Properties();
-        properties.setConfig(DRIVER, "com.mysql.jdbc.Driver");
-        properties.setConfig(USERNAME, "root");
-        properties.setConfig(PASSWORD, "pengwz");
-        properties.setConfig(PORT, "3306");
-        properties.setConfig(HOST, "127.0.0.1");
-        properties.setConfig(DATABASE, "dynamic");
-        //其他参数，比如设置时区，字符集等
-        Map<String, String> otherConfigMap = new HashMap<>();
-        otherConfigMap.put("serverTimezone", "GMT%2B8");
-        otherConfigMap.put("useUnicode", "true");
-        otherConfigMap.put("characterEncoding", "utf-8");
-        otherConfigMap.put("rewriteBatchedStatements", "true");
-        properties.setOtherConfigMap(otherConfigMap);
-        return properties;
+    public DataSource getDataSource() {
+        MysqlDataSource ds = new MysqlDataSource();
+        ds.setUrl("jdbc:mysql://127.0.0.1:3306/dynamic?useUnicode=true&rewriteBatchedStatements=true&serverTimezone=GMT%2B8&characterEncoding=utf-8");
+        ds.setUser("root");
+        ds.setPassword("pengwz");
+        return ds;
     }
 }

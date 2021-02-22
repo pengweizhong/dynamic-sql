@@ -58,7 +58,6 @@ public class DynamicSql<T> {
      * 该方法仅对 updateActive(T data) 语句生效
      * 其实这个方法写在此类中是不合适的，后期考虑优化他
      */
-    @Deprecated
     public DynamicSql<T> setNullColumnByUpdate(Fn<T, Object> fn) {
         String fieldName = ReflectUtils.fnToFieldName(fn);
         this.updateNullProperties.add(fieldName);

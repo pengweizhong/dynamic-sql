@@ -10,6 +10,4 @@ public @interface Table {
 
     Class<?> dataSourceClass() default Void.class;
 
-    //注解嵌套
-//    Reference reference() default @Reference(next=true);
 }

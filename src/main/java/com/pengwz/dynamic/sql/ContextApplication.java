@@ -57,7 +57,7 @@ public class ContextApplication {
         if (tableMap != null) {
             return tableMap.get(tableName);
         }
-        return null;
+        throw new BraveException("无法匹配数据源：" + dataSourceClass + "或表：" + tableName);
     }
 
     public static String getColumnByField(Class<?> dataSourceClass, String tableName, String fieldName) {
