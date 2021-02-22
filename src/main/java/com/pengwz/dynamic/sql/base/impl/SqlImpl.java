@@ -11,19 +11,19 @@ import com.pengwz.dynamic.sql.base.Sqls;
 import com.pengwz.dynamic.utils.CollectionUtils;
 import com.pengwz.dynamic.utils.ConverterUtils;
 import com.pengwz.dynamic.utils.StringUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
-import java.util.logging.Logger;
 
 import static com.pengwz.dynamic.constant.Constant.*;
 
-@SuppressWarnings("all")
 public class SqlImpl<T> implements Sqls<T> {
-    private static final Logger log = Logger.getGlobal();
+    private final Log log = LogFactory.getLog(SqlImpl.class);
 
     private Class<?> currentClass;
     //分页信息
@@ -45,191 +45,132 @@ public class SqlImpl<T> implements Sqls<T> {
 
     @Override
     public T selectByPrimaryKey(Object primaryKeyValue) {
-        String columList = ContextApplication.formatAllColumToStr(dataSourceClass, tableName);
+        String columnList = ContextApplication.formatAllColumToStr(dataSourceClass, tableName);
         String primaryKey = ContextApplication.getPrimaryKey(dataSourceClass, tableName);
         Object value = ParseSql.matchValue(primaryKeyValue);
-        String sql = "select " + columList + " from " + tableName + SPACE + WHERE + SPACE + primaryKey + SPACE + EQ + SPACE + value;
-        log.info("selectByPrimaryKey SQL : " + sql);
+        String sql = SELECT + SPACE + columnList + SPACE + FROM + SPACE + tableName + SPACE + WHERE + SPACE + primaryKey + SPACE + EQ + SPACE + value;
         return executeQuery(sql, tableName).get(0);
     }
 
     @Override
     public T selectSingle() {
-        String columList = ContextApplication.formatAllColumToStr(dataSourceClass, tableName);
-        String sql = "select " + columList + " from " + tableName + SPACE + WHERE + SPACE + whereSql;
+        String columnList = ContextApplication.formatAllColumToStr(dataSourceClass, tableName);
+        String sql = SELECT + SPACE + columnList + SPACE + FROM + SPACE + tableName + SPACE + WHERE + SPACE + whereSql;
         sql = ParseSql.parseSql(sql);
-        log.info("selectSingle SQL : " + sql);
-        List<T> query;
-        query = executeQuery(sql, tableName);
-        if (CollectionUtils.isEmpty(query)) {
+        List<T> queryList = executeQuery(sql, tableName);
+        if (CollectionUtils.isEmpty(queryList)) {
             return null;
         }
-        if (query.size() > 1) {
-            throw new BraveException("期望返回一条数据，但是返回了" + query.size() + "条数据");
+        if (queryList.size() > 1) {
+            throw new BraveException("期望返回一条数据，但是返回了" + queryList.size() + "条数据");
         }
-        return query.get(0);
+        return queryList.get(0);
     }
 
     @Override
     public List<T> select() {
-        String columList = ContextApplication.formatAllColumToStr(dataSourceClass, tableName);
-        String sql = "select " + columList + " from " + tableName;
+        String columnList = ContextApplication.formatAllColumToStr(dataSourceClass, tableName);
+        String sql = SELECT + SPACE + columnList + SPACE + FROM + SPACE + tableName;
         if (StringUtils.isNotEmpty(whereSql)) {
             sql += SPACE + WHERE + SPACE + whereSql;
         }
         sql = ParseSql.parseSql(sql);
-        log.info("select SQL : " + sql);
         return executeQuery(sql, tableName);
     }
 
     @Override
     public Integer selectCount() {
-        String sql = "select count(1) from " + tableName;
+        String sql = SELECT + SPACE + "count(1)" + SPACE + FROM + SPACE + tableName;
         if (StringUtils.isNotEmpty(whereSql)) {
             sql += SPACE + WHERE + SPACE + whereSql;
         }
         sql = ParseSql.parseSql(sql);
-        log.info("selectCount SQL : " + sql);
-        int count = 0;
-        try {
-            preparedStatement = connection.prepareStatement(sql);
-            resultSet = preparedStatement.executeQuery();
-            resultSet.next();
-            count = resultSet.getInt(1);
-        } catch (Exception ex) {
-            throw new BraveException("SQL execute fail. reason: " + ex.getMessage());
-        } finally {
-            close(connection);
-        }
-        return count;
+        return executeQueryCount(sql, true);
     }
 
     @Override
     public List<T> selectAll() {
-        String columList = ContextApplication.formatAllColumToStr(dataSourceClass, tableName);
-        String sql = "select " + columList + " from " + tableName;
-        log.info("selectAll SQL : " + sql);
+        String columnList = ContextApplication.formatAllColumToStr(dataSourceClass, tableName);
+        String sql = "select " + columnList + " from " + tableName;
         return executeQuery(sql, tableName);
     }
 
     @Override
     public PageInfo<T> selectPageInfo() {
-        String columList = ContextApplication.formatAllColumToStr(dataSourceClass, tableName);
-        String sqlCount = "select count(1) from " + tableName;
-        String sql = "select " + columList + " from " + tableName + (StringUtils.isEmpty(whereSql) ? SPACE : SPACE + WHERE + SPACE + whereSql.trim());
+        String columnList = ContextApplication.formatAllColumToStr(dataSourceClass, tableName);
+        String sqlCount = SELECT + SPACE + "count(1)" + SPACE + FROM + SPACE + tableName;
+        int totalSize = executeQueryCount(sqlCount, false);
+        String sql = "select " + columnList + " from " + tableName + (StringUtils.isEmpty(whereSql) ? SPACE : SPACE + WHERE + SPACE + whereSql.trim());
         sql = ParseSql.parseSql(sql);
-        log.info("selectPageInfo SQL : " + sqlCount);
-        Integer totalSize = 0;
-        try {
-            preparedStatement = connection.prepareStatement(sqlCount);
-            resultSet = preparedStatement.executeQuery();
-            resultSet.next();
-            totalSize = resultSet.getInt(1);
-        } catch (Exception ex) {
-            close(connection);
-            throw new BraveException("SQL execute fail. reason: " + ex.getMessage());
-        }
         sql += " limit " + pageInfo.getOffset() + " , " + (pageInfo.getPageSize() == 0 ? totalSize : pageInfo.getPageSize());
-        log.info("selectPageInfo SQL : " + sql);
         List<T> list = executeQuery(sql, tableName);
         buildPageInfo(pageInfo, list, totalSize);
         return pageInfo;
     }
 
+    private Integer executeQueryCount(String sql, boolean isCloseConnection) {
+        try {
+            preparedStatement = connection.prepareStatement(sql);
+            resultSet = preparedStatement.executeQuery();
+            printSql(preparedStatement);
+            resultSet.next();
+            return resultSet.getInt(1);
+        } catch (Exception ex) {
+            throw new BraveException(ex.getMessage(), ex);
+        } finally {
+            if (isCloseConnection) {
+                close(connection);
+            }
+        }
+    }
+
+    @SuppressWarnings("unchecked")
     private List<T> executeQuery(String sql, String tableName) {
         List<TableInfo> tableInfos = ContextApplication.getTableInfos(dataSourceClass, tableName);
         List<T> list = new ArrayList<>();
         try {
             preparedStatement = connection.prepareStatement(sql);
             resultSet = preparedStatement.executeQuery();
+            printSql(preparedStatement);
             while (resultSet.next()) {
                 T t = (T) currentClass.newInstance();
                 for (TableInfo tableInfo : tableInfos) {
                     Object object = resultSet.getObject(tableInfo.getColumn());
                     if (Objects.nonNull(object)) {
                         Object convert = ConverterUtils.convert(object, tableInfo.getField().getType());
-                        if (!convert.getClass().equals(tableInfo.getField().getType())) {
-                            Object cast = tableInfo.getGetMethod().getReturnType().cast(convert);
-                            System.out.println(cast);
-                        }
                         tableInfo.getSetMethod().invoke(t, convert);
                     }
                 }
                 list.add(t);
             }
         } catch (Exception ex) {
-            throw new BraveException("SQL execute fail. reason: " + ex.getMessage());
+            throw new BraveException(ex.getMessage(), ex);
         } finally {
             close(connection);
         }
         return list;
     }
 
-    private static String fixParseMethod(String fstype) {
-        switch (fstype) {
-            case "Integer":
-                return "Int";
-            default:
-                return fstype;
-        }
-    }
-
-
     @Override
     public Integer batchInsert() {
-        String columToStr = ContextApplication.formatAllColumToStr(dataSourceClass, tableName);
+        String columnToStr = ContextApplication.formatAllColumToStr(dataSourceClass, tableName);
         List<TableInfo> tableInfos = ContextApplication.getTableInfos(dataSourceClass, tableName);
-        StringBuilder sql = new StringBuilder();
-        sql.append("insert into " + tableName + " ( " + columToStr + " ) values ( ");
-        tableInfos.forEach(tableInfo -> {
-            sql.append(" ? ,");
-        });
-        String prepareSql = sql.substring(0, sql.length() - 1) + ")";
-        log.info("insertMany SQL: " + prepareSql);
-        Iterator<T> iterator = data.iterator();
-        int successCount = 0;
-        try {
-            preparedStatement = connection.prepareStatement(prepareSql, Statement.RETURN_GENERATED_KEYS);
-            while (iterator.hasNext()) {
-                T next = iterator.next();
-                for (int i = 1; i <= tableInfos.size(); i++) {
-                    preparedStatement.setObject(i, tableInfos.get(i - 1).getGetMethod().invoke(next, new Object[]{}));
-                }
-                preparedStatement.addBatch();
-            }
-            int[] ints = preparedStatement.executeBatch();
-            successCount = ints.length;
-            TableInfo tableInfoPrimaryKey = ContextApplication.getTableInfoPrimaryKey(dataSourceClass, tableName);
-            if (tableInfoPrimaryKey.isGeneratedValue()) {
-                Iterator<T> resultIterator = data.iterator();
-                ResultSet generatedKeys = preparedStatement.getGeneratedKeys();
-                while (resultIterator.hasNext()) {
-                    generatedKeys.next();
-                    T next = resultIterator.next();
-                    Object convert = ConverterUtils.convert(generatedKeys.getObject(1), tableInfoPrimaryKey.getField().getType());
-                    tableInfoPrimaryKey.getSetMethod().invoke(next, convert);
-                }
-            }
-            connection.commit();
-        } catch (Exception ex) {
-            try {
-                connection.rollback();
-            } catch (SQLException e) {
-                throw new BraveException("SQL insert rollback fail. reason: " + ex.getMessage());
-            }
-            throw new BraveException("SQL insert fail. reason: " + ex.getMessage());
-        } finally {
-            close(connection);
-        }
-        return successCount;
+        final StringBuilder sql = new StringBuilder();
+        sql.append("insert into ").append(tableName).append(" ( ").append(columnToStr).append(" ) values ");
+        sql.append("( ");
+        tableInfos.forEach(tableInfo -> sql.append(" ? ,"));
+        sql.deleteCharAt(sql.lastIndexOf(","));
+        sql.append("),");
+        String prepareSql = sql.deleteCharAt(sql.lastIndexOf(",")).toString();
+        return executeBatchSqlAndReturnAffectedRows(prepareSql, tableInfos);
     }
 
     @Override
     public Integer insertOrUpdate() {
-        String columToStr = ContextApplication.formatAllColumToStr(dataSourceClass, tableName);
+        String columnToStr = ContextApplication.formatAllColumToStr(dataSourceClass, tableName);
         List<TableInfo> tableInfos = ContextApplication.getTableInfos(dataSourceClass, tableName);
         StringBuilder sql = new StringBuilder();
-        sql.append("insert into " + tableName + " ( " + columToStr + " ) values ( ");
+        sql.append("insert into ").append(tableName).append(" ( ").append(columnToStr).append(" ) values ( ");
         List<String> duplicateKeys = new ArrayList<>();
         tableInfos.forEach(tableInfo -> {
             sql.append(" ? ,");
@@ -238,60 +179,22 @@ public class SqlImpl<T> implements Sqls<T> {
         String prepareSql = sql.substring(0, sql.length() - 1) + ")";
         String join = String.join(",", duplicateKeys);
         prepareSql = prepareSql.concat(" on duplicate key update ").concat(join);
-        log.info("insertOrUpdate SQL: " + prepareSql);
-        Iterator<T> iterator = data.iterator();
-        int successCount = 0;
-        try {
-            preparedStatement = connection.prepareStatement(prepareSql, Statement.RETURN_GENERATED_KEYS);
-            while (iterator.hasNext()) {
-                T next = iterator.next();
-                for (int i = 1; i <= tableInfos.size(); i++) {
-                    preparedStatement.setObject(i, tableInfos.get(i - 1).getGetMethod().invoke(next, new Object[]{}));
-                }
-                preparedStatement.addBatch();
-            }
-            int[] ints = preparedStatement.executeBatch();
-            successCount = ints.length;
-            TableInfo tableInfoPrimaryKey = ContextApplication.getTableInfoPrimaryKey(dataSourceClass, tableName);
-            if (tableInfoPrimaryKey.isGeneratedValue()) {
-                Iterator<T> resultIterator = data.iterator();
-                ResultSet generatedKeys = preparedStatement.getGeneratedKeys();
-                while (resultIterator.hasNext()) {
-                    generatedKeys.next();
-                    T next = resultIterator.next();
-                    Object convert = ConverterUtils.convert(generatedKeys.getObject(1), tableInfoPrimaryKey.getField().getType());
-                    tableInfoPrimaryKey.getSetMethod().invoke(next, convert);
-                }
-            }
-            connection.commit();
-        } catch (Exception ex) {
-            try {
-                connection.rollback();
-            } catch (SQLException e) {
-                throw new BraveException("SQL insert rollback fail. reason: " + ex.getMessage());
-            }
-            throw new BraveException("SQL insert fail. reason: " + ex.getMessage());
-        } finally {
-            close(connection);
-        }
-        return successCount;
+        return executeBatchSqlAndReturnAffectedRows(prepareSql, tableInfos);
     }
 
     @Override
     public Integer update() {
         List<TableInfo> tableInfos = ContextApplication.getTableInfos(dataSourceClass, tableName);
         StringBuilder sql = new StringBuilder();
-        sql.append("update " + tableName + " set");
-        Iterator<T> iterator = data.iterator();
-        while (iterator.hasNext()) {
-            T next = iterator.next();
+        sql.append("update ").append(tableName).append(" set");
+        for (T next : data) {
             for (TableInfo tableInfo : tableInfos) {
                 try {
-                    Object invoke = tableInfo.getGetMethod().invoke(next, new Object[]{});
+                    Object invoke = tableInfo.getGetMethod().invoke(next);
                     sql.append(SPACE).append(tableInfo.getColumn()).append(SPACE).append(EQ).append(SPACE);
                     sql.append(ParseSql.matchValue(invoke)).append(COMMA);
                 } catch (Exception ex) {
-                    throw new BraveException("SQL update fail. reason: " + ex.getMessage());
+                    throw new BraveException(ex.getMessage(), ex);
                 }
             }
         }
@@ -302,22 +205,9 @@ public class SqlImpl<T> implements Sqls<T> {
     public Integer updateActive() {
         List<TableInfo> tableInfos = ContextApplication.getTableInfos(dataSourceClass, tableName);
         StringBuilder sql = new StringBuilder();
-        sql.append("update " + tableName + " set");
-        Iterator<T> iterator = data.iterator();
-        while (iterator.hasNext()) {
-            T next = iterator.next();
-            for (TableInfo tableInfo : tableInfos) {
-                try {
-                    Object invoke = tableInfo.getGetMethod().invoke(next, new Object[]{});
-                    if (Objects.isNull(invoke) && !updateNullProperties.contains(tableInfo.getField().getName())) {
-                        continue;
-                    }
-                    sql.append(SPACE).append(tableInfo.getColumn()).append(SPACE).append(EQ).append(SPACE);
-                    sql.append(ParseSql.matchValue(invoke)).append(COMMA);
-                } catch (Exception ex) {
-                    throw new BraveException("SQL updateActive fail. reason: " + ex.getMessage());
-                }
-            }
+        sql.append("update ").append(tableName).append(" set");
+        for (T next : data) {
+            updateSqlCheckSetNullProperties(sql, tableInfos, next);
         }
         return baseUpdate(sql);
     }
@@ -328,25 +218,14 @@ public class SqlImpl<T> implements Sqls<T> {
         }
         String sqlPreffix = sql.substring(0, sql.length() - 1);
         if (StringUtils.isEmpty(whereSql)) {
-            log.warning("update 操作未发现where语句，该操作会更新全表数据");
+            if (log.isDebugEnabled()) {
+                log.debug("update操作未发现where语句，该操作会更新全表数据");
+            }
         } else {
             sqlPreffix = sqlPreffix + SPACE + WHERE + SPACE + whereSql;
         }
         String parseSql = ParseSql.parseSql(sqlPreffix);
-        log.info("update SQL: " + parseSql);
-        try {
-            preparedStatement = connection.prepareStatement(parseSql);
-            int i = preparedStatement.executeUpdate();
-            connection.commit();
-            return i;
-        } catch (SQLException ex) {
-            try {
-                connection.rollback();
-            } catch (SQLException e) {
-                throw new BraveException("SQL update rollback fail. reason: " + ex.getMessage());
-            }
-            throw new BraveException("SQL update fail. reason: " + ex.getMessage());
-        }
+        return executeUpdateSqlAndReturnAffectedRows(parseSql);
     }
 
     @Override
@@ -355,48 +234,24 @@ public class SqlImpl<T> implements Sqls<T> {
         TableInfo tableInfoPrimaryKey = ContextApplication.getTableInfoPrimaryKey(dataSourceClass, tableName);
         T next = data.iterator().next();
         StringBuilder sql = new StringBuilder();
-        sql.append("update " + tableName + " set");
-        Object primaryKeyValue = null;
+        sql.append("update ").append(tableName).append(" set");
+        Object primaryKeyValue;
         try {
-            primaryKeyValue = tableInfoPrimaryKey.getGetMethod().invoke(next, new Object[]{});
+            primaryKeyValue = tableInfoPrimaryKey.getGetMethod().invoke(next);
             if (Objects.isNull(primaryKeyValue)) {
                 throw new BraveException(tableName + " 表的主键值不存在");
             }
         } catch (Exception e) {
-            throw new BraveException(tableName + " 表获取主键值失败，原因：" + e.getMessage());
+            throw new BraveException(tableName + " 表获取主键值失败，原因：" + e.getMessage(), e);
         }
-        for (TableInfo tableInfo : tableInfos) {
-            try {
-                Object invoke = tableInfo.getGetMethod().invoke(next, new Object[]{});
-                if (Objects.isNull(invoke) && !updateNullProperties.contains(tableInfo.getField().getName())) {
-                    continue;
-                }
-                sql.append(SPACE).append(tableInfo.getColumn()).append(SPACE).append(EQ).append(SPACE);
-                sql.append(ParseSql.matchValue(invoke)).append(COMMA);
-            } catch (Exception ex) {
-                throw new BraveException("SQL update fail. reason: " + ex.getMessage());
-            }
-        }
+        updateSqlCheckSetNullProperties(sql, tableInfos, next);
         if (sql.toString().endsWith("set")) {
             return 0;
         }
         String sqlPreffix = sql.substring(0, sql.length() - 1);
         sqlPreffix = sqlPreffix + SPACE + WHERE + SPACE + tableInfoPrimaryKey.getColumn() + SPACE + EQ + SPACE + ParseSql.matchValue(primaryKeyValue);
         String parseSql = ParseSql.parseSql(sqlPreffix);
-        log.info("update SQL: " + parseSql);
-        try {
-            preparedStatement = connection.prepareStatement(parseSql);
-            int i = preparedStatement.executeUpdate();
-            connection.commit();
-            return i;
-        } catch (SQLException ex) {
-            try {
-                connection.rollback();
-            } catch (SQLException e) {
-                throw new BraveException("SQL update rollback fail. reason: " + ex.getMessage());
-            }
-            throw new BraveException("SQL update fail. reason: " + ex.getMessage());
-        }
+        return executeUpdateSqlAndReturnAffectedRows(parseSql);
     }
 
     @Override
@@ -404,40 +259,97 @@ public class SqlImpl<T> implements Sqls<T> {
         StringBuilder sql = new StringBuilder();
         sql.append("delete from ").append(tableName);
         if (StringUtils.isEmpty(whereSql)) {
-            log.warning("delete 操作未发现where语句，该操作会删除全表数据");
+            if (log.isDebugEnabled()) {
+                log.debug("delete操作未发现where语句，该操作会删除全表数据");
+            }
         } else {
             sql.append(SPACE + WHERE + SPACE).append(whereSql);
         }
         String parseSql = ParseSql.parseSql(sql.toString());
-        log.info("delete SQL : " + parseSql);
+        return executeUpdateSqlAndReturnAffectedRows(parseSql);
+    }
+
+    private Integer executeUpdateSqlAndReturnAffectedRows(String sql) {
         try {
-            preparedStatement = connection.prepareStatement(parseSql);
+            preparedStatement = connection.prepareStatement(sql);
             int i = preparedStatement.executeUpdate();
+            printSql(preparedStatement);
             connection.commit();
             return i;
         } catch (SQLException ex) {
             try {
                 connection.rollback();
             } catch (SQLException e) {
-                throw new BraveException("SQL delete rollback fail. reason: " + ex.getMessage());
+                throw new BraveException(ex.getMessage(), ex);
             }
-            throw new BraveException("SQL delete fail. reason: " + ex.getMessage());
+            throw new BraveException(ex.getMessage(), ex);
         }
     }
 
-    public void before() {
-        connection = DataSourceManagement.getConnection(dataSourceConfig);
+    private void updateSqlCheckSetNullProperties(StringBuilder sql, List<TableInfo> tableInfos, T nextObject) {
+        for (TableInfo tableInfo : tableInfos) {
+            try {
+                Object invoke = tableInfo.getGetMethod().invoke(nextObject);
+                if (Objects.isNull(invoke) && !updateNullProperties.contains(tableInfo.getField().getName())) {
+                    continue;
+                }
+                sql.append(SPACE).append(tableInfo.getColumn()).append(SPACE).append(EQ).append(SPACE);
+                sql.append(ParseSql.matchValue(invoke)).append(COMMA);
+            } catch (Exception ex) {
+                throw new BraveException(ex.getMessage(), ex);
+            }
+        }
+    }
+
+    private Integer executeBatchSqlAndReturnAffectedRows(String sql, List<TableInfo> tableInfos) {
+        Iterator<T> iterator = data.iterator();
+        int successCount;
         try {
-            connection.setAutoCommit(false);
-        } catch (SQLException e) {
-            e.printStackTrace();
+            preparedStatement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+            while (iterator.hasNext()) {
+                T next = iterator.next();
+                for (int i = 1; i <= tableInfos.size(); i++) {
+                    preparedStatement.setObject(i, tableInfos.get(i - 1).getGetMethod().invoke(next));
+                }
+                printSql(preparedStatement);
+                preparedStatement.addBatch();
+            }
+            int[] ints = preparedStatement.executeBatch();
+            successCount = ints.length;
+            TableInfo tableInfoPrimaryKey = ContextApplication.getTableInfoPrimaryKey(dataSourceClass, tableName);
+            if (tableInfoPrimaryKey.isGeneratedValue()) {
+                Iterator<T> resultIterator = data.iterator();
+                ResultSet generatedKeys = preparedStatement.getGeneratedKeys();
+                while (resultIterator.hasNext()) {
+                    T next = resultIterator.next();
+                    //先查看原有的ID是否已经被指定，如果已被指定，则不再获取新的主键
+                    Object primaryKeyValue = tableInfoPrimaryKey.getGetMethod().invoke(next);
+                    if (Objects.isNull(primaryKeyValue)) {
+                        generatedKeys.next();
+                        Object convert = ConverterUtils.convert(generatedKeys.getObject(Statement.RETURN_GENERATED_KEYS), tableInfoPrimaryKey.getField().getType());
+                        tableInfoPrimaryKey.getSetMethod().invoke(next, convert);
+                    }
+                }
+            }
+            connection.commit();
+        } catch (Exception ex) {
+            try {
+                connection.rollback();
+            } catch (SQLException e) {
+                throw new BraveException(ex.getMessage(), ex);
+            }
+            throw new BraveException(ex.getMessage(), ex);
+        } finally {
+            close(connection);
         }
-        //        connection = DBPool.getConnection();
+        return successCount;
     }
 
-    private void close(Connection connection) {
-        DataSourceManagement.releaseConnection(connection);
-//        DBPool.releaseConnection(connection);
+    private void printSql(PreparedStatement preparedStatement) {
+        if (log.isDebugEnabled()) {
+            String sqlToString = preparedStatement.toString();
+            log.debug(sqlToString.substring(sqlToString.indexOf(':') + 1));
+        }
     }
 
     private void buildPageInfo(PageInfo<T> pageInfo, List<T> list, Integer totalSize) {
@@ -447,6 +359,11 @@ public class SqlImpl<T> implements Sqls<T> {
         if (pageInfo.getPageSize() != 0) {
             pageInfo.setTotalPages((totalSize + pageInfo.getPageSize() - 1) / pageInfo.getPageSize());
         }
+    }
+
+    private void close(Connection connection) {
+        DataSourceManagement dataSourceManagement = DataSourceManagement.getDataSourceManagement();
+        dataSourceManagement.releaseConnection(connection);
     }
 
     public void init(Class<?> currentClass, PageInfo<T> pageInfo, Iterable<T> data, List<String> updateNullProperties, String tableName, Class<?> dataSourceClass, String whereSql, DataSourceConfig dataSourceConfig) {
@@ -461,4 +378,13 @@ public class SqlImpl<T> implements Sqls<T> {
         this.dataSourceConfig = dataSourceConfig;
     }
 
+    public void before() {
+        DataSourceManagement dataSourceManagement = DataSourceManagement.getDataSourceManagement();
+        connection = dataSourceManagement.getConnection(dataSourceConfig);
+        try {
+            connection.setAutoCommit(false);
+        } catch (SQLException e) {
+            log.error(e.getMessage(), e);
+        }
+    }
 }

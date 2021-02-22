@@ -18,6 +18,7 @@ public class UserEntity {
     private String username;
     private String sex;
     private LocalDate birthday;
+    private String phone;
     private LocalDateTime createDate;
     private LocalDateTime updateDate;
 
@@ -69,6 +70,14 @@ public class UserEntity {
         this.updateDate = updateDate;
     }
 
+    public String getPhone() {
+        return phone;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
+    }
+
     @Override
     public String toString() {
         return "UserEntity{" +
@@ -76,6 +85,7 @@ public class UserEntity {
                 ", username='" + username + '\'' +
                 ", sex='" + sex + '\'' +
                 ", birthday=" + birthday +
+                ", phone='" + phone + '\'' +
                 ", createDate=" + createDate +
                 ", updateDate=" + updateDate +
                 '}';
