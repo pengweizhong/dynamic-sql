@@ -1,10 +1,11 @@
-package com.pengwz.dynamic.config;
+package com.pengwz.dynamic.entity;
 
 import com.alibaba.druid.pool.DruidDataSource;
+import com.pengwz.dynamic.config.DataSourceConfig;
 
 import javax.sql.DataSource;
 
-public class MyDBConfig implements DataSourceConfig {
+public class MyDBConfig2 implements DataSourceConfig {
 
     @Override
     public DataSource getDataSource() {

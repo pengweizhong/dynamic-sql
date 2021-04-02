@@ -362,7 +362,7 @@ public class SqlImpl<T> implements Sqls<T> {
     }
 
     private void close(Connection connection) {
-        DataSourceManagement dataSourceManagement = DataSourceManagement.getDataSourceManagement();
+        DataSourceManagement dataSourceManagement = DataSourceManagement.getDataSourceManagement(dataSourceConfig);
         dataSourceManagement.releaseConnection(connection);
     }
 
@@ -379,7 +379,7 @@ public class SqlImpl<T> implements Sqls<T> {
     }
 
     public void before() {
-        DataSourceManagement dataSourceManagement = DataSourceManagement.getDataSourceManagement();
+        DataSourceManagement dataSourceManagement = DataSourceManagement.getDataSourceManagement(dataSourceConfig);
         connection = dataSourceManagement.getConnection(dataSourceConfig);
         try {
             connection.setAutoCommit(false);

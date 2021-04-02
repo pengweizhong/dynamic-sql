@@ -1,6 +1,8 @@
 package com.pengwz.dynamic.sql;
 
+import com.pengwz.dynamic.config.DataSourceConfig;
 import com.pengwz.dynamic.entity.UserEntity;
+import com.pengwz.dynamic.utils.ClassUtils;
 import org.junit.Test;
 
 import java.time.LocalDate;
@@ -52,5 +54,11 @@ public class DynamicSqlTest {
     public void selectPageInfo() {
         PageInfo<UserEntity> userEntityPageInfo = BraveSql.build(UserEntity.class).selectPageInfo(2, 2);
         System.out.println(userEntityPageInfo);
+    }
+
+    @Test
+    public void testClassUtils(){
+        List<Class> classes = ClassUtils.getAllClassByFather(DataSourceConfig.class);
+        classes.forEach(System.out::println);
     }
 }
