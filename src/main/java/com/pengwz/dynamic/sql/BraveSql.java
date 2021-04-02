@@ -62,9 +62,19 @@ public class BraveSql<T> {
         Class<?> dataSourceClass = table.dataSourceClass();
         try {
             if (dataSourceClass.equals(Void.class)) {
-                throw new BraveException("必须明确指定数据源");
+                DataSourceConfig defalutDataSource = ContextApplication.getDefalutDataSource();
+                if (Objects.isNull(defalutDataSource)) {
+                    throw new BraveException("须指定数据源；表名：" + tableName);
+                }
+                dataSource = defalutDataSource;
             } else {
-                dataSource = (DataSourceConfig) dataSourceClass.newInstance();
+                DataSourceConfig sourceConfig = ContextApplication.getDataSource(dataSourceClass);
+                if (Objects.isNull(sourceConfig)) {
+                    ContextApplication.putDataSource(dataSourceClass);
+                    dataSource = ContextApplication.getDataSource(dataSourceClass);
+                } else {
+                    dataSource = sourceConfig;
+                }
             }
 
         } catch (ClassCastException e) {
@@ -136,9 +146,10 @@ public class BraveSql<T> {
      * 若表中记录存在，进行更新操作，否则插入
      * <p/>
      * <strong>
-     *     注意，该方法将会执行类似如下SQL ... on duplicate key update ...<br/>
-     *     这种SQL回显的主键可能是不正确的，为了保险起见，请不要在业务中使用该方法所回填的主键
+     * 注意，该方法将会执行类似如下SQL ... on duplicate key update ...<br/>
+     * 这种SQL回显的主键可能是不正确的，为了保险起见，请不要在业务中使用该方法所回填的主键
      * </strong>
+     *
      * @param data 待插入的数据
      * @return 操作成功的数量
      */
@@ -155,9 +166,10 @@ public class BraveSql<T> {
      * 若表中记录存在，批量进行更新操作，否则插入
      * <p/>
      * <strong>
-     *     注意，该方法将会执行类似如下SQL ... on duplicate key update ...<br/>
-     *     这种SQL回显的主键可能是不正确的，为了保险起见，请不要在业务中使用该方法所回填的主键
+     * 注意，该方法将会执行类似如下SQL ... on duplicate key update ...<br/>
+     * 这种SQL回显的主键可能是不正确的，为了保险起见，请不要在业务中使用该方法所回填的主键
      * </strong>
+     *
      * @param iterable 待插入的数据集合
      * @return 操作成功的数量
      */

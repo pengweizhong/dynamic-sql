@@ -26,6 +26,10 @@ public class MyDBConfig implements DataSourceConfig {
         return ds;
     }
 
+    @Override
+    public boolean defaultDataSource() {
+        return Boolean.TRUE;
+    }
 //    @Override
 //    public DataSource getDataSource() {
 //        MysqlDataSource ds = new MysqlDataSource();

@@ -8,4 +8,12 @@ public interface DataSourceConfig {
      */
     DataSource getDataSource();
 
+    /**
+     * 默认数据源，默认false，仅支持一个默认数据源
+     */
+    default boolean defaultDataSource() {
+        return false;
+    }
+
+
 }

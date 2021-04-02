@@ -4,14 +4,12 @@ import com.pengwz.dynamic.anno.Column;
 import com.pengwz.dynamic.anno.GeneratedValue;
 import com.pengwz.dynamic.anno.Id;
 import com.pengwz.dynamic.exception.BraveException;
+import com.pengwz.dynamic.model.TableInfo;
 import com.pengwz.dynamic.sql.ContextApplication;
-import com.pengwz.dynamic.sql.ContextApplication.TableInfo;
 import com.pengwz.dynamic.sql.PageInfo;
-import com.pengwz.dynamic.utils.ReflectUtils;
 import com.pengwz.dynamic.utils.StringUtils;
 
 import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
@@ -26,7 +24,6 @@ public class Check {
         }
         Field[] declaredFields = currentClass.getDeclaredFields();
         int idCount = 0;
-        Method[] methods = currentClass.getDeclaredMethods();
         List<TableInfo> tableInfos = new ArrayList<>();
         for (Field field : declaredFields) {
             //静态类型，final类型不参与数据库查询
@@ -53,24 +50,6 @@ public class Check {
             }
             tableInfo.setField(field);
             tableInfo.setColumn(column);
-            tableInfo.setType(ReflectUtils.subTypeName(field));
-            //如果==2，说明getset方法均已赋值，跳出循环
-            int getSetInit = 0;
-            for (Method method : methods) {
-                if (getSetInit == 2) {
-                    break;
-                }
-                String methodName = method.getName();
-                String fieldName = field.getName();
-                if (methodName.startsWith("get") && methodName.substring(3).equalsIgnoreCase(fieldName)) {
-                    tableInfo.setGetMethod(method);
-                    getSetInit++;
-                }
-                if (methodName.startsWith("set") && methodName.substring(3).equalsIgnoreCase(fieldName)) {
-                    tableInfo.setSetMethod(method);
-                    getSetInit++;
-                }
-            }
             GeneratedValue generatedValue = field.getAnnotation(GeneratedValue.class);
             if (Objects.nonNull(generatedValue)) {
                 tableInfo.setGeneratedValue(true);

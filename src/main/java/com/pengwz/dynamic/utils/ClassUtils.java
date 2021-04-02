@@ -16,6 +16,12 @@ import static java.io.File.separator;
 public class ClassUtils {
     private static final Log log = LogFactory.getLog(ClassUtils.class);
 
+    /**
+     * 获取当前项目下父类的所有子类
+     *
+     * @param clazz
+     * @return
+     */
     public static List<Class> getAllClassByFather(Class clazz) {
         List<Class> resultChildClass = new ArrayList<>();
         if (clazz == null) {
@@ -28,18 +34,24 @@ public class ClassUtils {
                 URL resource = resources.nextElement();
                 findChildFile(resource.getPath(), scanFiles);
             }
-            for (File scanFile : scanFiles) {
-                String classPath = resolveAbsolutePath(scanFile.getPath());
-                if (StringUtils.isNotBlank(classPath)) {
-                    Class<?> aClass = Class.forName(classPath);
-                    if (clazz.isAssignableFrom(aClass) && !aClass.equals(clazz)) {
-                        resultChildClass.add(aClass);
-                    }
-                }
-            }
         } catch (Exception e) {
             log.error(e.getMessage(), e);
         }
+        for (File scanFile : scanFiles) {
+            String classPath = resolveAbsolutePath(scanFile.getPath());
+            if (StringUtils.isNotBlank(classPath)) {
+                Class<?> aClass;
+                try {
+                    aClass = Class.forName(classPath);
+                    if (clazz.isAssignableFrom(aClass) && !aClass.equals(clazz)) {
+                        resultChildClass.add(aClass);
+                    }
+                } catch (Exception e) {
+                    // ignore
+                }
+            }
+        }
+
 
         return resultChildClass;
     }

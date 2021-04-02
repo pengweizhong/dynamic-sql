@@ -1,21 +1,52 @@
 package com.pengwz.dynamic.sql;
 
+import com.pengwz.dynamic.config.DataSourceConfig;
 import com.pengwz.dynamic.exception.BraveException;
+import com.pengwz.dynamic.model.TableInfo;
 import com.pengwz.dynamic.utils.CollectionUtils;
 import com.pengwz.dynamic.utils.StringUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 @SuppressWarnings("all")
 public class ContextApplication {
-
+    private static final Log log = LogFactory.getLog(ContextApplication.class);
     private static final Map<String, Map<String, List<TableInfo>>> dataBaseMap = new ConcurrentHashMap<>();
+    private static final Map<String, DataSourceConfig> dataSourcesMap = new ConcurrentHashMap<>();
+
+    public static DataSourceConfig getDefalutDataSource() {
+        Collection<DataSourceConfig> values = dataSourcesMap.values();
+        for (DataSourceConfig dataSourceConfig : values) {
+            if (dataSourceConfig.defaultDataSource()) {
+                return dataSourceConfig;
+            }
+        }
+        return null;
+    }
+
+    public static void putDataSource(Class<?> dataSourceClass) throws IllegalAccessException, InstantiationException {
+        DataSourceConfig sourceConfig = (DataSourceConfig) dataSourceClass.newInstance();
+        if (sourceConfig.defaultDataSource()) {
+            Collection<DataSourceConfig> dataSources = dataSourcesMap.values();
+            List<DataSourceConfig> collect = dataSources.stream().filter(data -> data.defaultDataSource()).collect(Collectors.toList());
+            if (!collect.isEmpty()) {
+                throw new BraveException("仅支持一个默认数据源，愈配置默认数据源：" + dataSourceClass + "，已存在的默认数据源：" + collect);
+            }
+        }
+        String dataSourceName = dataSourceClass.toString();
+        if (dataSourcesMap.containsKey(dataSourceName)) {
+            throw new BraveException("数据源：" + dataSourceName + "已经存在");
+        }
+        dataSourcesMap.put(dataSourceName, sourceConfig);
+    }
+
+    public static DataSourceConfig getDataSource(Class<?> dataSourceClass) {
+        return dataSourcesMap.get(dataSourceClass.toString());
+    }
 
     public static boolean existsTable(String tableName, Class<?> dataSourceClass) {
         String dataSource = dataSourceClass.getName();
@@ -118,93 +149,6 @@ public class ContextApplication {
 
     public static void clear() {
         dataBaseMap.clear();
-    }
-
-    public static class TableInfo {
-        //数据库字段名
-        private String column;
-        //字段类型
-        private String type;
-        //是否为主键
-        private boolean isPrimary;
-        //新增数据是否需要生成主键
-        private boolean isGeneratedValue;
-        //get方法
-        private Method getMethod;
-        //set方法
-        private Method setMethod;
-        //实体类字段
-        private Field field;
-
-        //其他属性....
-        public String getColumn() {
-            return column;
-        }
-
-        public void setColumn(String column) {
-            this.column = column;
-        }
-
-        public String getType() {
-            return type;
-        }
-
-        public void setType(String type) {
-            this.type = type;
-        }
-
-        public boolean isPrimary() {
-            return isPrimary;
-        }
-
-        public void setPrimary(boolean primary) {
-            isPrimary = primary;
-        }
-
-        public boolean isGeneratedValue() {
-            return isGeneratedValue;
-        }
-
-        public void setGeneratedValue(boolean generatedValue) {
-            isGeneratedValue = generatedValue;
-        }
-
-        public Method getGetMethod() {
-            return getMethod;
-        }
-
-        public void setGetMethod(Method getMethod) {
-            this.getMethod = getMethod;
-        }
-
-        public Method getSetMethod() {
-            return setMethod;
-        }
-
-        public void setSetMethod(Method setMethod) {
-            this.setMethod = setMethod;
-        }
-
-        public Field getField() {
-            return field;
-        }
-
-        public void setField(Field field) {
-            this.field = field;
-        }
-
-        @Override
-        public String toString() {
-            return "TableInfo{" +
-                    "column='" + column + '\'' +
-                    ", type='" + type + '\'' +
-                    ", isPrimary=" + isPrimary +
-                    ", isGeneratedValue=" + isGeneratedValue +
-                    ", getMethod=" + getMethod +
-                    ", setMethod=" + setMethod +
-                    ", field=" + field +
-                    '}';
-        }
     }
 
 }

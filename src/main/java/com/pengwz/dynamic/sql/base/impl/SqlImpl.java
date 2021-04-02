@@ -3,13 +3,14 @@ package com.pengwz.dynamic.sql.base.impl;
 import com.pengwz.dynamic.config.DataSourceConfig;
 import com.pengwz.dynamic.config.DataSourceManagement;
 import com.pengwz.dynamic.exception.BraveException;
+import com.pengwz.dynamic.model.TableInfo;
 import com.pengwz.dynamic.sql.ContextApplication;
-import com.pengwz.dynamic.sql.ContextApplication.TableInfo;
 import com.pengwz.dynamic.sql.PageInfo;
 import com.pengwz.dynamic.sql.ParseSql;
 import com.pengwz.dynamic.sql.base.Sqls;
 import com.pengwz.dynamic.utils.CollectionUtils;
 import com.pengwz.dynamic.utils.ConverterUtils;
+import com.pengwz.dynamic.utils.ReflectUtils;
 import com.pengwz.dynamic.utils.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -137,8 +138,8 @@ public class SqlImpl<T> implements Sqls<T> {
                 for (TableInfo tableInfo : tableInfos) {
                     Object object = resultSet.getObject(tableInfo.getColumn());
                     if (Objects.nonNull(object)) {
-                        Object convert = ConverterUtils.convert(object, tableInfo.getField().getType());
-                        tableInfo.getSetMethod().invoke(t, convert);
+                        Object convertValue = ConverterUtils.convert(object, tableInfo.getField().getType());
+                        ReflectUtils.setFieldValue(tableInfo.getField(), t, convertValue);
                     }
                 }
                 list.add(t);
@@ -190,7 +191,7 @@ public class SqlImpl<T> implements Sqls<T> {
         for (T next : data) {
             for (TableInfo tableInfo : tableInfos) {
                 try {
-                    Object invoke = tableInfo.getGetMethod().invoke(next);
+                    Object invoke = ReflectUtils.getFieldValue(tableInfo.getField(), next);
                     sql.append(SPACE).append(tableInfo.getColumn()).append(SPACE).append(EQ).append(SPACE);
                     sql.append(ParseSql.matchValue(invoke)).append(COMMA);
                 } catch (Exception ex) {
@@ -237,7 +238,7 @@ public class SqlImpl<T> implements Sqls<T> {
         sql.append("update ").append(tableName).append(" set");
         Object primaryKeyValue;
         try {
-            primaryKeyValue = tableInfoPrimaryKey.getGetMethod().invoke(next);
+            primaryKeyValue = ReflectUtils.getFieldValue(tableInfoPrimaryKey.getField(), next);
             if (Objects.isNull(primaryKeyValue)) {
                 throw new BraveException(tableName + " 表的主键值不存在");
             }
@@ -289,7 +290,7 @@ public class SqlImpl<T> implements Sqls<T> {
     private void updateSqlCheckSetNullProperties(StringBuilder sql, List<TableInfo> tableInfos, T nextObject) {
         for (TableInfo tableInfo : tableInfos) {
             try {
-                Object invoke = tableInfo.getGetMethod().invoke(nextObject);
+                Object invoke = ReflectUtils.getFieldValue(tableInfo.getField(), nextObject);
                 if (Objects.isNull(invoke) && !updateNullProperties.contains(tableInfo.getField().getName())) {
                     continue;
                 }
@@ -309,7 +310,8 @@ public class SqlImpl<T> implements Sqls<T> {
             while (iterator.hasNext()) {
                 T next = iterator.next();
                 for (int i = 1; i <= tableInfos.size(); i++) {
-                    preparedStatement.setObject(i, tableInfos.get(i - 1).getGetMethod().invoke(next));
+                    Object fieldValue = ReflectUtils.getFieldValue(tableInfos.get(i - 1).getField(), next);
+                    preparedStatement.setObject(i, fieldValue);
                 }
                 printSql(preparedStatement);
                 preparedStatement.addBatch();
@@ -322,12 +324,11 @@ public class SqlImpl<T> implements Sqls<T> {
                 ResultSet generatedKeys = preparedStatement.getGeneratedKeys();
                 while (resultIterator.hasNext()) {
                     T next = resultIterator.next();
-                    //先查看原有的ID是否已经被指定，如果已被指定，则不再获取新的主键
-                    Object primaryKeyValue = tableInfoPrimaryKey.getGetMethod().invoke(next);
+                    Object primaryKeyValue = ReflectUtils.getFieldValue(tableInfoPrimaryKey.getField(), next);
                     if (Objects.isNull(primaryKeyValue)) {
                         generatedKeys.next();
-                        Object convert = ConverterUtils.convert(generatedKeys.getObject(Statement.RETURN_GENERATED_KEYS), tableInfoPrimaryKey.getField().getType());
-                        tableInfoPrimaryKey.getSetMethod().invoke(next, convert);
+                        Object convertValue = ConverterUtils.convert(generatedKeys.getObject(Statement.RETURN_GENERATED_KEYS), tableInfoPrimaryKey.getField().getType());
+                        ReflectUtils.setFieldValue(tableInfoPrimaryKey.getField(), next, convertValue);
                     }
                 }
             }
