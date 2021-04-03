@@ -28,8 +28,13 @@ public class ContextApplication {
         return null;
     }
 
-    public static void putDataSource(Class<?> dataSourceClass) throws IllegalAccessException, InstantiationException {
-        DataSourceConfig sourceConfig = (DataSourceConfig) dataSourceClass.newInstance();
+    public static void putDataSource(Class<?> dataSourceClass)  {
+        DataSourceConfig sourceConfig = null;
+        try {
+            sourceConfig = (DataSourceConfig) dataSourceClass.newInstance();
+        } catch (Exception e) {
+            throw new BraveException(dataSourceClass.toString() + " 必须实现或继承 " + DataSourceConfig.class + " 类");
+        }
         if (sourceConfig.defaultDataSource()) {
             Collection<DataSourceConfig> dataSources = dataSourcesMap.values();
             List<DataSourceConfig> collect = dataSources.stream().filter(data -> data.defaultDataSource()).collect(Collectors.toList());
@@ -45,6 +50,11 @@ public class ContextApplication {
     }
 
     public static DataSourceConfig getDataSource(Class<?> dataSourceClass) {
+        DataSourceConfig dataSourceConfig = dataSourcesMap.get(dataSourceClass.toString());
+        if(Objects.nonNull(dataSourceConfig)){
+            return dataSourceConfig;
+        }
+        putDataSource(dataSourceClass);
         return dataSourcesMap.get(dataSourceClass.toString());
     }
 

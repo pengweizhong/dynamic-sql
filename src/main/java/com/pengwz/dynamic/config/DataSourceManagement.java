@@ -6,6 +6,8 @@ import org.apache.commons.logging.LogFactory;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Map;
 import java.util.Objects;
@@ -47,7 +49,21 @@ public final class DataSourceManagement {
         throw new BraveException("无法获取SQL连接，请检查数据库连接配置");
     }
 
-    public void releaseConnection(Connection connection) {
+    public void releaseConnection(ResultSet resultSet, PreparedStatement preparedStatement, Connection connection) {
+        if (Objects.nonNull(resultSet)) {
+            try {
+                resultSet.close();
+            } catch (SQLException e) {
+                log.error(e.getMessage(), e);
+            }
+        }
+        if (Objects.nonNull(preparedStatement)) {
+            try {
+                preparedStatement.close();
+            } catch (SQLException e) {
+                log.error(e.getMessage(), e);
+            }
+        }
         if (Objects.nonNull(connection)) {
             try {
                 connection.close();
@@ -57,4 +73,13 @@ public final class DataSourceManagement {
         }
     }
 
+    public static void close(DataSourceConfig dataSourceConfig, ResultSet resultSet, PreparedStatement preparedStatement, Connection connection) {
+        DataSourceManagement.getDataSourceManagement(dataSourceConfig).releaseConnection(resultSet, preparedStatement, connection);
+    }
+
+
+    public static Connection initConnection(DataSourceConfig dataSourceConfig) {
+        DataSourceManagement dataSourceManagement = DataSourceManagement.getDataSourceManagement(dataSourceConfig);
+        return dataSourceManagement.getConnection(dataSourceConfig);
+    }
 }

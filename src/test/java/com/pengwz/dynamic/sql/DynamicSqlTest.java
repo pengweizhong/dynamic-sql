@@ -1,9 +1,12 @@
 package com.pengwz.dynamic.sql;
 
 import com.pengwz.dynamic.config.DataSourceConfig;
+import com.pengwz.dynamic.config.MyDBConfig;
+import com.pengwz.dynamic.entity.UserDetailEntity;
 import com.pengwz.dynamic.entity.UserEntity;
 import com.pengwz.dynamic.utils.ClassUtils;
 import org.junit.Test;
+import sun.java2d.pipe.SpanIterator;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -83,18 +86,32 @@ public class DynamicSqlTest {
     @Test
     public void test2() throws Exception {
         DynamicSql<UserEntity> dynamicSql = DynamicSql.createDynamicSql();
-        dynamicSql.andEqualTo(UserEntity::getUsername, "海绵宝宝5");
-        int selectCount = BraveSql.build(dynamicSql, UserEntity.class).selectCount();
-        System.out.println(selectCount);
+        dynamicSql.andEqualTo(UserEntity::getUsername, "tom");
+        UserEntity select = BraveSql.build(dynamicSql, UserEntity.class).selectSingle();
+        System.out.println(select);
+
+        DynamicSql<UserDetailEntity> sql = DynamicSql.createDynamicSql();
+        sql.andEqualTo(UserDetailEntity::getUsername, "tom");
+        UserDetailEntity userDetailEntity = BraveSql.build(sql, UserDetailEntity.class).selectSingle();
+        System.out.println(userDetailEntity);
     }
 
     @Test
     public void testPageInfo() throws Exception {
+        PageInfo<UserEntity> userEntityPageInfo = BraveSql.build(UserEntity.class).selectPageInfo(1, 10);
+        System.out.println(userEntityPageInfo);
 
     }
 
-//    private PageInfo doSplitPageInfo(){
-//
-//    }
+    @Test
+    public void test3() throws Exception {
+        //DML  INSERT UPDATE DELETE
+//        UserEntity userEntity = BraveSql.executeSelectSqlAndReturnSingle("select id,name userName,sex,phone,birthday,create_date createDate,update_date updateDate from t_user where name ='tom'", UserEntity.class, MyDBConfig.class);
+//        System.out.println(userEntity);
+//        List<UserEntity> userEntities = BraveSql.executeSelectSqlAndReturnList("select id,name userName,sex,phone,birthday,create_date createDate,update_date updateDate from t_user where id < 100", UserEntity.class, MyDBConfig.class);
+//        System.out.println(userEntities);
+        int b = BraveSql.executeDMLSql("delete from t_user where id = 1014", MyDBConfig.class);
+        System.out.println(b);
+    }
 
 }

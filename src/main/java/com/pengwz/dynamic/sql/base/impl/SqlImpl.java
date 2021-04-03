@@ -9,7 +9,6 @@ import com.pengwz.dynamic.sql.PageInfo;
 import com.pengwz.dynamic.sql.ParseSql;
 import com.pengwz.dynamic.sql.base.Sqls;
 import com.pengwz.dynamic.utils.CollectionUtils;
-import com.pengwz.dynamic.utils.ConverterUtils;
 import com.pengwz.dynamic.utils.ReflectUtils;
 import com.pengwz.dynamic.utils.StringUtils;
 import org.apache.commons.logging.Log;
@@ -65,7 +64,7 @@ public class SqlImpl<T> implements Sqls<T> {
         if (queryList.size() > 1) {
             throw new BraveException("期望返回一条数据，但是返回了" + queryList.size() + "条数据");
         }
-        return queryList.get(0);
+        return queryList.size() == 1 ? queryList.get(0) : null;
     }
 
     @Override
@@ -120,7 +119,7 @@ public class SqlImpl<T> implements Sqls<T> {
             throw new BraveException(ex.getMessage(), ex);
         } finally {
             if (isCloseConnection) {
-                close(connection);
+                DataSourceManagement.close(dataSourceConfig, resultSet, preparedStatement, connection);
             }
         }
     }
@@ -136,18 +135,15 @@ public class SqlImpl<T> implements Sqls<T> {
             while (resultSet.next()) {
                 T t = (T) currentClass.newInstance();
                 for (TableInfo tableInfo : tableInfos) {
-                    Object object = resultSet.getObject(tableInfo.getColumn());
-                    if (Objects.nonNull(object)) {
-                        Object convertValue = ConverterUtils.convert(object, tableInfo.getField().getType());
-                        ReflectUtils.setFieldValue(tableInfo.getField(), t, convertValue);
-                    }
+                    Object object = resultSet.getObject(tableInfo.getColumn(), tableInfo.getField().getType());
+                    ReflectUtils.setFieldValue(tableInfo.getField(), t, object);
                 }
                 list.add(t);
             }
         } catch (Exception ex) {
             throw new BraveException(ex.getMessage(), ex);
         } finally {
-            close(connection);
+            DataSourceManagement.close(dataSourceConfig, resultSet, preparedStatement, connection);
         }
         return list;
     }
@@ -327,8 +323,8 @@ public class SqlImpl<T> implements Sqls<T> {
                     Object primaryKeyValue = ReflectUtils.getFieldValue(tableInfoPrimaryKey.getField(), next);
                     if (Objects.isNull(primaryKeyValue)) {
                         generatedKeys.next();
-                        Object convertValue = ConverterUtils.convert(generatedKeys.getObject(Statement.RETURN_GENERATED_KEYS), tableInfoPrimaryKey.getField().getType());
-                        ReflectUtils.setFieldValue(tableInfoPrimaryKey.getField(), next, convertValue);
+                        Object object = generatedKeys.getObject(Statement.RETURN_GENERATED_KEYS, tableInfoPrimaryKey.getField().getType());
+                        ReflectUtils.setFieldValue(tableInfoPrimaryKey.getField(), next, object);
                     }
                 }
             }
@@ -341,7 +337,7 @@ public class SqlImpl<T> implements Sqls<T> {
             }
             throw new BraveException(ex.getMessage(), ex);
         } finally {
-            close(connection);
+            DataSourceManagement.close(dataSourceConfig, resultSet, preparedStatement, connection);
         }
         return successCount;
     }
@@ -362,11 +358,6 @@ public class SqlImpl<T> implements Sqls<T> {
         }
     }
 
-    private void close(Connection connection) {
-        DataSourceManagement dataSourceManagement = DataSourceManagement.getDataSourceManagement(dataSourceConfig);
-        dataSourceManagement.releaseConnection(connection);
-    }
-
     public void init(Class<?> currentClass, PageInfo<T> pageInfo, Iterable<T> data, List<String> updateNullProperties, String tableName, Class<?> dataSourceClass, String whereSql, DataSourceConfig dataSourceConfig) {
         //让编译器开心
         this.currentClass = currentClass;
@@ -380,8 +371,7 @@ public class SqlImpl<T> implements Sqls<T> {
     }
 
     public void before() {
-        DataSourceManagement dataSourceManagement = DataSourceManagement.getDataSourceManagement(dataSourceConfig);
-        connection = dataSourceManagement.getConnection(dataSourceConfig);
+        connection = DataSourceManagement.initConnection(dataSourceConfig);
         try {
             connection.setAutoCommit(false);
         } catch (SQLException e) {

@@ -4,6 +4,7 @@ import com.pengwz.dynamic.anno.Table;
 import com.pengwz.dynamic.check.Check;
 import com.pengwz.dynamic.config.DataSourceConfig;
 import com.pengwz.dynamic.exception.BraveException;
+import com.pengwz.dynamic.sql.base.CustomizeSQL;
 import com.pengwz.dynamic.sql.base.Fn;
 import com.pengwz.dynamic.sql.base.Sqls;
 import com.pengwz.dynamic.sql.base.impl.SqlImpl;
@@ -39,6 +40,30 @@ public class BraveSql<T> {
         return new BraveSql<>(DynamicSql.createDynamicSql(), currentClass);
     }
 
+    /**
+     * 直接执行sql
+     *
+     * @param sql          查询sql
+     * @param currentClass 查询返回结果
+     * @param dataSource   目标数据库
+     * @param <T>
+     * @return 返回查询结果
+     */
+    public static <T> T executeSelectSqlAndReturnSingle(String sql, Class<T> currentClass, Class<? extends DataSourceConfig> dataSourceClass) {
+        CustomizeSQL<T> tCustomizeSQL = new CustomizeSQL<>(dataSourceClass, currentClass, sql);
+        return tCustomizeSQL.selectSqlAndReturnSingle();
+    }
+
+    public static <T> List<T> executeSelectSqlAndReturnList(String sql, Class<T> currentClass, Class<? extends DataSourceConfig> dataSourceClass) {
+        CustomizeSQL<T> tCustomizeSQL = new CustomizeSQL<>(dataSourceClass, currentClass, sql);
+        return tCustomizeSQL.selectSqlAndReturnList();
+    }
+
+    public static int executeDMLSql(String sql, Class<? extends DataSourceConfig> dataSourceClas) {
+        CustomizeSQL<?> tCustomizeSQL = new CustomizeSQL<>(dataSourceClas, null, sql);
+        return tCustomizeSQL.executeDMLSql();
+    }
+
     public DynamicSql getDynamicSql() {
         return dynamicSql;
     }
@@ -60,27 +85,14 @@ public class BraveSql<T> {
         String tableName = table.value().trim();
         DataSourceConfig dataSource;
         Class<?> dataSourceClass = table.dataSourceClass();
-        try {
-            if (dataSourceClass.equals(Void.class)) {
-                DataSourceConfig defalutDataSource = ContextApplication.getDefalutDataSource();
-                if (Objects.isNull(defalutDataSource)) {
-                    throw new BraveException("须指定数据源；表名：" + tableName);
-                }
-                dataSource = defalutDataSource;
-            } else {
-                DataSourceConfig sourceConfig = ContextApplication.getDataSource(dataSourceClass);
-                if (Objects.isNull(sourceConfig)) {
-                    ContextApplication.putDataSource(dataSourceClass);
-                    dataSource = ContextApplication.getDataSource(dataSourceClass);
-                } else {
-                    dataSource = sourceConfig;
-                }
+        if (dataSourceClass.equals(Void.class)) {
+            DataSourceConfig defalutDataSource = ContextApplication.getDefalutDataSource();
+            if (Objects.isNull(defalutDataSource)) {
+                throw new BraveException("须指定数据源；表名：" + tableName);
             }
-
-        } catch (ClassCastException e) {
-            throw new BraveException(dataSourceClass.toString() + " 必须实现或继承 " + DataSourceConfig.class + " 类");
-        } catch (Exception e) {
-            throw new BraveException("初始化数据库连接失败，原因：" + e.getMessage());
+            dataSource = defalutDataSource;
+        } else {
+            dataSource = ContextApplication.getDataSource(dataSourceClass);
         }
         Check.checkPageInfo(pageInfo);
         String whereSql = ParseSql.parse(currentClass, tableName, table.dataSourceClass(), dynamicSql.getDeclarations(), orderByMap);
