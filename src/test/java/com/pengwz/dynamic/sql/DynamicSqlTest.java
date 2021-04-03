@@ -2,6 +2,7 @@ package com.pengwz.dynamic.sql;
 
 import com.pengwz.dynamic.config.DataSourceConfig;
 import com.pengwz.dynamic.config.MyDBConfig;
+import com.pengwz.dynamic.entity.UserAndDetailBO;
 import com.pengwz.dynamic.entity.UserDetailEntity;
 import com.pengwz.dynamic.entity.UserEntity;
 import com.pengwz.dynamic.utils.ClassUtils;
@@ -106,8 +107,8 @@ public class DynamicSqlTest {
     @Test
     public void test3() throws Exception {
         //DML  INSERT UPDATE DELETE
-//        UserEntity userEntity = BraveSql.executeSelectSqlAndReturnSingle("select id,name userName,sex,phone,birthday,create_date createDate,update_date updateDate from t_user where name ='tom'", UserEntity.class, MyDBConfig.class);
-//        System.out.println(userEntity);
+        UserAndDetailBO userEntity = BraveSql.executeSelectSqlAndReturnSingle("select a.name ,a.sex ,a.phone ,b.salary from t_user a join t_user_detail b on a.name =b.name ", UserAndDetailBO.class, MyDBConfig.class);
+        System.out.println(userEntity);
 //        List<UserEntity> userEntities = BraveSql.executeSelectSqlAndReturnList("select id,name userName,sex,phone,birthday,create_date createDate,update_date updateDate from t_user where id < 100", UserEntity.class, MyDBConfig.class);
 //        System.out.println(userEntities);
         int b = BraveSql.executeDMLSql("delete from t_user where id = 1014", MyDBConfig.class);

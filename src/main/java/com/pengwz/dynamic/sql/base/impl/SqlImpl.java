@@ -23,7 +23,7 @@ import java.util.Objects;
 import static com.pengwz.dynamic.constant.Constant.*;
 
 public class SqlImpl<T> implements Sqls<T> {
-    private final Log log = LogFactory.getLog(SqlImpl.class);
+    private static final Log log = LogFactory.getLog(SqlImpl.class);
 
     private Class<?> currentClass;
     //分页信息

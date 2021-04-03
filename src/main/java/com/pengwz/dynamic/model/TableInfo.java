@@ -1,7 +1,6 @@
 package com.pengwz.dynamic.model;
 
 import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 
 public class TableInfo {
     //数据库字段名

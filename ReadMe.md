@@ -1,17 +1,17 @@
 # 单表动态查询 Dynamic-sql
     
-## 版本号 1.1.0
+## 版本号 1.1.1
 ```xml
 <dependency>
   <groupId>com.pengwz</groupId>
   <artifactId>dynamic-sql</artifactId>
-  <version>1.1.0</version>
+  <version>1.1.1</version>
 </dependency>
 ```
 ### 本次版本变更内容
     1、优化了log日志
-    2、修复了一些bug
-    3、支持数据库连接池
+    2、修复了多数据源bug
+    3、支持执行原生sql
 
 ### 项目简述
     1、基于JDBC单表动态增删改查，可单独启动，不依赖环境
