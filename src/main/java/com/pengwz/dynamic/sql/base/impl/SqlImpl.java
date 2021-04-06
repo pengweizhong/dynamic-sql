@@ -49,7 +49,8 @@ public class SqlImpl<T> implements Sqls<T> {
         String primaryKey = ContextApplication.getPrimaryKey(dataSourceClass, tableName);
         Object value = ParseSql.matchValue(primaryKeyValue);
         String sql = SELECT + SPACE + columnList + SPACE + FROM + SPACE + tableName + SPACE + WHERE + SPACE + primaryKey + SPACE + EQ + SPACE + value;
-        return executeQuery(sql, tableName).get(0);
+        List<T> ts = executeQuery(sql, tableName);
+        return ts.isEmpty() ? null : ts.get(0);
     }
 
     @Override
@@ -64,7 +65,7 @@ public class SqlImpl<T> implements Sqls<T> {
         if (queryList.size() > 1) {
             throw new BraveException("期望返回一条数据，但是返回了" + queryList.size() + "条数据");
         }
-        return queryList.size() == 1 ? queryList.get(0) : null;
+        return queryList.isEmpty() ? null : queryList.get(0);
     }
 
     @Override

@@ -111,8 +111,8 @@ public class DynamicSqlTest {
         System.out.println(userEntity);
 //        List<UserEntity> userEntities = BraveSql.executeSelectSqlAndReturnList("select id,name userName,sex,phone,birthday,create_date createDate,update_date updateDate from t_user where id < 100", UserEntity.class, MyDBConfig.class);
 //        System.out.println(userEntities);
-        int b = BraveSql.executeDMLSql("delete from t_user where id = 1014", MyDBConfig.class);
-        System.out.println(b);
+//        int b = BraveSql.executeDMLSql("delete from t_user where id = 1014", MyDBConfig.class);
+//        System.out.println(b);
     }
 
 }
