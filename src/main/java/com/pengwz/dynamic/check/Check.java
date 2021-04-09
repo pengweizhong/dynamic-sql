@@ -52,14 +52,14 @@ public class Check {
             tableInfo.setColumn(column);
             GeneratedValue generatedValue = field.getAnnotation(GeneratedValue.class);
             if (Objects.nonNull(generatedValue)) {
+                if (String.class.isAssignableFrom(field.getType())) {
+                    throw new BraveException("字符类型的主键不支持递增");
+                }
                 tableInfo.setGeneratedValue(true);
             } else {
                 tableInfo.setGeneratedValue(false);
             }
             tableInfos.add(tableInfo);
-        }
-        if (idCount == 0) {
-            throw new BraveException(tableName + "表未获取到主键");
         }
         if (idCount > 1) {
             throw new BraveException(tableName + "表获取到多个主键");

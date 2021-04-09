@@ -7,6 +7,8 @@ import com.pengwz.dynamic.utils.convert.LocalDateTimeConverterAdapter;
 import com.pengwz.dynamic.utils.convert.LocalTimeConverterAdapter;
 import org.apache.commons.beanutils.ConvertUtils;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -49,4 +51,14 @@ public class ConverterUtils {
         throw new BraveException(err);
     }
 
+    public static <T> T convertJdbc(ResultSet resultSet, String fieldName, Class<T> targetType) throws SQLException {
+        if (Objects.isNull(resultSet)) {
+            throw new BraveException("java.sql.ResultSet不可为null");
+        }
+        if (java.util.Date.class.isAssignableFrom(targetType)) {
+            Object object = resultSet.getObject(fieldName);
+            return convert(object, targetType);
+        }
+        return resultSet.getObject(fieldName, targetType);
+    }
 }

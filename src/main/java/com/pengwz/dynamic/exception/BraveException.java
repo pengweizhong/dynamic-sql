@@ -11,6 +11,10 @@ public class BraveException extends RuntimeException {
         super(message);
     }
 
+    public BraveException(String message, String detailMessage) {
+        super(message + " ==> " + detailMessage);
+    }
+
     public BraveException(String message, Throwable cause) {
         super(message, cause);
     }

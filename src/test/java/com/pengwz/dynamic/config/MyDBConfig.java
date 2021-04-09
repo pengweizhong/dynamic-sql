@@ -9,7 +9,7 @@ public class MyDBConfig implements DataSourceConfig {
     @Override
     public DataSource getDataSource() {
         DruidDataSource ds = new DruidDataSource();
-        ds.setUrl("jdbc:mysql://127.0.0.1:3306/dynamic?useUnicode=true&rewriteBatchedStatements=true&serverTimezone=GMT%2B8&characterEncoding=utf-8");
+        ds.setUrl("jdbc:mysql://127.0.0.1:3306/dynamic?useOldAliasMetadataBehavior=true&useUnicode=true&rewriteBatchedStatements=true&serverTimezone=GMT%2B8&characterEncoding=utf-8");
         ds.setUsername("root");
         ds.setPassword("pengwz");
         ds.setDriverClassName("com.mysql.cj.jdbc.Driver");
