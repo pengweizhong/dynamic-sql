@@ -6,28 +6,30 @@ import com.pengwz.dynamic.anno.Id;
 import com.pengwz.dynamic.anno.Table;
 import com.pengwz.dynamic.config.MyDBConfig;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Date;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Table(value = "t_user", dataSourceClass = MyDBConfig.class)
-public class UserEntity {
+public class UserEntity2 {
     @Id
     @GeneratedValue
-    private Long id;
+    private AtomicInteger id;
     @Column("name")
     private String username;
     private String sex;
     private LocalDate birthday;
     private String phone;
     private LocalDateTime createDate;
-    private Date updateDate;
+    private LocalDateTime updateDate;
 
-    public Long getId() {
+    public AtomicInteger getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(AtomicInteger id) {
         this.id = id;
     }
 
@@ -63,11 +65,11 @@ public class UserEntity {
         this.createDate = createDate;
     }
 
-    public Date getUpdateDate() {
+    public LocalDateTime getUpdateDate() {
         return updateDate;
     }
 
-    public void setUpdateDate(Date updateDate) {
+    public void setUpdateDate(LocalDateTime updateDate) {
         this.updateDate = updateDate;
     }
 

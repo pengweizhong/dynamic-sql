@@ -28,7 +28,7 @@ public class ContextApplication {
         return null;
     }
 
-    public static void putDataSource(Class<?> dataSourceClass)  {
+    public static void putDataSource(Class<?> dataSourceClass) {
         DataSourceConfig sourceConfig = null;
         try {
             sourceConfig = (DataSourceConfig) dataSourceClass.newInstance();
@@ -51,7 +51,7 @@ public class ContextApplication {
 
     public static DataSourceConfig getDataSource(Class<?> dataSourceClass) {
         DataSourceConfig dataSourceConfig = dataSourcesMap.get(dataSourceClass.toString());
-        if(Objects.nonNull(dataSourceConfig)){
+        if (Objects.nonNull(dataSourceConfig)) {
             return dataSourceConfig;
         }
         putDataSource(dataSourceClass);
@@ -134,7 +134,7 @@ public class ContextApplication {
                 return tableInfo;
             }
         }
-        throw new BraveException(tableName + "中未获取到主键信息");
+        return null;
     }
 
     public static Map<String, Map<String, List<TableInfo>>> getAll() {

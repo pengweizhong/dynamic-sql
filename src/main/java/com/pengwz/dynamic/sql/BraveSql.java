@@ -139,7 +139,7 @@ public class BraveSql<T> {
 
     public Integer insert(T data) {
         if (Objects.isNull(data)) {
-            throw new BraveException("必须提供待插入的数据");
+            return 0;
         }
         this.data = Collections.singletonList(data);
         return batchInsert(this.data);
@@ -147,7 +147,7 @@ public class BraveSql<T> {
 
     public Integer batchInsert(Iterable<T> iterable) {
         if (Objects.isNull(iterable) || !iterable.iterator().hasNext()) {
-            throw new BraveException("必须提供待插入的数据");
+            return 0;
         }
         data = iterable;
         return mustShare().batchInsert();
@@ -167,7 +167,7 @@ public class BraveSql<T> {
      */
     public Integer insertOrUpdate(T data) {
         if (Objects.isNull(data)) {
-            throw new BraveException("必须提供待插入的数据");
+            return 0;
         }
         this.data = Collections.singletonList(data);
         return batchInsertOrUpdate(this.data);
@@ -222,7 +222,7 @@ public class BraveSql<T> {
 
     public Integer updateByPrimaryKey(T data) {
         if (Objects.isNull(data)) {
-            throw new BraveException("必须提供待更新的数据");
+            throw new BraveException("必须提供待更新的主键值");
         }
         this.data = Collections.singletonList(data);
         return mustShare().updateByPrimaryKey();
@@ -230,6 +230,13 @@ public class BraveSql<T> {
 
     public Integer delete() {
         return mustShare().delete();
+    }
+
+    public Integer deleteByPrimaryKey(Object key) {
+        if (Objects.isNull(key)) {
+            throw new BraveException("必须提供待删除的主键值");
+        }
+        return mustShare().deleteByPrimaryKey(key);
     }
 
     public final BraveSql<T> orderByAsc(String... feilds) {

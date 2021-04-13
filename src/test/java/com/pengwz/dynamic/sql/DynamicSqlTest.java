@@ -2,20 +2,16 @@ package com.pengwz.dynamic.sql;
 
 import com.pengwz.dynamic.config.DataSourceConfig;
 import com.pengwz.dynamic.config.MyDBConfig;
-import com.pengwz.dynamic.entity.UserAndDetailBO;
-import com.pengwz.dynamic.entity.UserDetailEntity;
-import com.pengwz.dynamic.entity.UserEntity;
+import com.pengwz.dynamic.entity.*;
 import com.pengwz.dynamic.utils.ClassUtils;
 import org.junit.Test;
-import sun.java2d.pipe.SpanIterator;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 
 
 public class DynamicSqlTest {
@@ -30,7 +26,7 @@ public class DynamicSqlTest {
             data.setUsername("海绵宝宝" + i);
             data.setBirthday(LocalDate.now());
             data.setCreateDate(LocalDateTime.now());
-            data.setUpdateDate(LocalDateTime.now());
+            data.setUpdateDate(new Date());
             userEntities.add(data);
         }
         BraveSql.build(dynamicSql, UserEntity.class).batchInsert(userEntities);
@@ -72,12 +68,12 @@ public class DynamicSqlTest {
     @Test
     public void test1() throws Exception {
         List<UserEntity> userEntities = new ArrayList<>();
-        for (int i = 0; i < 100000; i++) {
+        for (int i = 0; i < 10; i++) {
             UserEntity userEntity = new UserEntity();
             userEntity.setPhone("999999" + i);
             userEntity.setUsername("test");
             userEntity.setSex("男");
-            userEntity.setUpdateDate(LocalDateTime.now());
+            userEntity.setUpdateDate(new Date());
             userEntities.add(userEntity);
         }
         Integer integer = BraveSql.build(UserEntity.class).batchInsert(userEntities);
@@ -113,6 +109,35 @@ public class DynamicSqlTest {
 //        System.out.println(userEntities);
 //        int b = BraveSql.executeDMLSql("delete from t_user where id = 1014", MyDBConfig.class);
 //        System.out.println(b);
+    }
+
+    @Test
+    public void test4() throws Exception {
+        List<StringPrimaryKeyEntity> primaryKeyEntities = new ArrayList<>();
+        for (int i = 0; i < 10; i++) {
+            StringPrimaryKeyEntity entity = new StringPrimaryKeyEntity();
+            entity.setUuid(UUID.randomUUID().toString());
+            entity.setName("tom");
+            primaryKeyEntities.add(entity);
+        }
+        Integer integer = BraveSql.build(StringPrimaryKeyEntity.class).batchInsert(primaryKeyEntities);
+        System.out.println(integer);
+    }
+
+    @Test
+    public void test5() throws Exception {
+        List<UserEntity2> userEntities = new ArrayList<>();
+        for (int i = 0; i < 10; i++) {
+            UserEntity2 userEntity = new UserEntity2();
+            userEntity.setPhone("999999" + i);
+            userEntity.setUsername("test");
+            userEntity.setSex("男");
+            userEntity.setUpdateDate(LocalDateTime.now());
+            userEntities.add(userEntity);
+        }
+        Integer integer = BraveSql.build(UserEntity2.class).batchInsert(userEntities);
+        System.out.println(integer);
+        userEntities.forEach(System.out::println);
     }
 
 }

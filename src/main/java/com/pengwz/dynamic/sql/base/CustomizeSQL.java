@@ -4,6 +4,7 @@ import com.pengwz.dynamic.config.DataSourceConfig;
 import com.pengwz.dynamic.config.DataSourceManagement;
 import com.pengwz.dynamic.exception.BraveException;
 import com.pengwz.dynamic.sql.ContextApplication;
+import com.pengwz.dynamic.utils.ExceptionUtils;
 import com.pengwz.dynamic.utils.ReflectUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -36,11 +37,6 @@ public class CustomizeSQL<T> {
         this.target = target;
         this.sql = sql;
         this.connection = DataSourceManagement.initConnection(ContextApplication.getDataSource(this.dataSource));
-        try {
-            connection.setAutoCommit(false);
-        } catch (SQLException e) {
-            log.error(e.getMessage(), e);
-        }
     }
 
     public T selectSqlAndReturnSingle() {
@@ -65,23 +61,13 @@ public class CustomizeSQL<T> {
                 T obj = target.newInstance();
                 Field[] declaredFields = target.getDeclaredFields();
                 for (Field field : declaredFields) {
-                    Object object = null;
-                    try {
-                        object = resultSet.getObject(field.getName(), field.getType());
-                    } catch (SQLException e) {
-                        log.warn("SQL查询返回的结果不包含" + field.getName() + "列");
-                    }
+                    Object object = resultSet.getObject(field.getName(), field.getType());
                     ReflectUtils.setFieldValue(field, obj, object);
                 }
                 selectResult.add(obj);
             }
-        } catch (SQLException e) {
-            log.error("错误的SQL：" + sql);
-            log.error(e.getMessage(), e);
-            throw new BraveException("无效的SQL");
-        } catch (ReflectiveOperationException e) {
-            log.error(e.getMessage(), e);
-            throw new BraveException("查询对象无法实例化：" + target + "，可能不存在无参构造器");
+        } catch (Exception e) {
+            ExceptionUtils.boxingAndThrowBraveException(e);
         } finally {
             DataSourceManagement.close(ContextApplication.getDataSource(this.dataSource), resultSet, preparedStatement, connection);
         }
@@ -95,20 +81,12 @@ public class CustomizeSQL<T> {
         PreparedStatement preparedStatement = null;
         try {
             preparedStatement = connection.prepareStatement(sql);
-            int execute = preparedStatement.executeUpdate();
-            connection.commit();
-            return execute;
+            return preparedStatement.executeUpdate();
         } catch (SQLException e) {
-            try {
-                connection.rollback();
-            } catch (SQLException ex) {
-                throw new BraveException(ex.getMessage(), ex);
-            }
-            log.error("错误的SQL：" + sql);
-            log.error(e.getMessage(), e);
-            throw new BraveException("无效的SQL");
+            ExceptionUtils.boxingAndThrowBraveException(e);
         } finally {
             DataSourceManagement.close(ContextApplication.getDataSource(this.dataSource), null, preparedStatement, connection);
         }
+        return -1;
     }
 }

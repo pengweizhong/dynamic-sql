@@ -4,10 +4,10 @@ import java.math.BigDecimal;
 
 public class UserAndDetailBO {
 
-    private String name;
-//    private String sex;
+    //    private String sex;
 //    private String phone;
     private BigDecimal salary;
+    private String name;
 
     public String getName() {
         return name;

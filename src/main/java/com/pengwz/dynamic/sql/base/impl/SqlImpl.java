@@ -2,15 +2,14 @@ package com.pengwz.dynamic.sql.base.impl;
 
 import com.pengwz.dynamic.config.DataSourceConfig;
 import com.pengwz.dynamic.config.DataSourceManagement;
+import com.pengwz.dynamic.constant.Constant;
 import com.pengwz.dynamic.exception.BraveException;
 import com.pengwz.dynamic.model.TableInfo;
 import com.pengwz.dynamic.sql.ContextApplication;
 import com.pengwz.dynamic.sql.PageInfo;
 import com.pengwz.dynamic.sql.ParseSql;
 import com.pengwz.dynamic.sql.base.Sqls;
-import com.pengwz.dynamic.utils.CollectionUtils;
-import com.pengwz.dynamic.utils.ReflectUtils;
-import com.pengwz.dynamic.utils.StringUtils;
+import com.pengwz.dynamic.utils.*;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -63,7 +62,7 @@ public class SqlImpl<T> implements Sqls<T> {
             return null;
         }
         if (queryList.size() > 1) {
-            throw new BraveException("期望返回一条数据，但是返回了" + queryList.size() + "条数据");
+            throw new BraveException("期望返回一条数据，但是返回了" + queryList.size() + "条数据", "SQL：" + sql);
         }
         return queryList.isEmpty() ? null : queryList.get(0);
     }
@@ -117,12 +116,13 @@ public class SqlImpl<T> implements Sqls<T> {
             resultSet.next();
             return resultSet.getInt(1);
         } catch (Exception ex) {
-            throw new BraveException(ex.getMessage(), ex);
+            ExceptionUtils.boxingAndThrowBraveException(ex, sql);
         } finally {
             if (isCloseConnection) {
                 DataSourceManagement.close(dataSourceConfig, resultSet, preparedStatement, connection);
             }
         }
+        return -1;
     }
 
     @SuppressWarnings("unchecked")
@@ -136,13 +136,13 @@ public class SqlImpl<T> implements Sqls<T> {
             while (resultSet.next()) {
                 T t = (T) currentClass.newInstance();
                 for (TableInfo tableInfo : tableInfos) {
-                    Object object = resultSet.getObject(tableInfo.getColumn(), tableInfo.getField().getType());
-                    ReflectUtils.setFieldValue(tableInfo.getField(), t, object);
+                    Object o = ConverterUtils.convertJdbc(resultSet, tableInfo.getColumn(), tableInfo.getField().getType());
+                    ReflectUtils.setFieldValue(tableInfo.getField(), t, o);
                 }
                 list.add(t);
             }
         } catch (Exception ex) {
-            throw new BraveException(ex.getMessage(), ex);
+            ExceptionUtils.boxingAndThrowBraveException(ex, sql);
         } finally {
             DataSourceManagement.close(dataSourceConfig, resultSet, preparedStatement, connection);
         }
@@ -192,7 +192,7 @@ public class SqlImpl<T> implements Sqls<T> {
                     sql.append(SPACE).append(tableInfo.getColumn()).append(SPACE).append(EQ).append(SPACE);
                     sql.append(ParseSql.matchValue(invoke)).append(COMMA);
                 } catch (Exception ex) {
-                    throw new BraveException(ex.getMessage(), ex);
+                    ExceptionUtils.boxingAndThrowBraveException(ex, sql.toString());
                 }
             }
         }
@@ -214,15 +214,15 @@ public class SqlImpl<T> implements Sqls<T> {
         if (sql.toString().endsWith("set")) {
             return 0;
         }
-        String sqlPreffix = sql.substring(0, sql.length() - 1);
+        String sqlPrefix = sql.substring(0, sql.length() - 1);
         if (StringUtils.isEmpty(whereSql)) {
             if (log.isDebugEnabled()) {
-                log.debug("update操作未发现where语句，该操作会更新全表数据");
+                log.warn("update操作未发现where语句，该操作会更新全表数据");
             }
         } else {
-            sqlPreffix = sqlPreffix + SPACE + WHERE + SPACE + whereSql;
+            sqlPrefix = sqlPrefix + SPACE + WHERE + SPACE + whereSql;
         }
-        String parseSql = ParseSql.parseSql(sqlPreffix);
+        String parseSql = ParseSql.parseSql(sqlPrefix);
         return executeUpdateSqlAndReturnAffectedRows(parseSql);
     }
 
@@ -230,6 +230,9 @@ public class SqlImpl<T> implements Sqls<T> {
     public Integer updateByPrimaryKey() {
         List<TableInfo> tableInfos = ContextApplication.getTableInfos(dataSourceClass, tableName);
         TableInfo tableInfoPrimaryKey = ContextApplication.getTableInfoPrimaryKey(dataSourceClass, tableName);
+        if (Objects.isNull(tableInfoPrimaryKey)) {
+            throw new BraveException(tableName + " 表未配置主键");
+        }
         T next = data.iterator().next();
         StringBuilder sql = new StringBuilder();
         sql.append("update ").append(tableName).append(" set");
@@ -237,7 +240,7 @@ public class SqlImpl<T> implements Sqls<T> {
         try {
             primaryKeyValue = ReflectUtils.getFieldValue(tableInfoPrimaryKey.getField(), next);
             if (Objects.isNull(primaryKeyValue)) {
-                throw new BraveException(tableName + " 表的主键值不存在");
+                throw new BraveException(tableName + " 表的主键值不存在", "SQL：" + sql);
             }
         } catch (Exception e) {
             throw new BraveException(tableName + " 表获取主键值失败，原因：" + e.getMessage(), e);
@@ -246,9 +249,9 @@ public class SqlImpl<T> implements Sqls<T> {
         if (sql.toString().endsWith("set")) {
             return 0;
         }
-        String sqlPreffix = sql.substring(0, sql.length() - 1);
-        sqlPreffix = sqlPreffix + SPACE + WHERE + SPACE + tableInfoPrimaryKey.getColumn() + SPACE + EQ + SPACE + ParseSql.matchValue(primaryKeyValue);
-        String parseSql = ParseSql.parseSql(sqlPreffix);
+        String sqlPrefix = sql.substring(0, sql.length() - 1);
+        sqlPrefix = sqlPrefix + SPACE + WHERE + SPACE + tableInfoPrimaryKey.getColumn() + SPACE + EQ + SPACE + ParseSql.matchValue(primaryKeyValue);
+        String parseSql = ParseSql.parseSql(sqlPrefix);
         return executeUpdateSqlAndReturnAffectedRows(parseSql);
     }
 
@@ -258,7 +261,7 @@ public class SqlImpl<T> implements Sqls<T> {
         sql.append("delete from ").append(tableName);
         if (StringUtils.isEmpty(whereSql)) {
             if (log.isDebugEnabled()) {
-                log.debug("delete操作未发现where语句，该操作会删除全表数据");
+                log.warn("delete操作未发现where语句，该操作会删除全表数据");
             }
         } else {
             sql.append(SPACE + WHERE + SPACE).append(whereSql);
@@ -267,21 +270,29 @@ public class SqlImpl<T> implements Sqls<T> {
         return executeUpdateSqlAndReturnAffectedRows(parseSql);
     }
 
+    @Override
+    public Integer deleteByPrimaryKey(Object primaryKeyValue) {
+        TableInfo tableInfoPrimaryKey = ContextApplication.getTableInfoPrimaryKey(dataSourceClass, tableName);
+        if (Objects.isNull(tableInfoPrimaryKey)) {
+            throw new BraveException(tableName + " 表未配置主键");
+        }
+        String sql = "delete from " + tableName + " where " + tableInfoPrimaryKey.getColumn() +
+                Constant.EQ + ParseSql.matchValue(primaryKeyValue);
+        return executeUpdateSqlAndReturnAffectedRows(sql);
+    }
+
     private Integer executeUpdateSqlAndReturnAffectedRows(String sql) {
         try {
             preparedStatement = connection.prepareStatement(sql);
             int i = preparedStatement.executeUpdate();
             printSql(preparedStatement);
-            connection.commit();
             return i;
         } catch (SQLException ex) {
-            try {
-                connection.rollback();
-            } catch (SQLException e) {
-                throw new BraveException(ex.getMessage(), ex);
-            }
-            throw new BraveException(ex.getMessage(), ex);
+            ExceptionUtils.boxingAndThrowBraveException(ex, sql);
+        } finally {
+            DataSourceManagement.close(dataSourceConfig, resultSet, preparedStatement, connection);
         }
+        return -1;
     }
 
     private void updateSqlCheckSetNullProperties(StringBuilder sql, List<TableInfo> tableInfos, T nextObject) {
@@ -301,7 +312,7 @@ public class SqlImpl<T> implements Sqls<T> {
 
     private Integer executeBatchSqlAndReturnAffectedRows(String sql, List<TableInfo> tableInfos) {
         Iterator<T> iterator = data.iterator();
-        int successCount;
+        int successCount = -1;
         try {
             preparedStatement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
             while (iterator.hasNext()) {
@@ -316,27 +327,23 @@ public class SqlImpl<T> implements Sqls<T> {
             int[] ints = preparedStatement.executeBatch();
             successCount = ints.length;
             TableInfo tableInfoPrimaryKey = ContextApplication.getTableInfoPrimaryKey(dataSourceClass, tableName);
-            if (tableInfoPrimaryKey.isGeneratedValue()) {
-                Iterator<T> resultIterator = data.iterator();
-                ResultSet generatedKeys = preparedStatement.getGeneratedKeys();
-                while (resultIterator.hasNext()) {
-                    T next = resultIterator.next();
-                    Object primaryKeyValue = ReflectUtils.getFieldValue(tableInfoPrimaryKey.getField(), next);
-                    if (Objects.isNull(primaryKeyValue)) {
-                        generatedKeys.next();
-                        Object object = generatedKeys.getObject(Statement.RETURN_GENERATED_KEYS, tableInfoPrimaryKey.getField().getType());
-                        ReflectUtils.setFieldValue(tableInfoPrimaryKey.getField(), next, object);
+            if (Objects.nonNull(tableInfoPrimaryKey)) {
+                if (tableInfoPrimaryKey.isGeneratedValue()) {
+                    Iterator<T> resultIterator = data.iterator();
+                    ResultSet generatedKeys = preparedStatement.getGeneratedKeys();
+                    while (resultIterator.hasNext()) {
+                        T next = resultIterator.next();
+                        Object primaryKeyValue = ReflectUtils.getFieldValue(tableInfoPrimaryKey.getField(), next);
+                        if (Objects.isNull(primaryKeyValue)) {
+                            generatedKeys.next();
+                            Object object = generatedKeys.getObject(Statement.RETURN_GENERATED_KEYS, tableInfoPrimaryKey.getField().getType());
+                            ReflectUtils.setFieldValue(tableInfoPrimaryKey.getField(), next, object);
+                        }
                     }
                 }
             }
-            connection.commit();
         } catch (Exception ex) {
-            try {
-                connection.rollback();
-            } catch (SQLException e) {
-                throw new BraveException(ex.getMessage(), ex);
-            }
-            throw new BraveException(ex.getMessage(), ex);
+            ExceptionUtils.boxingAndThrowBraveException(ex, sql);
         } finally {
             DataSourceManagement.close(dataSourceConfig, resultSet, preparedStatement, connection);
         }
@@ -373,10 +380,5 @@ public class SqlImpl<T> implements Sqls<T> {
 
     public void before() {
         connection = DataSourceManagement.initConnection(dataSourceConfig);
-        try {
-            connection.setAutoCommit(false);
-        } catch (SQLException e) {
-            log.error(e.getMessage(), e);
-        }
     }
 }
