@@ -12,7 +12,11 @@ public class BraveException extends RuntimeException {
     }
 
     public BraveException(String message, String detailMessage) {
-        super(message + " ==> " + detailMessage);
+        this(message, null, detailMessage);
+    }
+
+    public BraveException(String message, String sql, String detailMessage) {
+        super(message + "。Error SQL: " + sql + "; Reason: " + detailMessage);
     }
 
     public BraveException(String message, Throwable cause) {

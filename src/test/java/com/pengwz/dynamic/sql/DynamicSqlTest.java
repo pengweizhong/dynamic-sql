@@ -9,6 +9,7 @@ import org.junit.Test;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
@@ -25,7 +26,7 @@ public class DynamicSqlTest {
             data.setUsername("海绵宝宝" + i);
             data.setBirthday(LocalDate.now());
             data.setCreateDate(LocalDateTime.now());
-            data.setUpdateDate(LocalDateTime.now());
+            data.setUpdateDate(new Date());
             userEntities.add(data);
         }
         BraveSql.build(dynamicSql, UserEntity.class).batchInsert(userEntities);
@@ -72,7 +73,7 @@ public class DynamicSqlTest {
             userEntity.setPhone("999999" + i);
             userEntity.setUsername("test");
             userEntity.setSex("男");
-            userEntity.setUpdateDate(LocalDateTime.now());
+            userEntity.setUpdateDate(new Date());
             userEntities.add(userEntity);
         }
         Integer integer = BraveSql.build(UserEntity.class).batchInsert(userEntities);

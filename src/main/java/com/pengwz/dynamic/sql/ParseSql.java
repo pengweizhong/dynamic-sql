@@ -8,6 +8,8 @@ import com.pengwz.dynamic.sql.base.impl.OrderBy;
 import com.pengwz.dynamic.utils.StringUtils;
 
 import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -55,9 +57,7 @@ public class ParseSql {
                 whereSql.append(declaration.getAndOr()).append(SPACE);
                 whereSql.append(ContextApplication.getColumnByField(dataSourceClass, tableName, declaration.getProperty())).append(SPACE);
                 whereSql.append(declaration.getCondition()).append(SPACE);
-                if (Objects.nonNull(declaration.getValue())) {
-                    whereSql.append(matchValue(declaration.getValue())).append(SPACE);
-                }
+                whereSql.append(matchValue(declaration.getValue())).append(SPACE);
             }
         }
         if (Objects.nonNull(orderByMap)) {
@@ -118,6 +118,9 @@ public class ParseSql {
     }
 
     public static Object matchValue(Object value) {
+//        if (Objects.isNull(value)) {
+//           throw new BraveException("值不允许为null");
+//        }
         if (value instanceof String) {
             return "'" + value + "'";
         }
@@ -126,6 +129,12 @@ public class ParseSql {
         }
         if (value instanceof Date) {
             return "'" + (new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(value)) + "'";
+        }
+        if (value instanceof LocalDate) {
+            return "'" + (LocalDate.parse(value + "")) + "'";
+        }
+        if (value instanceof LocalDateTime) {
+            return "'" + (LocalDateTime.parse(value + "")) + "'";
         }
         if (value instanceof Iterable) {
             Iterator iterator = ((Iterable) value).iterator();

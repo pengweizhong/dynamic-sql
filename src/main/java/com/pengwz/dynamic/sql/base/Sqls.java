@@ -33,5 +33,5 @@ public interface Sqls<T> {
 
     Integer delete();
 
-
+    Integer deleteByPrimaryKey(Object primaryKeyValue);
 }

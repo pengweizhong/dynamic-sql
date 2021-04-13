@@ -13,6 +13,10 @@ public class ExceptionUtils {
     private static final Log log = LogFactory.getLog(ExceptionUtils.class);
 
     public static <T extends Throwable> void boxingAndThrowBraveException(T throwable) {
+        boxingAndThrowBraveException(throwable, null);
+    }
+
+    public static <T extends Throwable> void boxingAndThrowBraveException(T throwable, String sql) {
         if (Objects.isNull(throwable)) {
             throw new BraveException("意外的异常抛出", "异常不可为null");
         }
@@ -23,31 +27,28 @@ public class ExceptionUtils {
                 throw new BraveException(throwable.getMessage());
             }
             if (sqlState.startsWith("23")) {
-                throw new BraveException("违反表约束条件", throwable.getMessage());
+                throw new BraveException("违反表约束条件", sql, throwable.getMessage());
             }
             if (sqlState.startsWith("25")) {
-                throw new BraveException("无效的事务操作", throwable.getMessage());
-            }
-            if (sqlState.startsWith("26") || sqlState.startsWith("42")) {
-                throw new BraveException("错误的SQL语句", throwable.getMessage());
+                throw new BraveException("无效的事务操作", sql, throwable.getMessage());
             }
             if (sqlState.startsWith("28")) {
-                throw new BraveException("没有足够的权限操作", throwable.getMessage());
+                throw new BraveException("没有足够的权限操作", sql, throwable.getMessage());
             }
             if (sqlState.startsWith("40")) {
-                throw new BraveException("事务回滚异常", throwable.getMessage());
+                throw new BraveException("事务回滚异常", sql, throwable.getMessage());
             }
-            if (sqlState.startsWith("54") || sqlState.startsWith("22")) {
-                throw new BraveException("超出数据库表限制", throwable.getMessage());
+            if (sqlState.startsWith("22")) {
+                throw new BraveException("违反表字段类型限制", sql, throwable.getMessage());
             }
             if (sqlState.startsWith("58")) {
-                throw new BraveException("数据库异常", throwable.getMessage());
+                throw new BraveException("数据库异常", sql, throwable.getMessage());
             }
             if (sqlState.startsWith("S0")) {
-                throw new BraveException("实体类属性不在SQL查询返回的结果集内", throwable.getMessage());
+                throw new BraveException("实体类属性不在SQL查询返回的结果集内", sql, throwable.getMessage());
             }
+            throw new BraveException("错误的SQL语句", sql, throwable.getMessage());
         }
-
         if (throwable instanceof ReflectiveOperationException) {
             throw new BraveException("无法创建对象，可能不存在无参构造器", throwable.getMessage());
         }
@@ -59,4 +60,5 @@ public class ExceptionUtils {
         //尚未匹配的异常，先行抛出
         throw new BraveException(throwable.getMessage(), throwable);
     }
+
 }

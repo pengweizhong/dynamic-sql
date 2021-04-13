@@ -8,6 +8,7 @@ import com.pengwz.dynamic.config.MyDBConfig;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Date;
 
 @Table(value = "t_user", dataSourceClass = MyDBConfig.class)
 public class UserEntity {
@@ -20,7 +21,7 @@ public class UserEntity {
     private LocalDate birthday;
     private String phone;
     private LocalDateTime createDate;
-    private LocalDateTime updateDate;
+    private Date updateDate;
 
     public Long getId() {
         return id;
@@ -62,11 +63,11 @@ public class UserEntity {
         this.createDate = createDate;
     }
 
-    public LocalDateTime getUpdateDate() {
+    public Date getUpdateDate() {
         return updateDate;
     }
 
-    public void setUpdateDate(LocalDateTime updateDate) {
+    public void setUpdateDate(Date updateDate) {
         this.updateDate = updateDate;
     }
 

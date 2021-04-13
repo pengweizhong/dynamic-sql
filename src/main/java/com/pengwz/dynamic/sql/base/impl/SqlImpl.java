@@ -2,6 +2,7 @@ package com.pengwz.dynamic.sql.base.impl;
 
 import com.pengwz.dynamic.config.DataSourceConfig;
 import com.pengwz.dynamic.config.DataSourceManagement;
+import com.pengwz.dynamic.constant.Constant;
 import com.pengwz.dynamic.exception.BraveException;
 import com.pengwz.dynamic.model.TableInfo;
 import com.pengwz.dynamic.sql.ContextApplication;
@@ -115,7 +116,7 @@ public class SqlImpl<T> implements Sqls<T> {
             resultSet.next();
             return resultSet.getInt(1);
         } catch (Exception ex) {
-            ExceptionUtils.boxingAndThrowBraveException(ex);
+            ExceptionUtils.boxingAndThrowBraveException(ex, sql);
         } finally {
             if (isCloseConnection) {
                 DataSourceManagement.close(dataSourceConfig, resultSet, preparedStatement, connection);
@@ -141,7 +142,7 @@ public class SqlImpl<T> implements Sqls<T> {
                 list.add(t);
             }
         } catch (Exception ex) {
-            ExceptionUtils.boxingAndThrowBraveException(ex);
+            ExceptionUtils.boxingAndThrowBraveException(ex, sql);
         } finally {
             DataSourceManagement.close(dataSourceConfig, resultSet, preparedStatement, connection);
         }
@@ -191,7 +192,7 @@ public class SqlImpl<T> implements Sqls<T> {
                     sql.append(SPACE).append(tableInfo.getColumn()).append(SPACE).append(EQ).append(SPACE);
                     sql.append(ParseSql.matchValue(invoke)).append(COMMA);
                 } catch (Exception ex) {
-                    ExceptionUtils.boxingAndThrowBraveException(ex);
+                    ExceptionUtils.boxingAndThrowBraveException(ex, sql.toString());
                 }
             }
         }
@@ -269,6 +270,17 @@ public class SqlImpl<T> implements Sqls<T> {
         return executeUpdateSqlAndReturnAffectedRows(parseSql);
     }
 
+    @Override
+    public Integer deleteByPrimaryKey(Object primaryKeyValue) {
+        TableInfo tableInfoPrimaryKey = ContextApplication.getTableInfoPrimaryKey(dataSourceClass, tableName);
+        if (Objects.isNull(tableInfoPrimaryKey)) {
+            throw new BraveException(tableName + " 表未配置主键");
+        }
+        String sql = "delete from " + tableName + " where " + tableInfoPrimaryKey.getColumn() +
+                Constant.EQ + ParseSql.matchValue(primaryKeyValue);
+        return executeUpdateSqlAndReturnAffectedRows(sql);
+    }
+
     private Integer executeUpdateSqlAndReturnAffectedRows(String sql) {
         try {
             preparedStatement = connection.prepareStatement(sql);
@@ -276,7 +288,7 @@ public class SqlImpl<T> implements Sqls<T> {
             printSql(preparedStatement);
             return i;
         } catch (SQLException ex) {
-            ExceptionUtils.boxingAndThrowBraveException(ex);
+            ExceptionUtils.boxingAndThrowBraveException(ex, sql);
         } finally {
             DataSourceManagement.close(dataSourceConfig, resultSet, preparedStatement, connection);
         }
@@ -331,7 +343,7 @@ public class SqlImpl<T> implements Sqls<T> {
                 }
             }
         } catch (Exception ex) {
-            ExceptionUtils.boxingAndThrowBraveException(ex);
+            ExceptionUtils.boxingAndThrowBraveException(ex, sql);
         } finally {
             DataSourceManagement.close(dataSourceConfig, resultSet, preparedStatement, connection);
         }

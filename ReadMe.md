@@ -1,17 +1,22 @@
 # 单表动态查询 Dynamic-sql
     
-## 版本号 1.1.1
+## 最新版本号 1.1.3
 ```xml
 <dependency>
   <groupId>com.pengwz</groupId>
   <artifactId>dynamic-sql</artifactId>
-  <version>1.1.1</version>
+  <version>1.1.3</version>
 </dependency>
 ```
 ### 本次版本变更内容
     1、优化了log日志
-    2、修复了多数据源bug
-    3、支持执行原生sql
+    2、优化了异常抛出文案
+    3、修复了根据条件查询时，传入LocalDate、LocalDateTime未适配字符串的问题
+    4、关闭了本地事务
+    5、新增数据时，如不提供待插入的数据，则返回0，不再抛出异常
+    6、修复查询时返回的对象不能映射java.util.Date的问题
+    7、修复了删除数据时，未及时关闭SQL连接的问题
+    8、新增BraveSql.build(XX.class).deleteByPrimaryKey(key)方法
 
 ### 项目简述
     1、基于JDBC单表动态增删改查，可单独启动，不依赖环境
