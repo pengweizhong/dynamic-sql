@@ -1,0 +1,2 @@
+1 设置logging：level：debug后，无法打印sql
+2 新增数据时，字段为null的列不应该写进sql里
