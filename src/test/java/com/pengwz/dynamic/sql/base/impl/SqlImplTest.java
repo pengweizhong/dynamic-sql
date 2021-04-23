@@ -1,13 +1,13 @@
 package com.pengwz.dynamic.sql.base.impl;
 
 import com.pengwz.dynamic.entity.UserEntity;
+import com.pengwz.dynamic.exception.BraveException;
 import com.pengwz.dynamic.sql.BraveSql;
 import com.pengwz.dynamic.sql.DynamicSql;
 import com.pengwz.dynamic.sql.PageInfo;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.text.ParseException;
@@ -20,7 +20,6 @@ import java.util.Date;
 import java.util.List;
 
 import static org.junit.Assert.*;
-import static org.junit.Assert.assertTrue;
 
 public class SqlImplTest {
     private static final Log log = LogFactory.getLog(SqlImplTest.class);
@@ -294,5 +293,27 @@ public class SqlImplTest {
         int integer = BraveSql.build(UserEntity.class).deleteByPrimaryKey(1L);
         assertEquals(1, integer);
     }
+
+    /**
+     * 会新增失败
+     */
+    @Test(expected = BraveException.class)
+    public void insertActive() {
+        UserEntity userEntity = new UserEntity();
+        userEntity.setUsername("pwd");
+        userEntity.setPhone("123    ");
+        Integer insert = BraveSql.build(UserEntity.class).insert(userEntity);
+        log.info("insert " + insert);
+    }
+
+    @Test
+    public void insertActive2() {
+        UserEntity userEntity = new UserEntity();
+        userEntity.setUsername("pwd");
+        userEntity.setPhone("123    ");
+        Integer insert = BraveSql.build(UserEntity.class).insertActive(userEntity);
+        log.info("insertActive " + insert);
+    }
+
 
 }

@@ -137,12 +137,32 @@ public class BraveSql<T> {
         return mustShare().selectPageInfo();
     }
 
+    /**
+     * 新增全部属性，属性为null的则插入null
+     *
+     * @param data
+     * @return
+     */
     public Integer insert(T data) {
         if (Objects.isNull(data)) {
             return 0;
         }
         this.data = Collections.singletonList(data);
         return batchInsert(this.data);
+    }
+
+    /**
+     * 属性为null的会使用数据库默认值
+     *
+     * @param data
+     * @return
+     */
+    public Integer insertActive(T data) {
+        if (Objects.isNull(data)) {
+            return 0;
+        }
+        this.data = Collections.singletonList(data);
+        return mustShare().insertActive();
     }
 
     public Integer batchInsert(Iterable<T> iterable) {

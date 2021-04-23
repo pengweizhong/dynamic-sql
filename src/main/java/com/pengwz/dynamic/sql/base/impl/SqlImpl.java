@@ -160,7 +160,94 @@ public class SqlImpl<T> implements Sqls<T> {
         sql.deleteCharAt(sql.lastIndexOf(","));
         sql.append("),");
         String prepareSql = sql.deleteCharAt(sql.lastIndexOf(",")).toString();
-        return executeBatchSqlAndReturnAffectedRows(prepareSql, tableInfos);
+        return setValuesExecuteSql(prepareSql, tableInfos);
+    }
+
+    @Override
+    public Integer insertActive() {
+        List<TableInfo> tableInfos = ContextApplication.getTableInfos(dataSourceClass, tableName);
+        T next = data.iterator().next();
+        final StringBuilder prefix = new StringBuilder();
+        final StringBuilder suffix = new StringBuilder();
+        prefix.append("insert into ").append(tableName).append(" ( ");/*.append(columnToStr).append(" ) values ");*/
+        List<Object> insertValues = new ArrayList<>();
+        for (TableInfo tableInfo : tableInfos) {
+            try {
+                Object invoke = ReflectUtils.getFieldValue(tableInfo.getField(), next);
+                if (Objects.isNull(invoke)) {
+                    continue;
+                }
+                prefix.append(SPACE).append(tableInfo.getColumn()).append(COMMA);
+                suffix.append("?, ");
+                insertValues.add(invoke);
+            } catch (Exception ex) {
+                throw new BraveException(ex.getMessage(), ex);
+            }
+        }
+        suffix.deleteCharAt(suffix.lastIndexOf(","));
+        prefix.deleteCharAt(prefix.lastIndexOf(","));
+        prefix.append(" ) values (").append(suffix).append(")");
+        String sql = prefix.toString();
+        try {
+            preparedStatement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+            for (int i = 1; i <= insertValues.size(); i++) {
+                preparedStatement.setObject(i, insertValues.get(i - 1));
+            }
+            printSql(preparedStatement);
+            preparedStatement.addBatch();
+            return executeSqlAndReturnAffectedRows();
+        } catch (Exception ex) {
+            ExceptionUtils.boxingAndThrowBraveException(ex, sql);
+        } finally {
+            DataSourceManagement.close(dataSourceConfig, resultSet, preparedStatement, connection);
+        }
+        return -1;
+    }
+
+
+    private Integer setValuesExecuteSql(String sql, List<TableInfo> tableInfos) {
+        Iterator<T> iterator = data.iterator();
+        try {
+            preparedStatement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+            while (iterator.hasNext()) {
+                T next = iterator.next();
+                for (int i = 1; i <= tableInfos.size(); i++) {
+                    Object fieldValue = ReflectUtils.getFieldValue(tableInfos.get(i - 1).getField(), next);
+                    preparedStatement.setObject(i, fieldValue);
+                }
+                printSql(preparedStatement);
+                preparedStatement.addBatch();
+            }
+            return executeSqlAndReturnAffectedRows();
+        } catch (Exception ex) {
+            ExceptionUtils.boxingAndThrowBraveException(ex, sql);
+        } finally {
+            DataSourceManagement.close(dataSourceConfig, resultSet, preparedStatement, connection);
+        }
+        return -1;
+    }
+
+    private Integer executeSqlAndReturnAffectedRows() throws SQLException {
+        int successCount = -1;
+        int[] ints = preparedStatement.executeBatch();
+        successCount = ints.length;
+        TableInfo tableInfoPrimaryKey = ContextApplication.getTableInfoPrimaryKey(dataSourceClass, tableName);
+        if (Objects.nonNull(tableInfoPrimaryKey)) {
+            if (tableInfoPrimaryKey.isGeneratedValue()) {
+                Iterator<T> resultIterator = data.iterator();
+                ResultSet generatedKeys = preparedStatement.getGeneratedKeys();
+                while (resultIterator.hasNext()) {
+                    T next = resultIterator.next();
+                    Object primaryKeyValue = ReflectUtils.getFieldValue(tableInfoPrimaryKey.getField(), next);
+                    if (Objects.isNull(primaryKeyValue)) {
+                        generatedKeys.next();
+                        Object object = generatedKeys.getObject(Statement.RETURN_GENERATED_KEYS, tableInfoPrimaryKey.getField().getType());
+                        ReflectUtils.setFieldValue(tableInfoPrimaryKey.getField(), next, object);
+                    }
+                }
+            }
+        }
+        return successCount;
     }
 
     @Override
@@ -177,7 +264,7 @@ public class SqlImpl<T> implements Sqls<T> {
         String prepareSql = sql.substring(0, sql.length() - 1) + ")";
         String join = String.join(",", duplicateKeys);
         prepareSql = prepareSql.concat(" on duplicate key update ").concat(join);
-        return executeBatchSqlAndReturnAffectedRows(prepareSql, tableInfos);
+        return setValuesExecuteSql(prepareSql, tableInfos);
     }
 
     @Override
@@ -310,46 +397,6 @@ public class SqlImpl<T> implements Sqls<T> {
         }
     }
 
-    private Integer executeBatchSqlAndReturnAffectedRows(String sql, List<TableInfo> tableInfos) {
-        Iterator<T> iterator = data.iterator();
-        int successCount = -1;
-        try {
-            preparedStatement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
-            while (iterator.hasNext()) {
-                T next = iterator.next();
-                for (int i = 1; i <= tableInfos.size(); i++) {
-                    Object fieldValue = ReflectUtils.getFieldValue(tableInfos.get(i - 1).getField(), next);
-                    preparedStatement.setObject(i, fieldValue);
-                }
-                printSql(preparedStatement);
-                preparedStatement.addBatch();
-            }
-            int[] ints = preparedStatement.executeBatch();
-            successCount = ints.length;
-            TableInfo tableInfoPrimaryKey = ContextApplication.getTableInfoPrimaryKey(dataSourceClass, tableName);
-            if (Objects.nonNull(tableInfoPrimaryKey)) {
-                if (tableInfoPrimaryKey.isGeneratedValue()) {
-                    Iterator<T> resultIterator = data.iterator();
-                    ResultSet generatedKeys = preparedStatement.getGeneratedKeys();
-                    while (resultIterator.hasNext()) {
-                        T next = resultIterator.next();
-                        Object primaryKeyValue = ReflectUtils.getFieldValue(tableInfoPrimaryKey.getField(), next);
-                        if (Objects.isNull(primaryKeyValue)) {
-                            generatedKeys.next();
-                            Object object = generatedKeys.getObject(Statement.RETURN_GENERATED_KEYS, tableInfoPrimaryKey.getField().getType());
-                            ReflectUtils.setFieldValue(tableInfoPrimaryKey.getField(), next, object);
-                        }
-                    }
-                }
-            }
-        } catch (Exception ex) {
-            ExceptionUtils.boxingAndThrowBraveException(ex, sql);
-        } finally {
-            DataSourceManagement.close(dataSourceConfig, resultSet, preparedStatement, connection);
-        }
-        return successCount;
-    }
-
     private void printSql(PreparedStatement preparedStatement) {
         if (log.isDebugEnabled()) {
             String sqlToString = preparedStatement.toString();
@@ -366,7 +413,9 @@ public class SqlImpl<T> implements Sqls<T> {
         }
     }
 
-    public void init(Class<?> currentClass, PageInfo<T> pageInfo, Iterable<T> data, List<String> updateNullProperties, String tableName, Class<?> dataSourceClass, String whereSql, DataSourceConfig dataSourceConfig) {
+    public void init
+            (Class<?> currentClass, PageInfo<T> pageInfo, Iterable<T> data, List<String> updateNullProperties, String
+                    tableName, Class<?> dataSourceClass, String whereSql, DataSourceConfig dataSourceConfig) {
         //让编译器开心
         this.currentClass = currentClass;
         this.whereSql = whereSql;

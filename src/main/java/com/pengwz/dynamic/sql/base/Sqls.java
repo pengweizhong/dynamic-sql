@@ -20,6 +20,8 @@ public interface Sqls<T> {
 
     Integer batchInsert();
 
+    Integer insertActive();
+
     Integer insertOrUpdate();
 
     /**
@@ -34,4 +36,5 @@ public interface Sqls<T> {
     Integer delete();
 
     Integer deleteByPrimaryKey(Object primaryKeyValue);
+
 }
