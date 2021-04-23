@@ -1,11 +1,13 @@
 package com.pengwz.dynamic.sql.base;
 
+import com.pengwz.dynamic.anno.Column;
 import com.pengwz.dynamic.config.DataSourceConfig;
 import com.pengwz.dynamic.config.DataSourceManagement;
 import com.pengwz.dynamic.exception.BraveException;
-import com.pengwz.dynamic.sql.ContextApplication;
+import com.pengwz.dynamic.utils.ConverterUtils;
 import com.pengwz.dynamic.utils.ExceptionUtils;
 import com.pengwz.dynamic.utils.ReflectUtils;
+import com.pengwz.dynamic.utils.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -16,6 +18,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * 执行自定义SQL
@@ -24,8 +27,6 @@ public class CustomizeSQL<T> {
 
     private static final Log log = LogFactory.getLog(CustomizeSQL.class);
 
-    private final Class<? extends DataSourceConfig> dataSource;
-
     private final Class<T> target;
 
     private final String sql;
@@ -33,10 +34,9 @@ public class CustomizeSQL<T> {
     private Connection connection;
 
     public CustomizeSQL(Class<? extends DataSourceConfig> dataSource, Class<T> target, String sql) {
-        this.dataSource = dataSource;
         this.target = target;
         this.sql = sql;
-        this.connection = DataSourceManagement.initConnection(ContextApplication.getDataSource(this.dataSource));
+        this.connection = DataSourceManagement.initConnection(dataSource.toString());
     }
 
     public T selectSqlAndReturnSingle() {
@@ -61,15 +61,21 @@ public class CustomizeSQL<T> {
                 T obj = target.newInstance();
                 Field[] declaredFields = target.getDeclaredFields();
                 for (Field field : declaredFields) {
-                    Object object = resultSet.getObject(field.getName(), field.getType());
+                    Column column = field.getAnnotation(Column.class);
+                    Object object;
+                    if (Objects.isNull(column)) {
+                        object = ConverterUtils.convertJdbc(resultSet, StringUtils.caseField(field.getName()), field.getType());
+                    } else {
+                        object = ConverterUtils.convertJdbc(resultSet, column.value().trim(), field.getType());
+                    }
                     ReflectUtils.setFieldValue(field, obj, object);
                 }
                 selectResult.add(obj);
             }
         } catch (Exception e) {
-            ExceptionUtils.boxingAndThrowBraveException(e);
+            ExceptionUtils.boxingAndThrowBraveException(e, sql);
         } finally {
-            DataSourceManagement.close(ContextApplication.getDataSource(this.dataSource), resultSet, preparedStatement, connection);
+            DataSourceManagement.close(resultSet, preparedStatement, connection);
         }
         return selectResult;
     }
@@ -83,9 +89,9 @@ public class CustomizeSQL<T> {
             preparedStatement = connection.prepareStatement(sql);
             return preparedStatement.executeUpdate();
         } catch (SQLException e) {
-            ExceptionUtils.boxingAndThrowBraveException(e);
+            ExceptionUtils.boxingAndThrowBraveException(e, sql);
         } finally {
-            DataSourceManagement.close(ContextApplication.getDataSource(this.dataSource), null, preparedStatement, connection);
+            DataSourceManagement.close(null, preparedStatement, connection);
         }
         return -1;
     }

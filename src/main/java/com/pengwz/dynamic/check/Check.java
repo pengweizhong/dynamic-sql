@@ -17,8 +17,8 @@ import java.util.Objects;
 
 public class Check {
 
-    public static void checkAndSave(Class<?> currentClass, String tableName, Class<?> dataSourceClass) {
-        boolean existsTable = ContextApplication.existsTable(tableName, dataSourceClass);
+    public static void checkAndSave(Class<?> currentClass, String tableName, String dataSource) {
+        boolean existsTable = ContextApplication.existsTable(tableName, dataSource);
         if (existsTable) {
             return;
         }
@@ -64,7 +64,7 @@ public class Check {
         if (idCount > 1) {
             throw new BraveException(tableName + "表获取到多个主键");
         }
-        ContextApplication.saveTable(dataSourceClass, tableName, tableInfos);
+        ContextApplication.saveTable(dataSource, tableName, tableInfos);
     }
 
     public static <T> void checkPageInfo(PageInfo<T> pageInfo) {

@@ -1,5 +1,7 @@
 package com.pengwz.dynamic.sql.base.impl;
 
+import com.pengwz.dynamic.config.MyDBConfig;
+import com.pengwz.dynamic.entity.SysUserRoleEntity;
 import com.pengwz.dynamic.entity.UserEntity;
 import com.pengwz.dynamic.exception.BraveException;
 import com.pengwz.dynamic.sql.BraveSql;
@@ -7,6 +9,7 @@ import com.pengwz.dynamic.sql.DynamicSql;
 import com.pengwz.dynamic.sql.PageInfo;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -315,5 +318,50 @@ public class SqlImplTest {
         log.info("insertActive " + insert);
     }
 
+    @Test
+    public void executeDMLSql() {
+        int i = BraveSql.executeDMLSql("delete from t_user ", MyDBConfig.class);
+        Assert.assertEquals(1, i);
+    }
 
+    @Test
+    public void executeSelectSqlAndReturnSingle() {
+        UserEntity userEntity = BraveSql.executeSelectSqlAndReturnSingle("select * from t_user ", UserEntity.class, MyDBConfig.class);
+        log.info("userEntity " + userEntity);
+        Assert.assertNotNull(userEntity);
+    }
+
+    @Test
+    public void selectSysUserRoleEntity() {
+        SysUserRoleEntity sysUserRoleEntity = new SysUserRoleEntity();
+        sysUserRoleEntity.setUserId(909);
+        sysUserRoleEntity.setRoleId(808);
+        sysUserRoleEntity.setCreateBy("sys");
+        sysUserRoleEntity.setUpdateBy("sys");
+        Integer integer = BraveSql.build(SysUserRoleEntity.class).insertActive(sysUserRoleEntity);
+        Assert.assertEquals(1, (int) integer);
+    }
+
+    /**
+     * 多线程测试查询
+     */
+    @Test
+    public void manyThreadTestConnection() {
+        List<Thread> threads = new ArrayList<>();
+        for (int i = 0; i < 100; i++) {
+            Thread thread = new Thread(() -> {
+                List<UserEntity> select = BraveSql.build(UserEntity.class).select();
+                Assert.assertNotNull(select);
+            });
+            threads.add(thread);
+        }
+        threads.forEach(Thread::start);
+        threads.forEach(thread->{
+            try {
+                thread.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        });
+    }
 }

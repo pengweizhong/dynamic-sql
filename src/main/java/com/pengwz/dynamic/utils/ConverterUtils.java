@@ -59,6 +59,11 @@ public class ConverterUtils {
             Object object = resultSet.getObject(fieldName);
             return convert(object, targetType);
         }
-        return resultSet.getObject(fieldName, targetType);
+        try {
+            return resultSet.getObject(fieldName, targetType);
+        } catch (SQLException e) {
+            // ignore exception,try again
+            return convert(resultSet.getObject(fieldName), targetType);
+        }
     }
 }

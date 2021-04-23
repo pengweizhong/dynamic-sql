@@ -1,6 +1,5 @@
 package com.pengwz.dynamic.sql.base.impl;
 
-import com.pengwz.dynamic.config.DataSourceConfig;
 import com.pengwz.dynamic.config.DataSourceManagement;
 import com.pengwz.dynamic.constant.Constant;
 import com.pengwz.dynamic.exception.BraveException;
@@ -31,21 +30,16 @@ public class SqlImpl<T> implements Sqls<T> {
     private Iterable<T> data;
     private List<String> updateNullProperties;
     private String tableName;
-    private Class<?> dataSourceClass;
+    private String dataSourceName;
     private String whereSql;
-    private DataSourceConfig dataSourceConfig;
     private Connection connection;
     private PreparedStatement preparedStatement;
     private ResultSet resultSet;
 
-//    {
-//        before();
-//    }
-
     @Override
     public T selectByPrimaryKey(Object primaryKeyValue) {
-        String columnList = ContextApplication.formatAllColumToStr(dataSourceClass, tableName);
-        String primaryKey = ContextApplication.getPrimaryKey(dataSourceClass, tableName);
+        String columnList = ContextApplication.formatAllColumToStr(dataSourceName, tableName);
+        String primaryKey = ContextApplication.getPrimaryKey(dataSourceName, tableName);
         Object value = ParseSql.matchValue(primaryKeyValue);
         String sql = SELECT + SPACE + columnList + SPACE + FROM + SPACE + tableName + SPACE + WHERE + SPACE + primaryKey + SPACE + EQ + SPACE + value;
         List<T> ts = executeQuery(sql, tableName);
@@ -54,7 +48,7 @@ public class SqlImpl<T> implements Sqls<T> {
 
     @Override
     public T selectSingle() {
-        String columnList = ContextApplication.formatAllColumToStr(dataSourceClass, tableName);
+        String columnList = ContextApplication.formatAllColumToStr(dataSourceName, tableName);
         String sql = SELECT + SPACE + columnList + SPACE + FROM + SPACE + tableName + SPACE + WHERE + SPACE + whereSql;
         sql = ParseSql.parseSql(sql);
         List<T> queryList = executeQuery(sql, tableName);
@@ -69,7 +63,7 @@ public class SqlImpl<T> implements Sqls<T> {
 
     @Override
     public List<T> select() {
-        String columnList = ContextApplication.formatAllColumToStr(dataSourceClass, tableName);
+        String columnList = ContextApplication.formatAllColumToStr(dataSourceName, tableName);
         String sql = SELECT + SPACE + columnList + SPACE + FROM + SPACE + tableName;
         if (StringUtils.isNotEmpty(whereSql)) {
             sql += SPACE + WHERE + SPACE + whereSql;
@@ -90,14 +84,14 @@ public class SqlImpl<T> implements Sqls<T> {
 
     @Override
     public List<T> selectAll() {
-        String columnList = ContextApplication.formatAllColumToStr(dataSourceClass, tableName);
+        String columnList = ContextApplication.formatAllColumToStr(dataSourceName, tableName);
         String sql = "select " + columnList + " from " + tableName;
         return executeQuery(sql, tableName);
     }
 
     @Override
     public PageInfo<T> selectPageInfo() {
-        String columnList = ContextApplication.formatAllColumToStr(dataSourceClass, tableName);
+        String columnList = ContextApplication.formatAllColumToStr(dataSourceName, tableName);
         String sqlCount = SELECT + SPACE + "count(1)" + SPACE + FROM + SPACE + tableName;
         int totalSize = executeQueryCount(sqlCount, false);
         String sql = "select " + columnList + " from " + tableName + (StringUtils.isEmpty(whereSql) ? SPACE : SPACE + WHERE + SPACE + whereSql.trim());
@@ -119,7 +113,7 @@ public class SqlImpl<T> implements Sqls<T> {
             ExceptionUtils.boxingAndThrowBraveException(ex, sql);
         } finally {
             if (isCloseConnection) {
-                DataSourceManagement.close(dataSourceConfig, resultSet, preparedStatement, connection);
+                DataSourceManagement.close(resultSet, preparedStatement, connection);
             }
         }
         return -1;
@@ -127,7 +121,7 @@ public class SqlImpl<T> implements Sqls<T> {
 
     @SuppressWarnings("unchecked")
     private List<T> executeQuery(String sql, String tableName) {
-        List<TableInfo> tableInfos = ContextApplication.getTableInfos(dataSourceClass, tableName);
+        List<TableInfo> tableInfos = ContextApplication.getTableInfos(dataSourceName, tableName);
         List<T> list = new ArrayList<>();
         try {
             preparedStatement = connection.prepareStatement(sql);
@@ -144,15 +138,15 @@ public class SqlImpl<T> implements Sqls<T> {
         } catch (Exception ex) {
             ExceptionUtils.boxingAndThrowBraveException(ex, sql);
         } finally {
-            DataSourceManagement.close(dataSourceConfig, resultSet, preparedStatement, connection);
+            DataSourceManagement.close(resultSet, preparedStatement, connection);
         }
         return list;
     }
 
     @Override
     public Integer batchInsert() {
-        String columnToStr = ContextApplication.formatAllColumToStr(dataSourceClass, tableName);
-        List<TableInfo> tableInfos = ContextApplication.getTableInfos(dataSourceClass, tableName);
+        String columnToStr = ContextApplication.formatAllColumToStr(dataSourceName, tableName);
+        List<TableInfo> tableInfos = ContextApplication.getTableInfos(dataSourceName, tableName);
         final StringBuilder sql = new StringBuilder();
         sql.append("insert into ").append(tableName).append(" ( ").append(columnToStr).append(" ) values ");
         sql.append("( ");
@@ -165,7 +159,7 @@ public class SqlImpl<T> implements Sqls<T> {
 
     @Override
     public Integer insertActive() {
-        List<TableInfo> tableInfos = ContextApplication.getTableInfos(dataSourceClass, tableName);
+        List<TableInfo> tableInfos = ContextApplication.getTableInfos(dataSourceName, tableName);
         T next = data.iterator().next();
         final StringBuilder prefix = new StringBuilder();
         final StringBuilder suffix = new StringBuilder();
@@ -199,7 +193,7 @@ public class SqlImpl<T> implements Sqls<T> {
         } catch (Exception ex) {
             ExceptionUtils.boxingAndThrowBraveException(ex, sql);
         } finally {
-            DataSourceManagement.close(dataSourceConfig, resultSet, preparedStatement, connection);
+            DataSourceManagement.close(resultSet, preparedStatement, connection);
         }
         return -1;
     }
@@ -222,7 +216,7 @@ public class SqlImpl<T> implements Sqls<T> {
         } catch (Exception ex) {
             ExceptionUtils.boxingAndThrowBraveException(ex, sql);
         } finally {
-            DataSourceManagement.close(dataSourceConfig, resultSet, preparedStatement, connection);
+            DataSourceManagement.close(resultSet, preparedStatement, connection);
         }
         return -1;
     }
@@ -231,7 +225,7 @@ public class SqlImpl<T> implements Sqls<T> {
         int successCount = -1;
         int[] ints = preparedStatement.executeBatch();
         successCount = ints.length;
-        TableInfo tableInfoPrimaryKey = ContextApplication.getTableInfoPrimaryKey(dataSourceClass, tableName);
+        TableInfo tableInfoPrimaryKey = ContextApplication.getTableInfoPrimaryKey(dataSourceName, tableName);
         if (Objects.nonNull(tableInfoPrimaryKey)) {
             if (tableInfoPrimaryKey.isGeneratedValue()) {
                 Iterator<T> resultIterator = data.iterator();
@@ -252,8 +246,8 @@ public class SqlImpl<T> implements Sqls<T> {
 
     @Override
     public Integer insertOrUpdate() {
-        String columnToStr = ContextApplication.formatAllColumToStr(dataSourceClass, tableName);
-        List<TableInfo> tableInfos = ContextApplication.getTableInfos(dataSourceClass, tableName);
+        String columnToStr = ContextApplication.formatAllColumToStr(dataSourceName, tableName);
+        List<TableInfo> tableInfos = ContextApplication.getTableInfos(dataSourceName, tableName);
         StringBuilder sql = new StringBuilder();
         sql.append("insert into ").append(tableName).append(" ( ").append(columnToStr).append(" ) values ( ");
         List<String> duplicateKeys = new ArrayList<>();
@@ -269,7 +263,7 @@ public class SqlImpl<T> implements Sqls<T> {
 
     @Override
     public Integer update() {
-        List<TableInfo> tableInfos = ContextApplication.getTableInfos(dataSourceClass, tableName);
+        List<TableInfo> tableInfos = ContextApplication.getTableInfos(dataSourceName, tableName);
         StringBuilder sql = new StringBuilder();
         sql.append("update ").append(tableName).append(" set");
         for (T next : data) {
@@ -288,7 +282,7 @@ public class SqlImpl<T> implements Sqls<T> {
 
     @Override
     public Integer updateActive() {
-        List<TableInfo> tableInfos = ContextApplication.getTableInfos(dataSourceClass, tableName);
+        List<TableInfo> tableInfos = ContextApplication.getTableInfos(dataSourceName, tableName);
         StringBuilder sql = new StringBuilder();
         sql.append("update ").append(tableName).append(" set");
         for (T next : data) {
@@ -315,8 +309,8 @@ public class SqlImpl<T> implements Sqls<T> {
 
     @Override
     public Integer updateByPrimaryKey() {
-        List<TableInfo> tableInfos = ContextApplication.getTableInfos(dataSourceClass, tableName);
-        TableInfo tableInfoPrimaryKey = ContextApplication.getTableInfoPrimaryKey(dataSourceClass, tableName);
+        List<TableInfo> tableInfos = ContextApplication.getTableInfos(dataSourceName, tableName);
+        TableInfo tableInfoPrimaryKey = ContextApplication.getTableInfoPrimaryKey(dataSourceName, tableName);
         if (Objects.isNull(tableInfoPrimaryKey)) {
             throw new BraveException(tableName + " 表未配置主键");
         }
@@ -359,7 +353,7 @@ public class SqlImpl<T> implements Sqls<T> {
 
     @Override
     public Integer deleteByPrimaryKey(Object primaryKeyValue) {
-        TableInfo tableInfoPrimaryKey = ContextApplication.getTableInfoPrimaryKey(dataSourceClass, tableName);
+        TableInfo tableInfoPrimaryKey = ContextApplication.getTableInfoPrimaryKey(dataSourceName, tableName);
         if (Objects.isNull(tableInfoPrimaryKey)) {
             throw new BraveException(tableName + " 表未配置主键");
         }
@@ -377,7 +371,7 @@ public class SqlImpl<T> implements Sqls<T> {
         } catch (SQLException ex) {
             ExceptionUtils.boxingAndThrowBraveException(ex, sql);
         } finally {
-            DataSourceManagement.close(dataSourceConfig, resultSet, preparedStatement, connection);
+            DataSourceManagement.close(resultSet, preparedStatement, connection);
         }
         return -1;
     }
@@ -415,19 +409,18 @@ public class SqlImpl<T> implements Sqls<T> {
 
     public void init
             (Class<?> currentClass, PageInfo<T> pageInfo, Iterable<T> data, List<String> updateNullProperties, String
-                    tableName, Class<?> dataSourceClass, String whereSql, DataSourceConfig dataSourceConfig) {
+                    tableName, String dataSourceName, String whereSql) {
         //让编译器开心
         this.currentClass = currentClass;
         this.whereSql = whereSql;
         this.tableName = tableName;
-        this.dataSourceClass = dataSourceClass;
+        this.dataSourceName = dataSourceName;
         this.pageInfo = pageInfo;
         this.data = data;
         this.updateNullProperties = updateNullProperties;
-        this.dataSourceConfig = dataSourceConfig;
     }
 
     public void before() {
-        connection = DataSourceManagement.initConnection(dataSourceConfig);
+        connection = DataSourceManagement.initConnection(dataSourceName);
     }
 }

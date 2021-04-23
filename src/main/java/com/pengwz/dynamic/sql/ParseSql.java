@@ -18,8 +18,8 @@ import static com.pengwz.dynamic.constant.Constant.*;
 
 public class ParseSql {
 
-    public static String parse(Class<?> currentClass, String tableName, Class<?> dataSourceClass, List<Declaration> declarationList, Map<String, List<String>> orderByMap) {
-        checkAndSave(currentClass, tableName, dataSourceClass);
+    public static String parse(Class<?> currentClass, String tableName, String dataSource, List<Declaration> declarationList, Map<String, List<String>> orderByMap) {
+        checkAndSave(currentClass, tableName, dataSource);
         StringBuilder whereSql = new StringBuilder();
         for (Declaration declaration : declarationList) {
             if (Objects.nonNull(declaration.getBrackets())) {
@@ -34,7 +34,7 @@ public class ParseSql {
                 }
                 if (handleFunction instanceof OrderBy) {
                     handleFunction.execute(tableName, declaration);
-                    String column = ContextApplication.getColumnByField(dataSourceClass, tableName, declaration.getProperty());
+                    String column = ContextApplication.getColumnByField(dataSource, tableName, declaration.getProperty());
                     whereSql.append(" order by " + column + " " + declaration.getSortMode());
                     continue;
                 }
@@ -42,20 +42,20 @@ public class ParseSql {
                     String property = declaration.getProperty();
                     String[] split = property.split(",");
                     List<String> columns = new ArrayList<>();
-                    Arrays.asList(split).forEach(field -> columns.add(ContextApplication.getColumnByField(dataSourceClass, tableName, field)));
+                    Arrays.asList(split).forEach(field -> columns.add(ContextApplication.getColumnByField(dataSource, tableName, field)));
                     whereSql.append(SPACE + GROUP + SPACE + BY + SPACE + String.join(",", columns));
                     continue;
                 }
                 whereSql.append(declaration.getHandleFunction().execute(tableName, declaration)).append(SPACE);
             } else if (declaration.getCondition().equals(BETWEEN) || declaration.getCondition().equals(NOT_BETWEEN)) {
-                whereSql.append(ContextApplication.getColumnByField(dataSourceClass, tableName, declaration.getProperty())).append(SPACE);
+                whereSql.append(ContextApplication.getColumnByField(dataSource, tableName, declaration.getProperty())).append(SPACE);
                 whereSql.append(declaration.getCondition()).append(SPACE);
                 whereSql.append(matchValue(declaration.getValue())).append(SPACE);
                 whereSql.append(declaration.getAndOr()).append(SPACE);
                 whereSql.append(matchValue(declaration.getValue2())).append(SPACE);
             } else {
                 whereSql.append(declaration.getAndOr()).append(SPACE);
-                whereSql.append(ContextApplication.getColumnByField(dataSourceClass, tableName, declaration.getProperty())).append(SPACE);
+                whereSql.append(ContextApplication.getColumnByField(dataSource, tableName, declaration.getProperty())).append(SPACE);
                 whereSql.append(declaration.getCondition()).append(SPACE);
                 whereSql.append(matchValue(declaration.getValue())).append(SPACE);
             }
@@ -66,7 +66,7 @@ public class ParseSql {
                 whereSql.append(ORDER).append(SPACE).append(BY).append(SPACE);
                 List<String> list = orderByMap.get(key);
                 for (String field : list) {
-                    String columnByField = ContextApplication.getColumnByField(dataSourceClass, tableName, field);
+                    String columnByField = ContextApplication.getColumnByField(dataSource, tableName, field);
                     whereSql.append(columnByField).append(COMMA).append(SPACE);
                 }
                 whereSql = new StringBuilder(whereSql.substring(0, whereSql.length() - 2));

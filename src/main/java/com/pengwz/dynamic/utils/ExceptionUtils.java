@@ -47,7 +47,14 @@ public class ExceptionUtils {
             if (sqlState.startsWith("S0")) {
                 throw new BraveException("实体类属性不在SQL查询返回的结果集内", sql, throwable.getMessage());
             }
-            throw new BraveException("错误的SQL语句", sql, throwable.getMessage());
+            if (sqlState.startsWith("HY")) {
+                throw new BraveException("缺少必要的字段", sql, throwable.getMessage());
+            }
+            if (StringUtils.isBlank(sql)) {
+                throw new BraveException(throwable.getMessage(), throwable);
+            } else {
+                throw new BraveException("错误的SQL语句", sql, throwable.getMessage());
+            }
         }
         if (throwable instanceof ReflectiveOperationException) {
             throw new BraveException("无法创建对象，可能不存在无参构造器", throwable.getMessage());

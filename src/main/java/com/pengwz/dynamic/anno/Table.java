@@ -1,5 +1,7 @@
 package com.pengwz.dynamic.anno;
 
+import com.pengwz.dynamic.config.DataSourceConfig;
+
 import java.lang.annotation.*;
 
 @Target(ElementType.TYPE)
@@ -8,6 +10,6 @@ import java.lang.annotation.*;
 public @interface Table {
     String value() default "";
 
-    Class<?> dataSourceClass() default Void.class;
+    Class<? extends DataSourceConfig> dataSourceClass();
 
 }

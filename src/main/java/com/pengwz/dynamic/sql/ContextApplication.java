@@ -1,66 +1,73 @@
 package com.pengwz.dynamic.sql;
 
-import com.pengwz.dynamic.config.DataSourceConfig;
 import com.pengwz.dynamic.exception.BraveException;
+import com.pengwz.dynamic.model.DataSourceInfo;
 import com.pengwz.dynamic.model.TableInfo;
 import com.pengwz.dynamic.utils.CollectionUtils;
 import com.pengwz.dynamic.utils.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import java.util.*;
+import javax.sql.DataSource;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 @SuppressWarnings("all")
 public class ContextApplication {
     private static final Log log = LogFactory.getLog(ContextApplication.class);
     private static final Map<String, Map<String, List<TableInfo>>> dataBaseMap = new ConcurrentHashMap<>();
-    private static final Map<String, DataSourceConfig> dataSourcesMap = new ConcurrentHashMap<>();
+    private static final Map<String, DataSourceInfo> dataSourcesMap = new ConcurrentHashMap<>();
 
-    public static DataSourceConfig getDefalutDataSource() {
-        Collection<DataSourceConfig> values = dataSourcesMap.values();
-        for (DataSourceConfig dataSourceConfig : values) {
-            if (dataSourceConfig.defaultDataSource()) {
-                return dataSourceConfig;
+    public static String getDefalutDataSource() {
+        for (DataSourceInfo sourceInfo : dataSourcesMap.values()) {
+            if (sourceInfo.isDefault()) {
+                return sourceInfo.getClassPath();
             }
         }
         return null;
     }
 
-    public static void putDataSource(Class<?> dataSourceClass) {
-        DataSourceConfig sourceConfig = null;
-        try {
-            sourceConfig = (DataSourceConfig) dataSourceClass.newInstance();
-        } catch (Exception e) {
-            throw new BraveException(dataSourceClass.toString() + " 必须实现或继承 " + DataSourceConfig.class + " 类");
+    public static DataSource getDataSource(String dataSourceName) {
+        DataSourceInfo dataSourceInfo = dataSourcesMap.get(dataSourceName);
+        if (Objects.isNull(dataSourceInfo)) {
+            return null;
         }
-        if (sourceConfig.defaultDataSource()) {
-            Collection<DataSourceConfig> dataSources = dataSourcesMap.values();
-            List<DataSourceConfig> collect = dataSources.stream().filter(data -> data.defaultDataSource()).collect(Collectors.toList());
-            if (!collect.isEmpty()) {
-                throw new BraveException("仅支持一个默认数据源，愈配置默认数据源：" + dataSourceClass + "，已存在的默认数据源：" + collect);
+        return dataSourceInfo.getDataSource();
+    }
+
+    /**
+     * 检查该数据源是否存在，如果存在则返回true
+     */
+    public static synchronized boolean existsDataSouce(String dataSourceName) {
+        return dataSourcesMap.get(dataSourceName) != null;
+    }
+
+    public static synchronized void putDataSource(DataSourceInfo dataSource) {
+        if (Objects.isNull(dataSource)) {
+            return;
+        }
+        if (Objects.isNull(dataSourcesMap.get(dataSource.getClassPath()))) {
+            if (dataSource.getDataSourceBeanName() != null) {
+                log.info("初始化数据源" + (dataSourcesMap.size() + 1) + "：" + (dataSource.getDataSourceBeanName()) + "，所属类：" + dataSource.getClassPath());
+            } else if (dataSource.getClassBeanName() != null) {
+                log.info("初始化数据源" + (dataSourcesMap.size() + 1) + "：" + (dataSource.getClassBeanName()) + "，所属类：" + dataSource.getClassPath());
+            } else {
+                log.info("初始化数据源" + (dataSourcesMap.size() + 1) + "：" + (dataSource.getClassPath()));
             }
+            dataSourcesMap.put(dataSource.getClassPath(), dataSource);
         }
-        String dataSourceName = dataSourceClass.toString();
-        if (dataSourcesMap.containsKey(dataSourceName)) {
-            throw new BraveException("数据源：" + dataSourceName + "已经存在");
-        }
-        dataSourcesMap.put(dataSourceName, sourceConfig);
     }
 
-    public static DataSourceConfig getDataSource(Class<?> dataSourceClass) {
-        DataSourceConfig dataSourceConfig = dataSourcesMap.get(dataSourceClass.toString());
-        if (Objects.nonNull(dataSourceConfig)) {
-            return dataSourceConfig;
-        }
-        putDataSource(dataSourceClass);
-        return dataSourcesMap.get(dataSourceClass.toString());
+
+    public static synchronized boolean existsTable(String tableName, Class<?> dataSourceClass) {
+        return existsTable(tableName, dataSourceClass.getName());
     }
 
-    public static boolean existsTable(String tableName, Class<?> dataSourceClass) {
-        String dataSource = dataSourceClass.getName();
-        Map<String, List<TableInfo>> tableMap = dataBaseMap.get(dataSource);
+    public static synchronized boolean existsTable(String tableName, String dataSourceName) {
+        Map<String, List<TableInfo>> tableMap = dataBaseMap.get(dataSourceName);
         if (Objects.nonNull(tableMap)) {
             List<TableInfo> tableInfos = tableMap.get(tableName);
             if (Objects.nonNull(tableInfos)) {
@@ -75,10 +82,18 @@ public class ContextApplication {
         return String.join(",", columList);
     }
 
+    public static String formatAllColumToStr(String dataSourceName, String tableName) {
+        List<String> columList = getAllColumnList(dataSourceName, tableName);
+        return String.join(",", columList);
+    }
+
     public static List<String> getAllColumnList(Class<?> dataSourceClass, String tableName) {
+        return getAllColumnList(dataSourceClass.getName(), tableName);
+    }
+
+    public static List<String> getAllColumnList(String dataSourceName, String tableName) {
         List<String> members = new ArrayList<>();
-        String dataSource = dataSourceClass.getName();
-        Map<String, List<TableInfo>> tableMap = dataBaseMap.get(dataSource);
+        Map<String, List<TableInfo>> tableMap = dataBaseMap.get(dataSourceName);
         if (tableMap == null) {
             return members;
         }
@@ -93,17 +108,23 @@ public class ContextApplication {
     }
 
     public static List<TableInfo> getTableInfos(Class<?> dataSourceClass, String tableName) {
-        String dataSource = dataSourceClass.getName();
-        Map<String, List<TableInfo>> tableMap = dataBaseMap.get(dataSource);
+        return getTableInfos(dataSourceClass.getName(), tableName);
+    }
+
+    public static List<TableInfo> getTableInfos(String dataSourceName, String tableName) {
+        Map<String, List<TableInfo>> tableMap = dataBaseMap.get(dataSourceName);
         if (tableMap != null) {
             return tableMap.get(tableName);
         }
-        throw new BraveException("无法匹配数据源：" + dataSourceClass + "或表：" + tableName);
+        throw new BraveException("无法根据数据源" + dataSourceName + "获取表" + tableName + "信息");
     }
 
     public static String getColumnByField(Class<?> dataSourceClass, String tableName, String fieldName) {
-        String dataSource = dataSourceClass.getName();
-        Map<String, List<TableInfo>> tableMap = dataBaseMap.get(dataSource);
+        return getColumnByField(dataSourceClass.getName(), tableName, fieldName);
+    }
+
+    public static String getColumnByField(String dataSourceName, String tableName, String fieldName) {
+        Map<String, List<TableInfo>> tableMap = dataBaseMap.get(dataSourceName);
         List<TableInfo> tableInfos = tableMap.get(tableName);
         for (TableInfo tableInfo : tableInfos) {
             if (tableInfo.getField().getName().equals(fieldName)) {
@@ -114,8 +135,11 @@ public class ContextApplication {
     }
 
     public static String getPrimaryKey(Class<?> dataSourceClass, String tableName) {
-        String dataSource = dataSourceClass.getName();
-        Map<String, List<TableInfo>> tableMap = dataBaseMap.get(dataSource);
+        return getPrimaryKey(dataSourceClass.getName(), tableName);
+    }
+
+    public static String getPrimaryKey(String dataSourceName, String tableName) {
+        Map<String, List<TableInfo>> tableMap = dataBaseMap.get(dataSourceName);
         List<TableInfo> tableInfos = tableMap.get(tableName);
         for (TableInfo tableInfo : tableInfos) {
             if (tableInfo.isPrimary()) {
@@ -126,8 +150,11 @@ public class ContextApplication {
     }
 
     public static TableInfo getTableInfoPrimaryKey(Class<?> dataSourceClass, String tableName) {
-        String dataSource = dataSourceClass.getName();
-        Map<String, List<TableInfo>> tableMap = dataBaseMap.get(dataSource);
+        return getTableInfoPrimaryKey(dataSourceClass.getName(), tableName);
+    }
+
+    public static TableInfo getTableInfoPrimaryKey(String dataSourceName, String tableName) {
+        Map<String, List<TableInfo>> tableMap = dataBaseMap.get(dataSourceName);
         List<TableInfo> tableInfos = tableMap.get(tableName);
         for (TableInfo tableInfo : tableInfos) {
             if (tableInfo.isPrimary()) {
@@ -141,18 +168,21 @@ public class ContextApplication {
         return dataBaseMap;
     }
 
-    public static void saveTable(Class<?> dataSourceClass, String tableName, List<TableInfo> tableInfos) {
+    public static synchronized void saveTable(Class<?> dataSourceClass, String tableName, List<TableInfo> tableInfos) {
+        saveTable(dataSourceClass.getName(), tableName, tableInfos);
+    }
+
+    public static synchronized void saveTable(String dataSourceName, String tableName, List<TableInfo> tableInfos) {
         if (StringUtils.isEmpty(tableName)) {
             throw new BraveException("待保存的表名不可为空");
         }
         if (CollectionUtils.isEmpty(tableInfos)) {
             throw new BraveException("待保存的表字段不可为空");
         }
-        String dataSource = dataSourceClass.getName();
-        Map<String, List<TableInfo>> tableMap = dataBaseMap.get(dataSource);
+        Map<String, List<TableInfo>> tableMap = dataBaseMap.get(dataSourceName);
         if (tableMap == null) {
             tableMap = new ConcurrentHashMap<>();
-            dataBaseMap.put(dataSource, tableMap);
+            dataBaseMap.put(dataSourceName, tableMap);
         }
         tableMap.put(tableName, tableInfos);
     }
@@ -160,5 +190,6 @@ public class ContextApplication {
     public static void clear() {
         dataBaseMap.clear();
     }
+
 
 }

@@ -2,28 +2,31 @@
     
 ## 最新版本号 1.1.3
 ```xml
+<-- 单体项目 -->
 <dependency>
-  <groupId>com.pengwz</groupId>
-  <artifactId>dynamic-sql</artifactId>
-  <version>1.1.3</version>
+    <groupId>com.pengwz</groupId>
+    <artifactId>dynamic-sql</artifactId>
+    <version>1.1.3</version>
 </dependency>
+<-- springBoot项目，已集成dynamic-sql -->
+<dependency>
+    <groupId>com.pengwz</groupId>
+    <artifactId>dynamic-spring-boot-starter</artifactId>
+    <version>1.1.4</version>
+</dependency>
+
 ```
 ### 本次版本变更内容
-    1、优化了log日志
-    2、优化了异常抛出文案
-    3、修复了根据条件查询时，传入LocalDate、LocalDateTime未适配字符串的问题
-    4、关闭了本地事务
-    5、新增数据时，如不提供待插入的数据，则返回0，不再抛出异常
-    6、修复查询时返回的对象不能映射java.util.Date的问题
-    7、修复了删除数据时，未及时关闭SQL连接的问题
-    8、新增BraveSql.build(XX.class).deleteByPrimaryKey(key)方法
+    1、新增dynamic-spring-boot-starter
+    2、新增BraveSql.insertActive()方法，新增时为null的字段将使用数据库默认值
+    3、修复执行BraveSql.executeSelectSqlAndReturnSingle方法时，无法映射java.util.Date的问题，并且新增了获取实体类中@colum逻辑
 
 ### 项目简述
     1、基于JDBC单表动态增删改查，可单独启动，不依赖环境
     2、目前仅支持Mysql
     3、支持多数据源
-    4、支持事务
-    5、支持数据库连接池
+    4、支持事务（spring环境）
+    5、支持多数据库连接池
     
 ### 主要功能描述
     查询、增加、删除、修改
