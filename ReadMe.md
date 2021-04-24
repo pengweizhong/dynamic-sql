@@ -1,12 +1,12 @@
 # 单表动态查询 Dynamic-sql
     
-## 最新版本号 1.1.3
+## 最新版本号 1.1.4
 ```xml
 <-- 单体项目 -->
 <dependency>
     <groupId>com.pengwz</groupId>
     <artifactId>dynamic-sql</artifactId>
-    <version>1.1.3</version>
+    <version>1.1.4</version>
 </dependency>
 <-- springBoot项目，已集成dynamic-sql -->
 <dependency>
