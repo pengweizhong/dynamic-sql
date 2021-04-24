@@ -113,7 +113,7 @@ public class SqlImpl<T> implements Sqls<T> {
             ExceptionUtils.boxingAndThrowBraveException(ex, sql);
         } finally {
             if (isCloseConnection) {
-                DataSourceManagement.close(resultSet, preparedStatement, connection);
+                DataSourceManagement.close(dataSourceName, resultSet, preparedStatement, connection);
             }
         }
         return -1;
@@ -138,7 +138,7 @@ public class SqlImpl<T> implements Sqls<T> {
         } catch (Exception ex) {
             ExceptionUtils.boxingAndThrowBraveException(ex, sql);
         } finally {
-            DataSourceManagement.close(resultSet, preparedStatement, connection);
+            DataSourceManagement.close(dataSourceName, resultSet, preparedStatement, connection);
         }
         return list;
     }
@@ -193,7 +193,7 @@ public class SqlImpl<T> implements Sqls<T> {
         } catch (Exception ex) {
             ExceptionUtils.boxingAndThrowBraveException(ex, sql);
         } finally {
-            DataSourceManagement.close(resultSet, preparedStatement, connection);
+            DataSourceManagement.close(dataSourceName, resultSet, preparedStatement, connection);
         }
         return -1;
     }
@@ -216,7 +216,7 @@ public class SqlImpl<T> implements Sqls<T> {
         } catch (Exception ex) {
             ExceptionUtils.boxingAndThrowBraveException(ex, sql);
         } finally {
-            DataSourceManagement.close(resultSet, preparedStatement, connection);
+            DataSourceManagement.close(dataSourceName, resultSet, preparedStatement, connection);
         }
         return -1;
     }
@@ -371,7 +371,7 @@ public class SqlImpl<T> implements Sqls<T> {
         } catch (SQLException ex) {
             ExceptionUtils.boxingAndThrowBraveException(ex, sql);
         } finally {
-            DataSourceManagement.close(resultSet, preparedStatement, connection);
+            DataSourceManagement.close(dataSourceName, resultSet, preparedStatement, connection);
         }
         return -1;
     }

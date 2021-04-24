@@ -38,6 +38,14 @@ public class ContextApplication {
         return dataSourceInfo.getDataSource();
     }
 
+    public static DataSourceInfo getDataSourceInfo(String dataSourceName) {
+        return dataSourcesMap.get(dataSourceName);
+    }
+
+    public static List<DataSourceInfo> getAllDataSourceInfo() {
+        return new ArrayList<>(dataSourcesMap.values());
+    }
+
     /**
      * 检查该数据源是否存在，如果存在则返回true
      */

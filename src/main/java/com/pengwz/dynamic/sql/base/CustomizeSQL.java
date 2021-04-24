@@ -33,9 +33,12 @@ public class CustomizeSQL<T> {
 
     private Connection connection;
 
+    private String dataSourceName;
+
     public CustomizeSQL(Class<? extends DataSourceConfig> dataSource, Class<T> target, String sql) {
         this.target = target;
         this.sql = sql;
+        this.dataSourceName = dataSource.toString();
         this.connection = DataSourceManagement.initConnection(dataSource.toString());
     }
 
@@ -75,7 +78,7 @@ public class CustomizeSQL<T> {
         } catch (Exception e) {
             ExceptionUtils.boxingAndThrowBraveException(e, sql);
         } finally {
-            DataSourceManagement.close(resultSet, preparedStatement, connection);
+            DataSourceManagement.close(dataSourceName, resultSet, preparedStatement, connection);
         }
         return selectResult;
     }
@@ -91,7 +94,7 @@ public class CustomizeSQL<T> {
         } catch (SQLException e) {
             ExceptionUtils.boxingAndThrowBraveException(e, sql);
         } finally {
-            DataSourceManagement.close(null, preparedStatement, connection);
+            DataSourceManagement.close(dataSourceName, null, preparedStatement, connection);
         }
         return -1;
     }

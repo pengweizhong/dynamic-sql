@@ -1,12 +1,12 @@
 package com.pengwz.dynamic.config;
 
-import com.pengwz.dynamic.exception.BraveException;
+import com.pengwz.dynamic.model.DataSourceInfo;
 import com.pengwz.dynamic.sql.ContextApplication;
 import com.pengwz.dynamic.utils.ExceptionUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.springframework.jdbc.datasource.DataSourceUtils;
 
-import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -21,37 +21,42 @@ public final class DataSourceManagement {
     }
 
 
-    public static void close(ResultSet resultSet, PreparedStatement preparedStatement, Connection connection) {
-        if (Objects.nonNull(resultSet)) {
-            try {
-                resultSet.close();
-            } catch (SQLException e) {
-                log.error(e.getMessage(), e);
+    public static void close(String dataSourceName, ResultSet resultSet, PreparedStatement preparedStatement, Connection connection) {
+        DataSourceInfo dataSourceInfo = ContextApplication.getDataSourceInfo(dataSourceName);
+        if (dataSourceInfo.getDataSourceBeanName() != null) {
+            DataSourceUtils.releaseConnection(connection, dataSourceInfo.getDataSource());
+        } else {
+            if (Objects.nonNull(resultSet)) {
+                try {
+                    resultSet.close();
+                } catch (SQLException e) {
+                    log.error(e.getMessage(), e);
+                }
             }
-        }
-        if (Objects.nonNull(preparedStatement)) {
-            try {
-                preparedStatement.close();
-            } catch (SQLException e) {
-                log.error(e.getMessage(), e);
+            if (Objects.nonNull(preparedStatement)) {
+                try {
+                    preparedStatement.close();
+                } catch (SQLException e) {
+                    log.error(e.getMessage(), e);
+                }
             }
-        }
-        if (Objects.nonNull(connection)) {
-            try {
-                connection.close();
-            } catch (SQLException e) {
-                log.error(e.getMessage(), e);
+            if (Objects.nonNull(connection)) {
+                try {
+                    connection.close();
+                } catch (SQLException e) {
+                    log.error(e.getMessage(), e);
+                }
             }
         }
     }
 
     public static Connection initConnection(String dataSourceName) {
-        DataSource dataSource = ContextApplication.getDataSource(dataSourceName);
-        if (Objects.isNull(dataSource)) {
-            throw new BraveException("无法根据名称：" + dataSourceName + "获取数据源");
+        DataSourceInfo dataSourceInfo = ContextApplication.getDataSourceInfo(dataSourceName);
+        if (dataSourceInfo.getDataSourceBeanName() != null) {
+            return DataSourceUtils.getConnection(dataSourceInfo.getDataSource());
         }
         try {
-            return dataSource.getConnection();
+            return dataSourceInfo.getDataSource().getConnection();
         } catch (SQLException e) {
             ExceptionUtils.boxingAndThrowBraveException(e);
         }
