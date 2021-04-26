@@ -1,26 +1,25 @@
 # 单表动态查询 Dynamic-sql
     
-## 最新版本号 1.1.4
+## 最新版本号 1.1.5
 ```xml
 <-- 单体项目 -->
 <dependency>
     <groupId>com.pengwz</groupId>
     <artifactId>dynamic-sql</artifactId>
-    <version>1.1.4</version>
+    <version>1.1.5</version>
 </dependency>
 <-- springBoot项目，已集成dynamic-sql -->
 <dependency>
     <groupId>com.pengwz</groupId>
     <artifactId>dynamic-spring-boot-starter</artifactId>
-    <version>1.1.4</version>
+    <version>1.1.5</version>
 </dependency>
 
 ```
 ### 本次版本变更内容
-    1、新增dynamic-spring-boot-starter
-    2、新增BraveSql.insertActive()方法，新增时为null的字段将使用数据库默认值
-    3、修复执行BraveSql.executeSelectSqlAndReturnSingle方法时，无法映射java.util.Date的问题，并且新增了获取实体类中@colum逻辑
-
+    1、spring环境中，@Table内不再强制指定数据源，非spring环境，仍需提供数据源
+    2、使用CustomizeSQL时，修复了特定情况下未初始化数据源的bug
+    
 ### 项目简述
     1、基于JDBC单表动态增删改查，可单独启动，不依赖环境
     2、目前仅支持Mysql

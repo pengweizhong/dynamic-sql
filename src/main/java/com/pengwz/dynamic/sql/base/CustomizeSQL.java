@@ -39,6 +39,7 @@ public class CustomizeSQL<T> {
         this.target = target;
         this.sql = sql;
         this.dataSourceName = dataSource.toString();
+        DataSourceManagement.initDataSourceConfig(dataSource,null);
         this.connection = DataSourceManagement.initConnection(dataSource.toString());
     }
 

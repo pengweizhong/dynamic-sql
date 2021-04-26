@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.pengwz</groupId>
     <artifactId>dynamic-sql</artifactId>
-    <version>1.1.4</version>
+    <version>1.1.5</version>
     <name>pengwz-dynamic-sql</name>
 
     <inceptionYear>2020</inceptionYear>
@@ -72,6 +72,12 @@
             <artifactId>commons-beanutils</artifactId>
             <version>1.9.4</version>
         </dependency>
+        <!-- https://mvnrepository.com/artifact/org.aspectj/aspectjrt -->
+<!--        <dependency>
+            <groupId>org.aspectj</groupId>
+            <artifactId>aspectjrt</artifactId>
+            <version>1.9.6</version>
+        </dependency>-->
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>

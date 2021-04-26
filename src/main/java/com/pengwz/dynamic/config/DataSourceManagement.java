@@ -1,5 +1,6 @@
 package com.pengwz.dynamic.config;
 
+import com.pengwz.dynamic.exception.BraveException;
 import com.pengwz.dynamic.model.DataSourceInfo;
 import com.pengwz.dynamic.sql.ContextApplication;
 import com.pengwz.dynamic.utils.ExceptionUtils;
@@ -63,4 +64,34 @@ public final class DataSourceManagement {
         return null;
     }
 
+    public static String initDataSourceConfig(Class<?> dataSourceClass, String tableName) {
+        String dataSourceName;
+        if (Objects.isNull(dataSourceClass)) {
+            dataSourceName = ContextApplication.getDefalutDataSource();
+            if (Objects.isNull(dataSourceName)) {
+                throw new BraveException("须指定数据源；表名：" + tableName);
+            }
+        } else {
+            if (dataSourceClass.equals(DataSourceConfig.class)) {
+                String tableNameDesc = tableName == null ? "" : "表名：" + tableName;
+                throw new BraveException("没有指定默认数据源时，则须指定数据源；" + tableNameDesc);
+            }
+            dataSourceName = dataSourceClass.toString();
+            if (!ContextApplication.existsDataSouce(dataSourceName)) {
+                try {
+                    DataSourceConfig dataSourceConfig = (DataSourceConfig) dataSourceClass.newInstance();
+                    DataSourceInfo dataSourceInfo = new DataSourceInfo();
+                    dataSourceInfo.setDefault(dataSourceConfig.defaultDataSource());
+                    dataSourceInfo.setClassPath(dataSourceName);
+                    dataSourceInfo.setDataSource(dataSourceConfig.getDataSource());
+                    ContextApplication.putDataSource(dataSourceInfo);
+                } catch (InstantiationException e) {
+                    throw new BraveException(e.getMessage());
+                } catch (IllegalAccessException e) {
+                    throw new BraveException("必须提供无参构造器");
+                }
+            }
+        }
+        return dataSourceName;
+    }
 }

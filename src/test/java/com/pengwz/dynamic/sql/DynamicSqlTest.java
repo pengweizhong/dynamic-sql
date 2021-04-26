@@ -4,6 +4,7 @@ import com.pengwz.dynamic.config.DataSourceConfig;
 import com.pengwz.dynamic.config.MyDBConfig;
 import com.pengwz.dynamic.entity.*;
 import com.pengwz.dynamic.utils.ClassUtils;
+import org.junit.Assert;
 import org.junit.Test;
 
 import java.time.LocalDate;
@@ -63,6 +64,19 @@ public class DynamicSqlTest {
     public void testClassUtils() {
         List<Class> classes = ClassUtils.getAllClassByFather(DataSourceConfig.class);
         classes.forEach(System.out::println);
+    }
+
+    @Test
+    public void executeDMLSql() {
+        int i = BraveSql.executeDMLSql("delete from t_user ", MyDBConfig.class);
+        Assert.assertEquals(1, i);
+    }
+
+    @Test
+    public void executeSelectSqlAndReturnSingle() {
+        UserEntity userEntity = BraveSql.executeSelectSqlAndReturnSingle("select * from t_user ", UserEntity.class, MyDBConfig.class);
+        System.out.println(userEntity);
+        Assert.assertNotNull(userEntity);
     }
 
     @Test

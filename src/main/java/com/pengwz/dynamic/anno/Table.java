@@ -10,6 +10,6 @@ import java.lang.annotation.*;
 public @interface Table {
     String value() default "";
 
-    Class<? extends DataSourceConfig> dataSourceClass();
+    Class<? extends DataSourceConfig> dataSourceClass() default DataSourceConfig.class;
 
 }

@@ -3,8 +3,8 @@ package com.pengwz.dynamic.sql;
 import com.pengwz.dynamic.anno.Table;
 import com.pengwz.dynamic.check.Check;
 import com.pengwz.dynamic.config.DataSourceConfig;
+import com.pengwz.dynamic.config.DataSourceManagement;
 import com.pengwz.dynamic.exception.BraveException;
-import com.pengwz.dynamic.model.DataSourceInfo;
 import com.pengwz.dynamic.sql.base.CustomizeSQL;
 import com.pengwz.dynamic.sql.base.Fn;
 import com.pengwz.dynamic.sql.base.Sqls;
@@ -60,8 +60,8 @@ public class BraveSql<T> {
         return tCustomizeSQL.selectSqlAndReturnList();
     }
 
-    public static int executeDMLSql(String sql, Class<? extends DataSourceConfig> dataSourceClas) {
-        CustomizeSQL<?> tCustomizeSQL = new CustomizeSQL<>(dataSourceClas, null, sql);
+    public static int executeDMLSql(String sql, Class<? extends DataSourceConfig> dataSourceClass) {
+        CustomizeSQL<?> tCustomizeSQL = new CustomizeSQL<>(dataSourceClass, null, sql);
         return tCustomizeSQL.executeDMLSql();
     }
 
@@ -84,31 +84,7 @@ public class BraveSql<T> {
             throw new BraveException("当前实体类：" + currentClass + "未获取到表名");
         }
         String tableName = table.value().trim();
-        String defalutDataSource;
-        Class<?> dataSourceClass = table.dataSourceClass();
-        if (Objects.isNull(dataSourceClass)) {
-            defalutDataSource = ContextApplication.getDefalutDataSource();
-            if (Objects.isNull(defalutDataSource)) {
-                throw new BraveException("须指定数据源；表名：" + tableName);
-            }
-        } else {
-            defalutDataSource = dataSourceClass.toString();
-            if (!ContextApplication.existsDataSouce(defalutDataSource)) {
-                try {
-                    DataSourceConfig dataSourceConfig = (DataSourceConfig) dataSourceClass.newInstance();
-                    DataSourceInfo dataSourceInfo = new DataSourceInfo();
-                    dataSourceInfo.setDefault(dataSourceConfig.defaultDataSource());
-                    dataSourceInfo.setClassPath(defalutDataSource);
-                    dataSourceInfo.setDataSource(dataSourceConfig.getDataSource());
-                    ContextApplication.putDataSource(dataSourceInfo);
-                } catch (InstantiationException e) {
-                    throw new BraveException(e.getMessage());
-                } catch (IllegalAccessException e) {
-                    throw new BraveException("必须提供无参构造器");
-                }
-            }
-
-        }
+        String defalutDataSource = DataSourceManagement.initDataSourceConfig(table.dataSourceClass(), tableName);
         Check.checkPageInfo(pageInfo);
         String whereSql = ParseSql.parse(currentClass, tableName, defalutDataSource, dynamicSql.getDeclarations(), orderByMap);
         //调正where子句的sql顺序 ，将来把它单独抽出来  作为组件
