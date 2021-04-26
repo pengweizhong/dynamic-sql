@@ -66,16 +66,12 @@ public final class DataSourceManagement {
 
     public static String initDataSourceConfig(Class<?> dataSourceClass, String tableName) {
         String dataSourceName;
-        if (Objects.isNull(dataSourceClass)) {
+        if (dataSourceClass.equals(DataSourceConfig.class)) {
             dataSourceName = ContextApplication.getDefalutDataSource();
             if (Objects.isNull(dataSourceName)) {
                 throw new BraveException("须指定数据源；表名：" + tableName);
             }
         } else {
-            if (dataSourceClass.equals(DataSourceConfig.class)) {
-                String tableNameDesc = tableName == null ? "" : "表名：" + tableName;
-                throw new BraveException("没有指定默认数据源时，则须指定数据源；" + tableNameDesc);
-            }
             dataSourceName = dataSourceClass.toString();
             if (!ContextApplication.existsDataSouce(dataSourceName)) {
                 try {
