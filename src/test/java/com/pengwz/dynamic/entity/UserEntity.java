@@ -4,24 +4,20 @@ import com.pengwz.dynamic.anno.Column;
 import com.pengwz.dynamic.anno.GeneratedValue;
 import com.pengwz.dynamic.anno.Id;
 import com.pengwz.dynamic.anno.Table;
-import com.pengwz.dynamic.config.MyDBConfig;
+import com.pengwz.dynamic.config.DatabaseConfig;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Date;
 
-@Table(value = "t_user", dataSourceClass = MyDBConfig.class)
+@Table(value = "t_user", dataSourceClass = DatabaseConfig.class)
 public class UserEntity {
     @Id
     @GeneratedValue
     private Long id;
-    @Column("name")
     private String username;
-    private String sex;
-    private LocalDate birthday;
-    private String phone;
+    private String password;
     private LocalDateTime createDate;
-    private Date updateDate;
+    @Column("update_date")
+    private LocalDateTime updateDate;
 
     public Long getId() {
         return id;
@@ -39,20 +35,12 @@ public class UserEntity {
         this.username = username;
     }
 
-    public String getSex() {
-        return sex;
+    public String getPassword() {
+        return password;
     }
 
-    public void setSex(String sex) {
-        this.sex = sex;
-    }
-
-    public LocalDate getBirthday() {
-        return birthday;
-    }
-
-    public void setBirthday(LocalDate birthday) {
-        this.birthday = birthday;
+    public void setPassword(String password) {
+        this.password = password;
     }
 
     public LocalDateTime getCreateDate() {
@@ -63,20 +51,12 @@ public class UserEntity {
         this.createDate = createDate;
     }
 
-    public Date getUpdateDate() {
+    public LocalDateTime getUpdateDate() {
         return updateDate;
     }
 
-    public void setUpdateDate(Date updateDate) {
+    public void setUpdateDate(LocalDateTime updateDate) {
         this.updateDate = updateDate;
-    }
-
-    public String getPhone() {
-        return phone;
-    }
-
-    public void setPhone(String phone) {
-        this.phone = phone;
     }
 
     @Override
@@ -84,9 +64,7 @@ public class UserEntity {
         return "UserEntity{" +
                 "id=" + id +
                 ", username='" + username + '\'' +
-                ", sex='" + sex + '\'' +
-                ", birthday=" + birthday +
-                ", phone='" + phone + '\'' +
+                ", password='" + password + '\'' +
                 ", createDate=" + createDate +
                 ", updateDate=" + updateDate +
                 '}';

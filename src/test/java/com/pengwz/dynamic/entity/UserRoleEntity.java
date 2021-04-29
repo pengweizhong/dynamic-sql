@@ -4,32 +4,26 @@ import com.pengwz.dynamic.anno.Column;
 import com.pengwz.dynamic.anno.GeneratedValue;
 import com.pengwz.dynamic.anno.Id;
 import com.pengwz.dynamic.anno.Table;
-import com.pengwz.dynamic.config.MyDBConfig;
+import com.pengwz.dynamic.config.DatabaseConfig;
 
-import java.math.BigDecimal;
-import java.math.BigInteger;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.concurrent.atomic.AtomicInteger;
 
-@Table(value = "t_user", dataSourceClass = MyDBConfig.class)
-public class UserEntity2 {
+@Table(value = "t_user", dataSourceClass = DatabaseConfig.class)
+public class UserRoleEntity {
     @Id
     @GeneratedValue
-    private AtomicInteger id;
-    @Column("name")
+    private Long id;
     private String username;
-    private String sex;
-    private LocalDate birthday;
-    private String phone;
+    private String role;
     private LocalDateTime createDate;
+    @Column("update_date")
     private LocalDateTime updateDate;
 
-    public AtomicInteger getId() {
+    public Long getId() {
         return id;
     }
 
-    public void setId(AtomicInteger id) {
+    public void setId(Long id) {
         this.id = id;
     }
 
@@ -41,20 +35,12 @@ public class UserEntity2 {
         this.username = username;
     }
 
-    public String getSex() {
-        return sex;
+    public String getRole() {
+        return role;
     }
 
-    public void setSex(String sex) {
-        this.sex = sex;
-    }
-
-    public LocalDate getBirthday() {
-        return birthday;
-    }
-
-    public void setBirthday(LocalDate birthday) {
-        this.birthday = birthday;
+    public void setRole(String role) {
+        this.role = role;
     }
 
     public LocalDateTime getCreateDate() {
@@ -73,22 +59,12 @@ public class UserEntity2 {
         this.updateDate = updateDate;
     }
 
-    public String getPhone() {
-        return phone;
-    }
-
-    public void setPhone(String phone) {
-        this.phone = phone;
-    }
-
     @Override
     public String toString() {
-        return "UserEntity{" +
+        return "UserRoleEntity{" +
                 "id=" + id +
                 ", username='" + username + '\'' +
-                ", sex='" + sex + '\'' +
-                ", birthday=" + birthday +
-                ", phone='" + phone + '\'' +
+                ", role='" + role + '\'' +
                 ", createDate=" + createDate +
                 ", updateDate=" + updateDate +
                 '}';
