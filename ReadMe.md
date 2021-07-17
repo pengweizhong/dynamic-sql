@@ -202,7 +202,7 @@ public class UserRoleEntity {
 
 
 > `dymamic-sql` 对实体类类型映射进行了加强，比如日期类在实体类中可以使用`java.util.Date`接收，或者使用`java.sql.Date`、`java.time.LocalDateTime`接收等等。
-> **实体类属性必须使用引入类型，因为基本类型在任何时候都不等于null**
+> **实体类属性必须使用引用类型，因为基本类型在任何时候都不等于null**
 
 ## 3. 新增
 ### 3.1 <span id="insertSingle"/>新增单条记录

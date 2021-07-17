@@ -1,6 +1,7 @@
 package com.pengwz.dynamic.sql.base;
 
 import com.pengwz.dynamic.anno.Column;
+import com.pengwz.dynamic.check.Check;
 import com.pengwz.dynamic.config.DataSourceConfig;
 import com.pengwz.dynamic.config.DataSourceManagement;
 import com.pengwz.dynamic.exception.BraveException;
@@ -12,13 +13,8 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import java.lang.reflect.Field;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
+import java.sql.*;
+import java.util.*;
 
 /**
  * 执行自定义SQL
@@ -31,18 +27,35 @@ public class CustomizeSQL<T> {
 
     private final String sql;
 
-    private Connection connection;
+    private final Connection connection;
 
-    private String dataSourceName;
+    private final String dataSourceName;
+
+    private Map<String, Field> columnFieldMap = new LinkedHashMap<>();
 
     public CustomizeSQL(Class<? extends DataSourceConfig> dataSource, Class<T> target, String sql) {
         this.target = target;
         this.sql = sql;
-        this.dataSourceName = dataSource.toString();
-        DataSourceManagement.initDataSourceConfig(dataSource,null);
-        this.connection = DataSourceManagement.initConnection(dataSource.toString());
+        this.dataSourceName = dataSource.getName();
+        DataSourceManagement.initDataSourceConfig(dataSource, "");
+        this.connection = DataSourceManagement.initConnection(dataSource.getName());
     }
 
+    /**
+     * 为spring容器提供的构造器
+     *
+     * @param dataSourceName 配置类路径
+     * @param target         返参类型
+     * @param sql            待执行sql
+     */
+    public CustomizeSQL(String dataSourceName, Class<T> target, String sql) {
+        this.target = target;
+        this.sql = sql;
+        this.dataSourceName = dataSourceName;
+        this.connection = DataSourceManagement.initConnection(dataSourceName);
+    }
+
+    @Deprecated
     public T selectSqlAndReturnSingle() {
         List<T> ts = selectSqlAndReturnList();
         if (ts.size() > 1) {
@@ -51,6 +64,7 @@ public class CustomizeSQL<T> {
         return ts.size() == 1 ? ts.get(0) : null;
     }
 
+    @Deprecated
     public List<T> selectSqlAndReturnList() {
         if (log.isDebugEnabled()) {
             log.debug(sql);
@@ -84,6 +98,7 @@ public class CustomizeSQL<T> {
         return selectResult;
     }
 
+    @Deprecated
     public int executeDMLSql() {
         if (log.isDebugEnabled()) {
             log.debug(sql);
@@ -99,4 +114,59 @@ public class CustomizeSQL<T> {
         }
         return -1;
     }
+
+    public List<T> executeQuery() {
+        if (log.isDebugEnabled()) {
+            log.debug(sql);
+        }
+        PreparedStatement preparedStatement = null;
+        try {
+            preparedStatement = connection.prepareStatement(sql);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            ResultSetMetaData metaData = resultSet.getMetaData();
+            int columnCount = metaData.getColumnCount();
+            List<T> resultList = new ArrayList<>();
+            while (resultSet.next()) {
+                fillingColumnFieldMap();
+                T instance = target.newInstance();
+                for (int i = 1; i <= columnCount; i++) {
+                    String columnName = metaData.getColumnName(i);
+                    Field field = columnFieldMap.get(columnName);
+                    Object o = ConverterUtils.convertJdbc(resultSet, columnName, field.getType());
+                    ReflectUtils.setFieldValue(field, instance, o);
+                }
+                resultList.add(instance);
+            }
+            return resultList;
+        } catch (SQLException | InstantiationException | IllegalAccessException e) {
+            ExceptionUtils.boxingAndThrowBraveException(e, sql);
+        } finally {
+            DataSourceManagement.close(dataSourceName, null, preparedStatement, connection);
+        }
+        return Collections.emptyList();
+    }
+
+    private void fillingColumnFieldMap() {
+        if (!columnFieldMap.isEmpty()) {
+            return;
+        }
+        Field[] declaredFields = target.getDeclaredFields();
+        for (Field field : declaredFields) {
+            if (Check.FILTER_TYPE_LIST.contains(field.getModifiers())) {
+                continue;
+            }
+            String columnName = Check.getColumnName(field, "unknown");
+            if (columnName.contains("`")) {
+                columnName = columnName.replace("`", "").trim();
+            }
+            if (Objects.nonNull(columnFieldMap.get(columnName))) {
+                throw new BraveException("重复的列名：" + columnFieldMap.get(columnName));
+            }
+            columnFieldMap.put(columnName, field);
+        }
+        if (columnFieldMap.isEmpty()) {
+            throw new BraveException("映射实体类未发现可用属性，发生在类：" + target.getName());
+        }
+    }
+
 }

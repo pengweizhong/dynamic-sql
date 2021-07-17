@@ -16,11 +16,24 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 public class Check {
 
     private static final Log log = LogFactory.getLog(Check.class);
+
+    public static final List<Integer> FILTER_TYPE_LIST = new ArrayList<>();
+
+    static {
+        FILTER_TYPE_LIST.add(Modifier.ABSTRACT);
+        FILTER_TYPE_LIST.add(Modifier.STATIC);
+        FILTER_TYPE_LIST.add(Modifier.FINAL);
+        FILTER_TYPE_LIST.add(Modifier.VOLATILE);
+        FILTER_TYPE_LIST.add(Modifier.NATIVE);
+        FILTER_TYPE_LIST.add(Modifier.INTERFACE);
+    }
 
     public static void checkAndSave(Class<?> currentClass, String tableName, String dataSource) {
         boolean existsTable = ContextApplication.existsTable(tableName, dataSource);
@@ -31,24 +44,14 @@ public class Check {
         int idCount = 0;
         List<TableInfo> tableInfos = new ArrayList<>();
         for (Field field : declaredFields) {
-            //静态类型，final类型不参与数据库查询
-            if (Modifier.isStatic(field.getModifiers()) || Modifier.isFinal(field.getModifiers())) {
+            //静态类型，final类型等等不参与数据库查询
+            if (FILTER_TYPE_LIST.contains(field.getModifiers())) {
                 continue;
             }
             if (field.getType().isPrimitive()) {
                 throw new BraveException("字段类型不可以是基本类型，因为基本类型在任何时候都不等于null，字段名：" + field.getName() + "，发生在表：" + tableName);
             }
             TableInfo tableInfo = new TableInfo();
-            String column;
-            Column columnAnno = field.getAnnotation(Column.class);
-            if (Objects.nonNull(columnAnno)) {
-                if (StringUtils.isEmpty(columnAnno.value())) {
-                    throw new BraveException("Column列名不可以为空，字段名：" + field.getName() + "，发生在表：" + tableName);
-                }
-                column = columnAnno.value().replace(" ", "");
-            } else {
-                column = StringUtils.caseField(field.getName());
-            }
             Id id = field.getAnnotation(Id.class);
             if (Objects.nonNull(id)) {
                 idCount++;
@@ -57,7 +60,7 @@ public class Check {
                 tableInfo.setPrimary(false);
             }
             tableInfo.setField(field);
-            tableInfo.setColumn(column);
+            tableInfo.setColumn(getColumnName(field, tableName));
             GeneratedValue generatedValue = field.getAnnotation(GeneratedValue.class);
             if (Objects.nonNull(generatedValue)) {
                 if (!Number.class.isAssignableFrom(field.getType()) && generatedValue.strategy().equals(GenerationType.AUTO)) {
@@ -70,6 +73,16 @@ public class Check {
         if (idCount > 1) {
             throw new BraveException("获取到多个主键，发生在表：" + tableName);
         }
+        //校验重复列  空列
+        if (tableInfos.isEmpty()) {
+            throw new BraveException("映射实体类未发现可用属性，发生在表：" + tableName);
+        }
+        Map<String, List<TableInfo>> stringListMap = tableInfos.stream().collect(Collectors.groupingBy(TableInfo::getColumn));
+        stringListMap.forEach((column, tableInfoList) -> {
+            if (tableInfoList.size() > 1) {
+                throw new BraveException("重复的列名：" + column + "，发生在表：" + tableName);
+            }
+        });
         ContextApplication.saveTable(dataSource, tableName, tableInfos);
     }
 
@@ -81,6 +94,19 @@ public class Check {
             pageInfo.setPageIndex(1);
         }
         pageInfo.setOffset((pageInfo.getPageIndex() - 1) * pageInfo.getPageSize());
+    }
 
+    public static String getColumnName(Field field, String tableName) {
+        Column columnAnno = field.getAnnotation(Column.class);
+        String column;
+        if (Objects.nonNull(columnAnno)) {
+            if (StringUtils.isEmpty(columnAnno.value())) {
+                throw new BraveException("Column列名不可以为空，字段名：" + field.getName() + "，发生在表：" + tableName);
+            }
+            column = columnAnno.value().replace(" ", "");
+        } else {
+            column = StringUtils.caseField(field.getName());
+        }
+        return column;
     }
 }

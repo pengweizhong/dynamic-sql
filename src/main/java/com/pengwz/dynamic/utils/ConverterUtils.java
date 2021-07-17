@@ -51,22 +51,22 @@ public class ConverterUtils {
         throw new BraveException(err);
     }
 
-    public static <T> T convertJdbc(ResultSet resultSet, String fieldName, Class<T> targetType) throws SQLException {
+    public static <T> T convertJdbc(ResultSet resultSet, String columnName, Class<T> targetType) throws SQLException {
         if (Objects.isNull(resultSet)) {
             throw new BraveException("java.sql.ResultSet不可为null");
         }
-        if (fieldName.contains("`")) {
-            fieldName = fieldName.replace("`", "").trim();
+        if (columnName.contains("`")) {
+            columnName = columnName.replace("`", "").trim();
         }
         if (java.util.Date.class.isAssignableFrom(targetType)) {
-            Object object = resultSet.getObject(fieldName);
+            Object object = resultSet.getObject(columnName);
             return convert(object, targetType);
         }
         try {
-            return resultSet.getObject(fieldName, targetType);
+            return resultSet.getObject(columnName, targetType);
         } catch (SQLException e) {
             // ignore exception,try again
-            return convert(resultSet.getObject(fieldName), targetType);
+            return convert(resultSet.getObject(columnName), targetType);
         }
     }
 }

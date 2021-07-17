@@ -21,7 +21,7 @@ public class ContextApplication {
     private static final Map<String, Map<String, List<TableInfo>>> dataBaseMap = new ConcurrentHashMap<>();
     private static final Map<String, DataSourceInfo> dataSourcesMap = new ConcurrentHashMap<>();
 
-    public static String getDefalutDataSource() {
+    public static String getDefalutDataSourceName() {
         for (DataSourceInfo sourceInfo : dataSourcesMap.values()) {
             if (sourceInfo.isDefault()) {
                 return sourceInfo.getClassPath();

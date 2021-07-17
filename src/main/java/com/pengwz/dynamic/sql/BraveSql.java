@@ -41,30 +41,6 @@ public class BraveSql<T> {
         return new BraveSql<>(DynamicSql.createDynamicSql(), currentClass);
     }
 
-    /**
-     * 直接执行sql
-     *
-     * @param sql          查询sql
-     * @param currentClass 查询返回结果
-     * @param dataSource   目标数据库
-     * @param <T>
-     * @return 返回查询结果
-     */
-    public static <T> T executeSelectSqlAndReturnSingle(String sql, Class<T> currentClass, Class<? extends DataSourceConfig> dataSourceClass) {
-        CustomizeSQL<T> tCustomizeSQL = new CustomizeSQL<>(dataSourceClass, currentClass, sql);
-        return tCustomizeSQL.selectSqlAndReturnSingle();
-    }
-
-    public static <T> List<T> executeSelectSqlAndReturnList(String sql, Class<T> currentClass, Class<? extends DataSourceConfig> dataSourceClass) {
-        CustomizeSQL<T> tCustomizeSQL = new CustomizeSQL<>(dataSourceClass, currentClass, sql);
-        return tCustomizeSQL.selectSqlAndReturnList();
-    }
-
-    public static int executeDMLSql(String sql, Class<? extends DataSourceConfig> dataSourceClass) {
-        CustomizeSQL<?> tCustomizeSQL = new CustomizeSQL<>(dataSourceClass, null, sql);
-        return tCustomizeSQL.executeDMLSql();
-    }
-
     public DynamicSql getDynamicSql() {
         return dynamicSql;
     }
@@ -77,23 +53,45 @@ public class BraveSql<T> {
         return pageInfo;
     }
 
-    private Sqls<T> mustShare() {
-        // 解析where语句
-        Table table = currentClass.getAnnotation(Table.class);
-        if (Objects.isNull(table) || StringUtils.isEmpty(table.value())) {
-            throw new BraveException("当前实体类：" + currentClass + "未获取到表名");
-        }
-        String tableName = table.value().trim();
-        String defalutDataSource = DataSourceManagement.initDataSourceConfig(table.dataSourceClass(), tableName);
-        Check.checkPageInfo(pageInfo);
-        String whereSql = ParseSql.parse(currentClass, tableName, defalutDataSource, dynamicSql.getDeclarations(), orderByMap);
-        //调正where子句的sql顺序 ，将来把它单独抽出来  作为组件
-        whereSql = ParseSql.fixWhereSql(whereSql);
-        SqlImpl<T> sqls = new SqlImpl<>();
-        sqls.init(currentClass, pageInfo, data, dynamicSql.getUpdateNullProperties(), tableName, defalutDataSource, whereSql);
-        //优化他
-        sqls.before();
-        return sqls;
+    /**
+     * 直接执行sql
+     *
+     * @param sql          查询sql
+     * @param currentClass 查询返回结果
+     * @param dataSource   目标数据库
+     * @param <T>
+     * @return 返回查询结果
+     */
+    @Deprecated
+    public static <T> T executeSelectSqlAndReturnSingle(String sql, Class<T> currentClass, Class<? extends DataSourceConfig> dataSourceClass) {
+        CustomizeSQL<T> tCustomizeSQL = new CustomizeSQL<>(dataSourceClass, currentClass, sql);
+        return tCustomizeSQL.selectSqlAndReturnSingle();
+    }
+
+    @Deprecated
+    public static <T> List<T> executeSelectSqlAndReturnList(String sql, Class<T> currentClass, Class<? extends DataSourceConfig> dataSourceClass) {
+        CustomizeSQL<T> tCustomizeSQL = new CustomizeSQL<>(dataSourceClass, currentClass, sql);
+        return tCustomizeSQL.selectSqlAndReturnList();
+    }
+
+    @Deprecated
+    public static int executeDMLSql(String sql, Class<? extends DataSourceConfig> dataSourceClass) {
+        CustomizeSQL<?> tCustomizeSQL = new CustomizeSQL<>(dataSourceClass, null, sql);
+        return tCustomizeSQL.executeDMLSql();
+    }
+
+    /**
+     * 为spring容器提供的方法，单体项目调用{@link this#executeQuery(String, Class)}
+     *
+     * @param querySql
+     * @return
+     */
+    public List<T> executeQuery(String querySql) {
+        return new CustomizeSQL<T>(ContextApplication.getDefalutDataSourceName(), currentClass, querySql).executeQuery();
+    }
+
+    public List<T> executeQuery(String querySql, Class<? extends DataSourceConfig> dataSourceClass) {
+        return new CustomizeSQL<T>(dataSourceClass, currentClass, querySql).executeQuery();
     }
 
     public List<T> select() {
@@ -250,6 +248,7 @@ public class BraveSql<T> {
         return mustShare().deleteByPrimaryKey(key);
     }
 
+
     public final BraveSql<T> orderByAsc(String... feilds) {
         if (Objects.isNull(feilds)) {
             throw new BraveException("当选择排序时，排序的字段不可为空");
@@ -300,6 +299,25 @@ public class BraveSql<T> {
             fillingOrderByMap("desc", fieldName);
         }
         return this;
+    }
+
+    private Sqls<T> mustShare() {
+        // 解析where语句
+        Table table = currentClass.getAnnotation(Table.class);
+        if (Objects.isNull(table) || StringUtils.isEmpty(table.value())) {
+            throw new BraveException("当前实体类：" + currentClass + "未获取到表名");
+        }
+        String tableName = table.value().trim();
+        String defalutDataSource = DataSourceManagement.initDataSourceConfig(table.dataSourceClass(), tableName);
+        Check.checkPageInfo(pageInfo);
+        String whereSql = ParseSql.parse(currentClass, tableName, defalutDataSource, dynamicSql.getDeclarations(), orderByMap);
+        //调正where子句的sql顺序 ，将来把它单独抽出来  作为组件
+        whereSql = ParseSql.fixWhereSql(whereSql);
+        SqlImpl<T> sqls = new SqlImpl<>();
+        sqls.init(currentClass, pageInfo, data, dynamicSql.getUpdateNullProperties(), tableName, defalutDataSource, whereSql);
+        //优化他
+        sqls.before();
+        return sqls;
     }
 
     private void fillingOrderByMap(String ascOrDesc, String feild) {
