@@ -55,6 +55,9 @@ public class ConverterUtils {
         if (Objects.isNull(resultSet)) {
             throw new BraveException("java.sql.ResultSet不可为null");
         }
+        if (fieldName.contains("`")) {
+            fieldName = fieldName.replace("`", "").trim();
+        }
         if (java.util.Date.class.isAssignableFrom(targetType)) {
             Object object = resultSet.getObject(fieldName);
             return convert(object, targetType);

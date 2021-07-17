@@ -69,10 +69,10 @@ public final class DataSourceManagement {
         if (dataSourceClass.equals(DataSourceConfig.class)) {
             dataSourceName = ContextApplication.getDefalutDataSource();
             if (Objects.isNull(dataSourceName)) {
-                throw new BraveException("须指定数据源；表名：" + tableName);
+                throw new BraveException("在不存在默认数据源的情况下，须显式指定数据源；表名：" + tableName);
             }
         } else {
-            dataSourceName = dataSourceClass.toString();
+            dataSourceName = dataSourceClass.getName();
             if (!ContextApplication.existsDataSouce(dataSourceName)) {
                 try {
                     DataSourceConfig dataSourceConfig = (DataSourceConfig) dataSourceClass.newInstance();

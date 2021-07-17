@@ -1,5 +1,6 @@
 package com.pengwz.dynamic.sql.base.impl;
 
+import com.pengwz.dynamic.anno.GenerationType;
 import com.pengwz.dynamic.config.DataSourceManagement;
 import com.pengwz.dynamic.constant.Constant;
 import com.pengwz.dynamic.exception.BraveException;
@@ -12,13 +13,16 @@ import com.pengwz.dynamic.utils.*;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import java.sql.*;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Objects;
+import java.lang.reflect.Field;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.*;
 
+import static com.pengwz.dynamic.anno.GenerationType.AUTO;
 import static com.pengwz.dynamic.constant.Constant.*;
+import static java.sql.Statement.RETURN_GENERATED_KEYS;
 
 public class SqlImpl<T> implements Sqls<T> {
     private static final Log log = LogFactory.getLog(SqlImpl.class);
@@ -163,19 +167,25 @@ public class SqlImpl<T> implements Sqls<T> {
         T next = data.iterator().next();
         final StringBuilder prefix = new StringBuilder();
         final StringBuilder suffix = new StringBuilder();
-        prefix.append("insert into ").append(tableName).append(" ( ");/*.append(columnToStr).append(" ) values ");*/
+        prefix.append("insert into ").append(tableName).append(" ( ");
         List<Object> insertValues = new ArrayList<>();
         for (TableInfo tableInfo : tableInfos) {
             try {
-                Object invoke = ReflectUtils.getFieldValue(tableInfo.getField(), next);
-                if (Objects.isNull(invoke)) {
-                    continue;
+                Object invoke;
+                //判断自增字符串型主键
+                if (tableInfo.getGenerationType() != null && !tableInfo.getGenerationType().equals(AUTO)) {
+                    invoke = setUUIDGenerationType(tableInfo, next);
+                } else {
+                    invoke = ReflectUtils.getFieldValue(tableInfo.getField(), next);
+                    if (Objects.isNull(invoke)) {
+                        continue;
+                    }
                 }
                 prefix.append(SPACE).append(tableInfo.getColumn()).append(COMMA);
                 suffix.append("?, ");
                 insertValues.add(invoke);
             } catch (Exception ex) {
-                throw new BraveException(ex.getMessage(), ex);
+                ExceptionUtils.boxingAndThrowBraveException(ex);
             }
         }
         suffix.deleteCharAt(suffix.lastIndexOf(","));
@@ -183,7 +193,7 @@ public class SqlImpl<T> implements Sqls<T> {
         prefix.append(" ) values (").append(suffix).append(")");
         String sql = prefix.toString();
         try {
-            preparedStatement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+            preparedStatement = connection.prepareStatement(sql, RETURN_GENERATED_KEYS);
             for (int i = 1; i <= insertValues.size(); i++) {
                 preparedStatement.setObject(i, insertValues.get(i - 1));
             }
@@ -199,14 +209,27 @@ public class SqlImpl<T> implements Sqls<T> {
     }
 
 
+//    private void appendSqlActive(){
+//        prefix.append(SPACE).append(tableInfo.getColumn()).append(COMMA);
+//        suffix.append("?, ");
+//        insertValues.add(invoke);
+//    }
+
     private Integer setValuesExecuteSql(String sql, List<TableInfo> tableInfos) {
         Iterator<T> iterator = data.iterator();
         try {
-            preparedStatement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+            preparedStatement = connection.prepareStatement(sql, RETURN_GENERATED_KEYS);
             while (iterator.hasNext()) {
                 T next = iterator.next();
                 for (int i = 1; i <= tableInfos.size(); i++) {
-                    Object fieldValue = ReflectUtils.getFieldValue(tableInfos.get(i - 1).getField(), next);
+                    TableInfo tableInfo = tableInfos.get(i - 1);
+                    Field field = tableInfo.getField();
+                    Object fieldValue;
+                    if (tableInfo.getGenerationType() != null && !tableInfo.getGenerationType().equals(AUTO)) {
+                        fieldValue = setUUIDGenerationType(tableInfo, next);
+                    } else {
+                        fieldValue = ReflectUtils.getFieldValue(field, next);
+                    }
                     preparedStatement.setObject(i, fieldValue);
                 }
                 printSql(preparedStatement);
@@ -221,23 +244,36 @@ public class SqlImpl<T> implements Sqls<T> {
         return -1;
     }
 
+    private Object setUUIDGenerationType(TableInfo tableInfo, T next) {
+        Object invoke = ReflectUtils.getFieldValue(tableInfo.getField(), next);
+        if (Objects.isNull(invoke)) {
+            if (!String.class.equals(tableInfo.getField().getType())) {
+                throw new BraveException("使用UUID自增时，属性必须为String类型，但是此时类型为：" + tableInfo.getField().getType() + "，发生在表：" + tableName);
+            }
+            invoke = GenerationType.UUID.equals(tableInfo.getGenerationType()) ? UUID.randomUUID().toString() : UUID.randomUUID().toString().replace("-", "");
+            ReflectUtils.setFieldValue(tableInfo.getField(), next, invoke);
+        }
+        return invoke;
+    }
+
     private Integer executeSqlAndReturnAffectedRows() throws SQLException {
         int successCount = -1;
         int[] ints = preparedStatement.executeBatch();
         successCount = ints.length;
         TableInfo tableInfoPrimaryKey = ContextApplication.getTableInfoPrimaryKey(dataSourceName, tableName);
-        if (Objects.nonNull(tableInfoPrimaryKey)) {
-            if (tableInfoPrimaryKey.isGeneratedValue()) {
-                Iterator<T> resultIterator = data.iterator();
-                ResultSet generatedKeys = preparedStatement.getGeneratedKeys();
-                while (resultIterator.hasNext()) {
-                    T next = resultIterator.next();
-                    Object primaryKeyValue = ReflectUtils.getFieldValue(tableInfoPrimaryKey.getField(), next);
-                    if (Objects.isNull(primaryKeyValue)) {
-                        generatedKeys.next();
-                        Object object = generatedKeys.getObject(Statement.RETURN_GENERATED_KEYS, tableInfoPrimaryKey.getField().getType());
-                        ReflectUtils.setFieldValue(tableInfoPrimaryKey.getField(), next, object);
-                    }
+        if (Objects.nonNull(tableInfoPrimaryKey) && Objects.nonNull(tableInfoPrimaryKey.getGenerationType()) && tableInfoPrimaryKey.getGenerationType().equals(AUTO)) {
+            if (!Number.class.isAssignableFrom(tableInfoPrimaryKey.getField().getType())) {
+                return successCount;
+            }
+            Iterator<T> resultIterator = data.iterator();
+            ResultSet generatedKeys = preparedStatement.getGeneratedKeys();
+            while (resultIterator.hasNext()) {
+                T next = resultIterator.next();
+                Object primaryKeyValue = ReflectUtils.getFieldValue(tableInfoPrimaryKey.getField(), next);
+                if (Objects.isNull(primaryKeyValue)) {
+                    generatedKeys.next();
+                    Object object = generatedKeys.getObject(RETURN_GENERATED_KEYS, tableInfoPrimaryKey.getField().getType());
+                    ReflectUtils.setFieldValue(tableInfoPrimaryKey.getField(), next, object);
                 }
             }
         }

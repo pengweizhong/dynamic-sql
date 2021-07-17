@@ -1,5 +1,7 @@
 package com.pengwz.dynamic.model;
 
+import com.pengwz.dynamic.anno.GenerationType;
+
 import java.lang.reflect.Field;
 
 public class TableInfo {
@@ -9,8 +11,8 @@ public class TableInfo {
     private String property;
     //是否为主键
     private boolean isPrimary;
-    //新增数据是否需要生成主键
-    private boolean isGeneratedValue;
+    //主键生成策略
+    private GenerationType generationType;
     //实体类字段
     private Field field;
 
@@ -38,12 +40,12 @@ public class TableInfo {
         isPrimary = primary;
     }
 
-    public boolean isGeneratedValue() {
-        return isGeneratedValue;
+    public GenerationType getGenerationType() {
+        return generationType;
     }
 
-    public void setGeneratedValue(boolean generatedValue) {
-        isGeneratedValue = generatedValue;
+    public void setGenerationType(GenerationType generationType) {
+        this.generationType = generationType;
     }
 
     public Field getField() {
@@ -60,7 +62,7 @@ public class TableInfo {
                 "column='" + column + '\'' +
                 ", property='" + property + '\'' +
                 ", isPrimary=" + isPrimary +
-                ", isGeneratedValue=" + isGeneratedValue +
+                ", generationType=" + generationType +
                 ", field=" + field +
                 '}';
     }

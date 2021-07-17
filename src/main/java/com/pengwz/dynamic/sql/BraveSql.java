@@ -80,7 +80,7 @@ public class BraveSql<T> {
     private Sqls<T> mustShare() {
         // 解析where语句
         Table table = currentClass.getAnnotation(Table.class);
-        if (Objects.isNull(table) || StringUtils.isEmpty(table.value().trim())) {
+        if (Objects.isNull(table) || StringUtils.isEmpty(table.value())) {
             throw new BraveException("当前实体类：" + currentClass + "未获取到表名");
         }
         String tableName = table.value().trim();
