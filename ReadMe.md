@@ -27,7 +27,7 @@
 	    <version>1.1.7</version>
 	</dependency>
 	
-	<-- springBoot项目，已集成dynamic-sql -->
+	<-- springBoot项目，已集成dynx`amic-sql -->
 	<dependency>
 	    <groupId>com.pengwz</groupId>
 	    <artifactId>dynamic-sql-spring-boot-starter</artifactId>
@@ -194,11 +194,11 @@ public class UserRoleEntity {
 - value：表示对应数据库表名，必须提供该值
 - dataSourceClass：表示该表所属数据源，非spring环境必须提供
 
-`@Id`注解用于表示那个属性对应表主键，在实体类中标识该主键后，即可用于后续根据主键查询、更新等操作，该注解非强制添加，但建议使用
-`@GeneratedValue`注解用于在新增数据后，返回主键值。该注解非强制添加，但建议使用
-`@Column`注解用于维护表列和实体类属性的关系，对于该情况下有下列处理办法：
-- 当实体类属性标注了` @Column`注解，则以注解内value匹配表列；
-- 若没有` @Column`注解，则以实体类的属性，根据驼峰命名规则匹配表列，如：实体类属性`createDate`匹配表列`create_date`。
+`@Id`注解用于表示那个属性对应表主键，在实体类中标识该主键后，即可用于后续根据主键查询、更新等操作，该注解非强制添加，但建议使用  
+`@GeneratedValue`注解用于在新增数据后，返回主键值。该注解非强制添加，但建议使用  
+`@Column`注解用于维护表列和实体类属性的关系，对于该情况下有下列处理办法：  
+- 当实体类属性标注了` @Column`注解，则以注解内value匹配表列；  
+- 若没有` @Column`注解，则以实体类的属性，根据驼峰命名规则匹配表列，如：实体类属性`createDate`匹配表列`create_date`。  
 
 
 > `dymamic-sql` 对实体类类型映射进行了加强，比如日期类在实体类中可以使用`java.util.Date`接收，或者使用`java.sql.Date`、`java.time.LocalDateTime`接收等等。
