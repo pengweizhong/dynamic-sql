@@ -33,6 +33,8 @@ public interface Sqls<T> {
 
     Integer updateByPrimaryKey();
 
+    Integer updateActiveByPrimaryKey();
+
     Integer delete();
 
     Integer deleteByPrimaryKey(Object primaryKeyValue);

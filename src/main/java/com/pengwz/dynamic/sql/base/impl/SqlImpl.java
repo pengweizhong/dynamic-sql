@@ -350,23 +350,57 @@ public class SqlImpl<T> implements Sqls<T> {
         if (Objects.isNull(tableInfoPrimaryKey)) {
             throw new BraveException(tableName + " 表未配置主键");
         }
-        T next = data.iterator().next();
         StringBuilder sql = new StringBuilder();
         sql.append("update ").append(tableName).append(" set");
+        T next = data.iterator().next();
+        for (TableInfo tableInfo : tableInfos) {
+            try {
+                Object invoke = ReflectUtils.getFieldValue(tableInfo.getField(), next);
+                sql.append(SPACE).append(tableInfo.getColumn()).append(SPACE).append(EQ).append(SPACE);
+                sql.append(ParseSql.matchValue(invoke)).append(COMMA);
+            } catch (Exception ex) {
+                ExceptionUtils.boxingAndThrowBraveException(ex, sql.toString());
+            }
+        }
+        if (sql.toString().endsWith("set")) {
+            return 0;
+        }
+        String sqlPrefix = sql.substring(0, sql.length() - 1);
+        Object primaryKeyValue = getPrimaryKeyValue(tableInfoPrimaryKey, next);
+        sqlPrefix = sqlPrefix + SPACE + WHERE + SPACE + tableInfoPrimaryKey.getColumn() + SPACE + EQ + SPACE + ParseSql.matchValue(primaryKeyValue);
+        String parseSql = ParseSql.parseSql(sqlPrefix);
+        return executeUpdateSqlAndReturnAffectedRows(parseSql);
+    }
+
+    private Object getPrimaryKeyValue(TableInfo tableInfoPrimaryKey, Object next) {
         Object primaryKeyValue;
         try {
             primaryKeyValue = ReflectUtils.getFieldValue(tableInfoPrimaryKey.getField(), next);
             if (Objects.isNull(primaryKeyValue)) {
-                throw new BraveException(tableName + " 表的主键值不存在", "SQL：" + sql);
+                throw new BraveException(tableName + " 表的主键值不存在");
             }
         } catch (Exception e) {
             throw new BraveException(tableName + " 表获取主键值失败，原因：" + e.getMessage(), e);
         }
+        return primaryKeyValue;
+    }
+
+    @Override
+    public Integer updateActiveByPrimaryKey() {
+        List<TableInfo> tableInfos = ContextApplication.getTableInfos(dataSourceName, tableName);
+        TableInfo tableInfoPrimaryKey = ContextApplication.getTableInfoPrimaryKey(dataSourceName, tableName);
+        if (Objects.isNull(tableInfoPrimaryKey)) {
+            throw new BraveException(tableName + " 表未配置主键");
+        }
+        T next = data.iterator().next();
+        StringBuilder sql = new StringBuilder();
+        sql.append("update ").append(tableName).append(" set");
         updateSqlCheckSetNullProperties(sql, tableInfos, next);
         if (sql.toString().endsWith("set")) {
             return 0;
         }
         String sqlPrefix = sql.substring(0, sql.length() - 1);
+        Object primaryKeyValue = getPrimaryKeyValue(tableInfoPrimaryKey, next);
         sqlPrefix = sqlPrefix + SPACE + WHERE + SPACE + tableInfoPrimaryKey.getColumn() + SPACE + EQ + SPACE + ParseSql.matchValue(primaryKeyValue);
         String parseSql = ParseSql.parseSql(sqlPrefix);
         return executeUpdateSqlAndReturnAffectedRows(parseSql);

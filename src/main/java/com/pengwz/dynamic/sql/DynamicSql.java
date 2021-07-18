@@ -55,12 +55,20 @@ public class DynamicSql<T> {
 
     /**
      * 当需要更新字符串为null时
-     * 该方法仅对 {@code updateActive(T data)} 语句生效
-     * 其实这个方法写在此类中是不合适的，后期考虑优化他
+     * 该方法仅对 {@code updateActive[xxx](T data)} 语句生效
      */
-    public DynamicSql<T> setNullColumnByUpdate(Fn<T, Object> fn) {
+    public DynamicSql<T> setNullColumnByUpdateActive(Fn<T, Object> fn) {
         String fieldName = ReflectUtils.fnToFieldName(fn);
         this.updateNullProperties.add(fieldName);
+        return this;
+    }
+
+    /**
+     * 当需要更新字符串为null时
+     * 该方法仅对 {@code updateActive[xxx](T data)} 语句生效
+     */
+    public DynamicSql<T> setNullColumnByUpdateActive(String property) {
+        this.updateNullProperties.add(property);
         return this;
     }
 

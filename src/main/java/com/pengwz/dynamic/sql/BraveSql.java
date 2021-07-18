@@ -266,6 +266,14 @@ public class BraveSql<T> {
         return mustShare().updateByPrimaryKey();
     }
 
+    public Integer updateActiveByPrimaryKey(T data) {
+        if (Objects.isNull(data)) {
+            throw new BraveException("必须提供待更新的主键值");
+        }
+        this.data = Collections.singletonList(data);
+        return mustShare().updateActiveByPrimaryKey();
+    }
+
     public Integer delete() {
         return mustShare().delete();
     }

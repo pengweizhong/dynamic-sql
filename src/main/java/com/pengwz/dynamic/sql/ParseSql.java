@@ -48,10 +48,11 @@ public class ParseSql {
                 }
                 whereSql.append(declaration.getHandleFunction().execute(tableName, declaration)).append(SPACE);
             } else if (declaration.getCondition().equals(BETWEEN) || declaration.getCondition().equals(NOT_BETWEEN)) {
+                whereSql.append(declaration.getAndOr()).append(SPACE);
                 whereSql.append(ContextApplication.getColumnByField(dataSource, tableName, declaration.getProperty())).append(SPACE);
                 whereSql.append(declaration.getCondition()).append(SPACE);
                 whereSql.append(matchValue(declaration.getValue())).append(SPACE);
-                whereSql.append(declaration.getAndOr()).append(SPACE);
+                whereSql.append(AND).append(SPACE);
                 whereSql.append(matchValue(declaration.getValue2())).append(SPACE);
             } else {
                 whereSql.append(declaration.getAndOr()).append(SPACE);
