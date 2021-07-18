@@ -86,7 +86,7 @@ public class BraveSql<T> {
         new CustomizeSQL<T>(ContextApplication.getDefalutDataSourceName(), currentClass, executeSql).executeDDL();
     }
 
-    public void executeDDL(String ddlSql, Class<? extends DataSourceConfig> dataSourceClass) {
+    public void executeSql(String ddlSql, Class<? extends DataSourceConfig> dataSourceClass) {
         new CustomizeSQL<T>(dataSourceClass, currentClass, ddlSql).executeDDL();
     }
 
