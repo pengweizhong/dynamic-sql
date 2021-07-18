@@ -234,4 +234,15 @@ public class CustomizeSQL<T> {
         }
     }
 
+    public void executeDDL() {
+        PreparedStatement preparedStatement = null;
+        try {
+            preparedStatement = connection.prepareStatement(sql);
+            preparedStatement.execute(sql);
+        } catch (Exception ex) {
+            ExceptionUtils.boxingAndThrowBraveException(ex, sql);
+        } finally {
+            DataSourceManagement.close(dataSourceName, null, preparedStatement, connection);
+        }
+    }
 }

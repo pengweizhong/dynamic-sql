@@ -102,6 +102,19 @@ public class BraveSql<T> {
         return new CustomizeSQL<T>(ContextApplication.getDefalutDataSourceName(), currentClass, querySql).executeQuerySingle();
     }
 
+    /**
+     * 执行CREATE、ALTER或DROP语句，若果当前对象有权限。否则将抛出异常
+     *
+     * @param ddlSql
+     */
+    public void executeDDL(String ddlSql) {
+        new CustomizeSQL<T>(ContextApplication.getDefalutDataSourceName(), currentClass, ddlSql).executeDDL();
+    }
+
+    public void executeDDL(String ddlSql, Class<? extends DataSourceConfig> dataSourceClass) {
+        new CustomizeSQL<T>(ContextApplication.getDefalutDataSourceName(), currentClass, ddlSql).executeDDL();
+    }
+
     public List<T> select() {
         return mustShare().select();
     }
