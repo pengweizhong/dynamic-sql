@@ -59,11 +59,12 @@ public class ContextApplication {
         }
         if (Objects.isNull(dataSourcesMap.get(dataSource.getClassPath()))) {
             if (dataSource.getDataSourceBeanName() != null) {
-                log.info("初始化数据源" + (dataSourcesMap.size() + 1) + "：" + (dataSource.getDataSourceBeanName()) + "，所属类：" + dataSource.getClassPath());
+                log.info("Get the data source name [" + (dataSourcesMap.size() + 1) + "-" + (dataSource.getDataSourceBeanName()) + "]，belong to the category [" + dataSource.getClassPath() + "]");
             } else if (dataSource.getClassBeanName() != null) {
-                log.info("初始化数据源" + (dataSourcesMap.size() + 1) + "：" + (dataSource.getClassBeanName()) + "，所属类：" + dataSource.getClassPath());
+                log.info("Get the data source name [" + (dataSourcesMap.size() + 1) + "-" + (dataSource.getClassBeanName()) + "]，belong to the category [" + dataSource.getClassPath() + "]");
             } else {
-                log.info("初始化数据源" + (dataSourcesMap.size() + 1) + "：" + (dataSource.getClassPath()));
+                log.info("Get the data source name [" + (dataSourcesMap.size() + 1) + "]，belong to the category [" + dataSource.getClassPath() + "]");
+
             }
             dataSourcesMap.put(dataSource.getClassPath(), dataSource);
         }
