@@ -103,6 +103,10 @@ public class ParseSql {
                     continue;
                 }
                 if ((checkStr).equals(LEFT_BRACKETS + AND) || (checkStr).equals(LEFT_BRACKETS + OR)) {
+                    String element = list.get(i - 1);
+                    if (!element.equals(AND) && !element.equals(OR) && !element.equals(WHERE)) {
+                        sb.append(list.get(i + 1)).append(SPACE);
+                    }
                     sb.append(list.get(i)).append(SPACE);
                     i++;
                     continue;

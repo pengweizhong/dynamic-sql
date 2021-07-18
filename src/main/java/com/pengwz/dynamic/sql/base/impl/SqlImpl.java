@@ -96,7 +96,8 @@ public class SqlImpl<T> implements Sqls<T> {
     @Override
     public PageInfo<T> selectPageInfo() {
         String columnList = ContextApplication.formatAllColumToStr(dataSourceName, tableName);
-        String sqlCount = SELECT + SPACE + "count(1)" + SPACE + FROM + SPACE + tableName;
+        String sqlCount = SELECT + SPACE + "count(1)" + SPACE + FROM + SPACE + tableName + (StringUtils.isEmpty(whereSql) ? SPACE : SPACE + WHERE + SPACE + whereSql.trim());
+        sqlCount = ParseSql.parseSql(sqlCount);
         int totalSize = executeQueryCount(sqlCount, false);
         String sql = "select " + columnList + " from " + tableName + (StringUtils.isEmpty(whereSql) ? SPACE : SPACE + WHERE + SPACE + whereSql.trim());
         sql = ParseSql.parseSql(sql);
@@ -114,6 +115,9 @@ public class SqlImpl<T> implements Sqls<T> {
             resultSet.next();
             return resultSet.getInt(1);
         } catch (Exception ex) {
+            //如果发生异常，则必须归还链接资源
+            if (!isCloseConnection)
+                isCloseConnection = true;
             ExceptionUtils.boxingAndThrowBraveException(ex, sql);
         } finally {
             if (isCloseConnection) {
