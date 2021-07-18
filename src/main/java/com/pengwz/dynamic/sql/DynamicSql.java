@@ -101,7 +101,7 @@ public class DynamicSql<T> {
     }
 
     public DynamicSql<T> andIsNull(String property) {
-        this.getDeclarations().add(Declaration.buildDeclaration(AND, property, "is null"));
+        this.getDeclarations().add(Declaration.buildDeclaration(AND, property, "is "));
         return this;
     }
 
@@ -110,7 +110,7 @@ public class DynamicSql<T> {
     }
 
     public DynamicSql<T> orIsNull(String property) {
-        this.getDeclarations().add(Declaration.buildDeclaration(OR, property, "is null"));
+        this.getDeclarations().add(Declaration.buildDeclaration(OR, property, "is "));
         return this;
     }
 
@@ -119,7 +119,7 @@ public class DynamicSql<T> {
     }
 
     public DynamicSql<T> andIsNotNull(String property) {
-        this.getDeclarations().add(Declaration.buildDeclaration(AND, property, "is not null"));
+        this.getDeclarations().add(Declaration.buildDeclaration(AND, property, "is not "));
         return this;
     }
 
@@ -128,7 +128,7 @@ public class DynamicSql<T> {
     }
 
     public DynamicSql<T> orIsNotNull(String property) {
-        this.getDeclarations().add(Declaration.buildDeclaration(OR, property, "is not null"));
+        this.getDeclarations().add(Declaration.buildDeclaration(OR, property, "is not "));
         return this;
     }
 
