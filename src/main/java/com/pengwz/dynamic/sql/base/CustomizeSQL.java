@@ -245,4 +245,20 @@ public class CustomizeSQL<T> {
             DataSourceManagement.close(dataSourceName, null, preparedStatement, connection);
         }
     }
+
+    public boolean existTable() {
+        boolean flag = false;
+        try {
+            DatabaseMetaData metaData = connection.getMetaData();
+            ResultSet tables = metaData.getTables(null, null, sql, new String[]{"TABLE"});
+            if (tables.next()) {
+                flag = true;
+            }
+        } catch (Exception ex) {
+            ExceptionUtils.boxingAndThrowBraveException(ex, sql);
+        } finally {
+            DataSourceManagement.close(dataSourceName, null, null, connection);
+        }
+        return flag;
+    }
 }

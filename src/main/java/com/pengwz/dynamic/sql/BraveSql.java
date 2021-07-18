@@ -99,7 +99,7 @@ public class BraveSql<T> {
     }
 
     public T executeQuerySingle(String querySql, Class<? extends DataSourceConfig> dataSourceClass) {
-        return new CustomizeSQL<T>(ContextApplication.getDefalutDataSourceName(), currentClass, querySql).executeQuerySingle();
+        return new CustomizeSQL<T>(dataSourceClass, currentClass, querySql).executeQuerySingle();
     }
 
     /**
@@ -112,7 +112,15 @@ public class BraveSql<T> {
     }
 
     public void executeDDL(String ddlSql, Class<? extends DataSourceConfig> dataSourceClass) {
-        new CustomizeSQL<T>(ContextApplication.getDefalutDataSourceName(), currentClass, ddlSql).executeDDL();
+        new CustomizeSQL<T>(dataSourceClass, currentClass, ddlSql).executeDDL();
+    }
+
+    public boolean existTable(String tableName) {
+        return new CustomizeSQL<T>(ContextApplication.getDefalutDataSourceName(), currentClass, tableName).existTable();
+    }
+
+    public boolean existTable(String tableName, Class<? extends DataSourceConfig> dataSourceClass) {
+        return new CustomizeSQL<T>(dataSourceClass, currentClass, tableName).existTable();
     }
 
     public List<T> select() {
