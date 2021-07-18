@@ -33,6 +33,8 @@ public class CustomizeSQL<T> {
 
     private Map<String, Field> columnFieldMap = new LinkedHashMap<>();
 
+    private List<String> columnCheckedList = new ArrayList<>();
+
     public CustomizeSQL(Class<? extends DataSourceConfig> dataSource, Class<T> target, String sql) {
         this.target = target;
         this.sql = sql;
@@ -115,6 +117,15 @@ public class CustomizeSQL<T> {
         return -1;
     }
 
+    public T executeQuerySingle() {
+        List<T> ts = executeQuery();
+        if (ts.size() > 1) {
+            throw new BraveException("期待返回一条结果，但是返回了" + ts.size() + "条，发生在SQL：" + sql);
+        }
+        return ts.isEmpty() ? null : ts.get(0);
+    }
+
+
     public List<T> executeQuery() {
         if (log.isDebugEnabled()) {
             log.debug(sql);
@@ -131,19 +142,27 @@ public class CustomizeSQL<T> {
                 T instance = target.newInstance();
                 for (int i = 1; i <= columnCount; i++) {
                     String columnName = metaData.getColumnName(i);
-                    Field field = columnFieldMap.get(columnName);
+                    checkedColumnName(columnName);
+                    Field field = Optional.ofNullable(columnFieldMap.get(columnName)).orElseThrow(() -> new BraveException("类中未包含查询结果集的列名：" + columnName + "，发生在类：" + target.getName()));
                     Object o = ConverterUtils.convertJdbc(resultSet, columnName, field.getType());
                     ReflectUtils.setFieldValue(field, instance, o);
                 }
                 resultList.add(instance);
             }
             return resultList;
-        } catch (SQLException | InstantiationException | IllegalAccessException e) {
+        } catch (SQLException | InstantiationException | IllegalAccessException | BraveException e) {
             ExceptionUtils.boxingAndThrowBraveException(e, sql);
         } finally {
             DataSourceManagement.close(dataSourceName, null, preparedStatement, connection);
         }
         return Collections.emptyList();
+    }
+
+    private void checkedColumnName(String columnName) {
+        if (columnCheckedList.contains(columnName)) {
+            throw new BraveException("重复的列名，发生在SQL：" + sql);
+        }
+        columnCheckedList.add(columnName);
     }
 
     private void fillingColumnFieldMap() {

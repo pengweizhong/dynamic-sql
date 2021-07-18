@@ -81,9 +81,9 @@ public class BraveSql<T> {
     }
 
     /**
-     * 为spring容器提供的方法，单体项目调用{@link this#executeQuery(String, Class)}
+     * 单独为spring容器提供的方法，单体项目调用{@link this#executeQuery(String, Class)}
      *
-     * @param querySql
+     * @param querySql 需要查询的sql
      * @return
      */
     public List<T> executeQuery(String querySql) {
@@ -92,6 +92,14 @@ public class BraveSql<T> {
 
     public List<T> executeQuery(String querySql, Class<? extends DataSourceConfig> dataSourceClass) {
         return new CustomizeSQL<T>(dataSourceClass, currentClass, querySql).executeQuery();
+    }
+
+    public T executeQuerySingle(String querySql) {
+        return new CustomizeSQL<T>(ContextApplication.getDefalutDataSourceName(), currentClass, querySql).executeQuerySingle();
+    }
+
+    public T executeQuerySingle(String querySql, Class<? extends DataSourceConfig> dataSourceClass) {
+        return new CustomizeSQL<T>(ContextApplication.getDefalutDataSourceName(), currentClass, querySql).executeQuerySingle();
     }
 
     public List<T> select() {
