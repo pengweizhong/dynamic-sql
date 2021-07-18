@@ -234,7 +234,7 @@ public class CustomizeSQL<T> {
         }
     }
 
-    public void executeDDL() {
+    public void executeSql() {
         PreparedStatement preparedStatement = null;
         try {
             preparedStatement = connection.prepareStatement(sql);

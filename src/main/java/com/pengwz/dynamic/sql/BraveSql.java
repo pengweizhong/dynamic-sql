@@ -83,11 +83,11 @@ public class BraveSql<T> {
      * @param ddlSql
      */
     public void executeSql(String executeSql) {
-        new CustomizeSQL<T>(ContextApplication.getDefalutDataSourceName(), currentClass, executeSql).executeDDL();
+        new CustomizeSQL<T>(ContextApplication.getDefalutDataSourceName(), currentClass, executeSql).executeSql();
     }
 
-    public void executeSql(String ddlSql, Class<? extends DataSourceConfig> dataSourceClass) {
-        new CustomizeSQL<T>(dataSourceClass, currentClass, ddlSql).executeDDL();
+    public void executeSql(String executeSql, Class<? extends DataSourceConfig> dataSourceClass) {
+        new CustomizeSQL<T>(dataSourceClass, currentClass, executeSql).executeSql();
     }
 
     public boolean existTable(String tableName) {
