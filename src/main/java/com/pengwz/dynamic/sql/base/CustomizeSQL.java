@@ -9,11 +9,13 @@ import com.pengwz.dynamic.utils.ConverterUtils;
 import com.pengwz.dynamic.utils.ExceptionUtils;
 import com.pengwz.dynamic.utils.ReflectUtils;
 import com.pengwz.dynamic.utils.StringUtils;
+import org.apache.commons.beanutils.ConversionException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import java.lang.reflect.Field;
 import java.sql.*;
+import java.time.temporal.Temporal;
 import java.util.*;
 
 /**
@@ -125,8 +127,52 @@ public class CustomizeSQL<T> {
         return ts.isEmpty() ? null : ts.get(0);
     }
 
-
     public List<T> executeQuery() {
+        if (String.class.isAssignableFrom(target)
+                || Number.class.isAssignableFrom(target)
+                || Temporal.class.isAssignableFrom(target)
+                || java.util.Date.class.isAssignableFrom(target)
+                || java.sql.Date.class.isAssignableFrom(target)) {
+            return executeQueryForObject();
+        } else {
+            return executeQueryForCompoundObject();
+        }
+    }
+
+    /**
+     * 处理单体对象，如Integer，String等
+     */
+    public List<T> executeQueryForObject() {
+        if (log.isDebugEnabled()) {
+            log.debug(sql);
+        }
+        PreparedStatement preparedStatement = null;
+        try {
+            preparedStatement = connection.prepareStatement(sql);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            ResultSetMetaData metaData = resultSet.getMetaData();
+            int columnCount = metaData.getColumnCount();
+            List<T> resultList = new ArrayList<>();
+            while (resultSet.next()) {
+                for (int i = 1; i <= columnCount; i++) {
+                    String columnName = metaData.getColumnName(i);
+                    T obj = ConverterUtils.convertJdbc(resultSet, columnName, target);
+                    resultList.add(obj);
+                }
+            }
+            return resultList;
+        } catch (SQLException | BraveException | ConversionException e) {
+            ExceptionUtils.boxingAndThrowBraveException(e, sql);
+        } finally {
+            DataSourceManagement.close(dataSourceName, null, preparedStatement, connection);
+        }
+        return Collections.emptyList();
+    }
+
+    /**
+     * 处理复合对象，如实体类
+     */
+    public List<T> executeQueryForCompoundObject() {
         if (log.isDebugEnabled()) {
             log.debug(sql);
         }
@@ -143,7 +189,7 @@ public class CustomizeSQL<T> {
                 for (int i = 1; i <= columnCount; i++) {
                     String columnName = metaData.getColumnName(i);
                     checkedColumnName(columnName);
-                    Field field = Optional.ofNullable(columnFieldMap.get(columnName)).orElseThrow(() -> new BraveException("类中未包含查询结果集的列名：" + columnName + "，发生在类：" + target.getName()));
+                    Field field = Optional.ofNullable(columnFieldMap.get(columnName)).orElseThrow(() -> new BraveException("类中未包含查询结果集的列名：" + columnName + "，如果这不是故意的，请使用别名。发生在类：" + target.getName()));
                     Object o = ConverterUtils.convertJdbc(resultSet, columnName, field.getType());
                     ReflectUtils.setFieldValue(field, instance, o);
                 }

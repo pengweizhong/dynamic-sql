@@ -18,6 +18,9 @@ public class Constant {
     public static final DateTimeFormatter YYYY_MM_DD_HH_MM_SS = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     public static final DateTimeFormatter YYYY_MM_DD = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     public static final DateTimeFormatter HH_MM_SS = DateTimeFormatter.ofPattern("HH:mm:ss");
+    public static final String YYYY_MM_DD_HH_MM_SS_STR = "yyyy-MM-dd HH:mm:ss";
+    public static final String YYYY_MM_DD_STR = "yyyy-MM-dd";
+    public static final String HH_MM_SS_STR = "HH:mm:ss";
 
     public static final String WHERE = "where";
     public static final String SELECT = "select";

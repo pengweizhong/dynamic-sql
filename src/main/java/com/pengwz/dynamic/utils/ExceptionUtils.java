@@ -62,7 +62,8 @@ public class ExceptionUtils {
             }
         }
         if (throwable instanceof ReflectiveOperationException) {
-            throw new BraveException("无法创建对象，可能不存在无参构造器", throwable.getMessage());
+            String message = StringUtils.isBlank(sql) ? "无法创建对象，可能不存在无参构造器" : "无法创建对象，可能不存在无参构造器。ERROR SQL：" + sql;
+            throw new BraveException(message, throwable);
         }
 
 

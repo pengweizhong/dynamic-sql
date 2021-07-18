@@ -2,6 +2,7 @@ package com.pengwz.dynamic.utils.convert;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Date;
 
 import static com.pengwz.dynamic.constant.Constant.*;
@@ -10,10 +11,10 @@ import static com.pengwz.dynamic.constant.Constant.*;
 public class LocalDateConverterAdapter implements ConverterAdapter {
     @Override
     public <T> T converter(Object currentValue, Class<T> targetClass) {
-        if (Date.class.isAssignableFrom(currentValue.getClass())) {
+        if (Date.class.isAssignableFrom(targetClass)) {
             return transferDate(currentValue);
         }
-        if (String.class.isAssignableFrom(currentValue.getClass())) {
+        if (LocalDate.class.isAssignableFrom(targetClass)) {
             return transferString(currentValue);
         }
         return null;
@@ -36,7 +37,7 @@ public class LocalDateConverterAdapter implements ConverterAdapter {
         if (REGULAR_YYYY_MM_DD.matcher(valueStr).matches()) {
             return (T) LocalDate.parse(valueStr, YYYY_MM_DD);
         }
-        return null;
+        return (T) LocalDate.parse(valueStr, DateTimeFormatter.ISO_LOCAL_DATE);
     }
 
 }
