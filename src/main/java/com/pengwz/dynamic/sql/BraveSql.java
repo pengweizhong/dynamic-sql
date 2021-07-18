@@ -54,33 +54,6 @@ public class BraveSql<T> {
     }
 
     /**
-     * 直接执行sql
-     *
-     * @param sql          查询sql
-     * @param currentClass 查询返回结果
-     * @param dataSource   目标数据库
-     * @param <T>
-     * @return 返回查询结果
-     */
-    @Deprecated
-    public static <T> T executeSelectSqlAndReturnSingle(String sql, Class<T> currentClass, Class<? extends DataSourceConfig> dataSourceClass) {
-        CustomizeSQL<T> tCustomizeSQL = new CustomizeSQL<>(dataSourceClass, currentClass, sql);
-        return tCustomizeSQL.selectSqlAndReturnSingle();
-    }
-
-    @Deprecated
-    public static <T> List<T> executeSelectSqlAndReturnList(String sql, Class<T> currentClass, Class<? extends DataSourceConfig> dataSourceClass) {
-        CustomizeSQL<T> tCustomizeSQL = new CustomizeSQL<>(dataSourceClass, currentClass, sql);
-        return tCustomizeSQL.selectSqlAndReturnList();
-    }
-
-    @Deprecated
-    public static int executeDMLSql(String sql, Class<? extends DataSourceConfig> dataSourceClass) {
-        CustomizeSQL<?> tCustomizeSQL = new CustomizeSQL<>(dataSourceClass, null, sql);
-        return tCustomizeSQL.executeDMLSql();
-    }
-
-    /**
      * 单独为spring容器提供的方法，单体项目调用{@link this#executeQuery(String, Class)}
      *
      * @param querySql 需要查询的sql
@@ -103,12 +76,14 @@ public class BraveSql<T> {
     }
 
     /**
-     * 执行CREATE、ALTER或DROP语句，若果当前对象有权限。否则将抛出异常
+     * 执行CREATE、ALTER、UPDATE、DROP等等语句。<br>
+     * 如果执行未发生异常，则代表SQL成功执行，若果执行失败，将抛出异常。<br>
+     * 调用者无需关心返回值。
      *
      * @param ddlSql
      */
-    public void executeDDL(String ddlSql) {
-        new CustomizeSQL<T>(ContextApplication.getDefalutDataSourceName(), currentClass, ddlSql).executeDDL();
+    public void executeSql(String executeSql) {
+        new CustomizeSQL<T>(ContextApplication.getDefalutDataSourceName(), currentClass, executeSql).executeDDL();
     }
 
     public void executeDDL(String ddlSql, Class<? extends DataSourceConfig> dataSourceClass) {
