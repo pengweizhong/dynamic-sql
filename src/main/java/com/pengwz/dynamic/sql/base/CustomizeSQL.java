@@ -217,7 +217,7 @@ public class CustomizeSQL<T> {
         }
         Field[] declaredFields = target.getDeclaredFields();
         for (Field field : declaredFields) {
-            if (Check.FILTER_TYPE_LIST.contains(field.getModifiers())) {
+            if (Check.checkedFieldType(field)) {
                 continue;
             }
             String columnName = Check.getColumnName(field, "unknown");

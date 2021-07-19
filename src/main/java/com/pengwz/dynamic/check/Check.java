@@ -24,17 +24,6 @@ public class Check {
 
     private static final Log log = LogFactory.getLog(Check.class);
 
-    public static final List<Integer> FILTER_TYPE_LIST = new ArrayList<>();
-
-    static {
-        FILTER_TYPE_LIST.add(Modifier.ABSTRACT);
-        FILTER_TYPE_LIST.add(Modifier.STATIC);
-        FILTER_TYPE_LIST.add(Modifier.FINAL);
-        FILTER_TYPE_LIST.add(Modifier.VOLATILE);
-        FILTER_TYPE_LIST.add(Modifier.NATIVE);
-        FILTER_TYPE_LIST.add(Modifier.INTERFACE);
-    }
-
     public static void checkAndSave(Class<?> currentClass, String tableName, String dataSource) {
         boolean existsTable = ContextApplication.existsTable(tableName, dataSource);
         if (existsTable) {
@@ -44,8 +33,7 @@ public class Check {
         int idCount = 0;
         List<TableInfo> tableInfos = new ArrayList<>();
         for (Field field : declaredFields) {
-            //静态类型，final类型等等不参与数据库查询
-            if (FILTER_TYPE_LIST.contains(field.getModifiers())) {
+            if (checkedFieldType(field)) {
                 continue;
             }
             if (field.getType().isPrimitive()) {
@@ -108,5 +96,22 @@ public class Check {
             column = StringUtils.caseField(field.getName());
         }
         return column;
+    }
+
+    /**
+     * 字段类型如果不允许，就返回true
+     */
+    public static boolean checkedFieldType(Field field) {
+        //静态类型，final类型等等不参与数据库查询
+        if (Modifier.isFinal(field.getModifiers())
+                || Modifier.isAbstract(field.getModifiers())
+                || Modifier.isStatic(field.getModifiers())
+                || Modifier.isNative(field.getModifiers())
+                || Modifier.isInterface(field.getModifiers()
+        )
+        ) {
+            return true;
+        }
+        return false;
     }
 }
