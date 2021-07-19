@@ -17,6 +17,7 @@ import java.lang.reflect.Field;
 import java.sql.*;
 import java.time.temporal.Temporal;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * 执行自定义SQL
@@ -181,15 +182,17 @@ public class CustomizeSQL<T> {
             preparedStatement = connection.prepareStatement(sql);
             ResultSet resultSet = preparedStatement.executeQuery();
             ResultSetMetaData metaData = resultSet.getMetaData();
+            fillingColumnFieldMap(metaData);
             int columnCount = metaData.getColumnCount();
             List<T> resultList = new ArrayList<>();
             while (resultSet.next()) {
-                fillingColumnFieldMap();
                 T instance = target.newInstance();
                 for (int i = 1; i <= columnCount; i++) {
                     String columnName = metaData.getColumnName(i);
-                    checkedColumnName(columnName);
-                    Field field = Optional.ofNullable(columnFieldMap.get(columnName)).orElseThrow(() -> new BraveException("类中未包含查询结果集的列名：" + columnName + "，如果这不是故意的，请使用别名。发生在类：" + target.getName()));
+                    Field field = columnFieldMap.get(columnName);
+                    if (null == field) {
+                        continue;
+                    }
                     Object o = ConverterUtils.convertJdbc(resultSet, columnName, field.getType());
                     ReflectUtils.setFieldValue(field, instance, o);
                 }
@@ -204,34 +207,39 @@ public class CustomizeSQL<T> {
         return Collections.emptyList();
     }
 
-    private void checkedColumnName(String columnName) {
-        if (columnCheckedList.contains(columnName)) {
-            throw new BraveException("重复的列名，发生在SQL：" + sql);
-        }
-        columnCheckedList.add(columnName);
-    }
 
-    private void fillingColumnFieldMap() {
-        if (!columnFieldMap.isEmpty()) {
-            return;
+    private void fillingColumnFieldMap(ResultSetMetaData metaData) throws SQLException {
+        int columnCount = metaData.getColumnCount();
+        List<Field> fieldList = Arrays.stream(target.getDeclaredFields()).filter(field -> !Check.checkedFieldType(field)).collect(Collectors.toList());
+        if (fieldList.isEmpty()) {
+            throw new BraveException("映射实体类未发现可用属性，发生在类：" + target.getName());
         }
-        Field[] declaredFields = target.getDeclaredFields();
-        for (Field field : declaredFields) {
-            if (Check.checkedFieldType(field)) {
+        Map<String, Field> columnFieldClassMap;
+        try {
+            columnFieldClassMap = fieldList.stream().collect(Collectors.toMap(this::getColumnAndFixName, v -> v));
+        } catch (Exception ex) {
+            throw new BraveException("重复的列名，发生在类：" + target.getName());
+        }
+        for (int i = 1; i <= columnCount; i++) {
+            String columnName = metaData.getColumnName(i);
+            Field field = columnFieldClassMap.get(columnName);
+            if (null == field) {
+                log.debug("SQL查询了[" + columnName + "]列，但是在映射类中未发现对应属性。发生在类：" + target.getName());
                 continue;
             }
-            String columnName = Check.getColumnName(field, "unknown");
-            if (columnName.contains("`")) {
-                columnName = columnName.replace("`", "").trim();
-            }
-            if (Objects.nonNull(columnFieldMap.get(columnName))) {
-                throw new BraveException("重复的列名：" + columnFieldMap.get(columnName));
+            if (null != columnFieldMap.get(columnName)) {
+                throw new BraveException("查询了重复的列名，如果这不是故意的，请使用别名。");
             }
             columnFieldMap.put(columnName, field);
         }
-        if (columnFieldMap.isEmpty()) {
-            throw new BraveException("映射实体类未发现可用属性，发生在类：" + target.getName());
+    }
+
+    private String getColumnAndFixName(Field field) {
+        String columnName = Check.getColumnName(field, "unknown");
+        if (columnName.contains("`")) {
+            columnName = columnName.replace("`", "").trim();
         }
+        return columnName;
     }
 
     public void executeSql() {
