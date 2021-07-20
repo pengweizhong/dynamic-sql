@@ -19,7 +19,6 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -224,10 +223,27 @@ public class BraveSqlTest {
         assertNotNull(userEntity.getDesc());
     }
 
-    public void testTestExecuteQuerySingle() {
-    }
-
+    @Test
     public void testExecuteSql() {
+        //增 查 改 删
+        //增---------------------
+        BraveSql.build(Void.class).executeSql("insert into t_user (username,account_no) values ('testExecuteSql','testExecuteSql')", DatabaseConfig.class);
+        //判断是否插入成功
+        DynamicSql<UserEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.andEqualTo(UserEntity::getAccountNo, "testExecuteSql");
+        UserEntity userEntity = BraveSql.build(dynamicSql, UserEntity.class).selectSingle();
+        assertNotNull(userEntity);
+        //查 ---------------------(使用此API查询没有意义，此处仅做测试)
+        BraveSql.build(Void.class).executeSql("select * from t_user", DatabaseConfig.class);
+        //改--------------------- 将username改成 哈哈哈哈哈哈哈哈
+        BraveSql.build(Void.class).executeSql("update t_user set username = '哈哈哈哈哈哈哈哈' where account_no = 'testExecuteSql'", DatabaseConfig.class);
+        UserEntity userEntity2 = BraveSql.build(dynamicSql, UserEntity.class).selectSingle();
+        assertEquals(userEntity2.getUsername(), "哈哈哈哈哈哈哈哈");
+        //删---------------------
+        BraveSql.build(Void.class).executeSql("delete  from t_user where account_no = 'testExecuteSql'", DatabaseConfig.class);
+        //判断是否删除完毕
+        UserEntity userEntity3 = BraveSql.build(dynamicSql, UserEntity.class).selectSingle();
+        assertNull(userEntity3);
     }
 
     public void testTestExecuteSql() {
