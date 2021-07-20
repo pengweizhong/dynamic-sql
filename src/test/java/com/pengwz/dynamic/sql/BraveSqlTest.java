@@ -306,10 +306,22 @@ public class BraveSqlTest {
     public void testDeleteByPrimaryKey() {
     }
 
+    @Test
     public void testOrderByAsc() {
+        DynamicSql<UserEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.orderByAsc(UserEntity::getId);
+        List<UserEntity> select = BraveSql.build(dynamicSql, UserEntity.class).select();
+        assertEquals(select.get(0).getId().intValue(), 1);
+        assertEquals(select.get(select.size() - 1).getId().intValue(), tableDataRows);
     }
 
+    @Test
     public void testTestOrderByAsc() {
+        DynamicSql<UserEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.orderByDesc(UserEntity::getId);
+        List<UserEntity> select = BraveSql.build(dynamicSql, UserEntity.class).select();
+        assertEquals(select.get(0).getId().intValue(), tableDataRows);
+        assertEquals(select.get(select.size() - 1).getId().intValue(), 1);
     }
 
     public void testOrderByDesc() {
