@@ -1,38 +1,39 @@
 package com.pengwz.dynamic.entity;
 
-import com.pengwz.dynamic.anno.Column;
-import com.pengwz.dynamic.anno.GeneratedValue;
-import com.pengwz.dynamic.anno.Id;
-import com.pengwz.dynamic.anno.Table;
+import com.pengwz.dynamic.anno.*;
 import com.pengwz.dynamic.config.DatabaseConfig;
 
 import java.time.LocalDateTime;
 
-@Table(value = "t_user", dataSourceClass = DatabaseConfig.class)
+@Table(value = "t_user_role", dataSourceClass = DatabaseConfig.class)
 public class UserRoleEntity {
     @Id
-    @GeneratedValue
-    private Long id;
-    private String username;
+    @GeneratedValue(strategy = GenerationType.SIMPLE_UUID)
+    @Column("uid")
+    private String uid;
+    @Column("account_no")
+    private String accountNo;
+    @Column("role")
     private String role;
+    @Column("create_date")
     private LocalDateTime createDate;
     @Column("update_date")
     private LocalDateTime updateDate;
 
-    public Long getId() {
-        return id;
+    public String getUid() {
+        return uid;
     }
 
-    public void setId(Long id) {
-        this.id = id;
+    public void setUid(String uid) {
+        this.uid = uid;
     }
 
-    public String getUsername() {
-        return username;
+    public String getAccountNo() {
+        return accountNo;
     }
 
-    public void setUsername(String username) {
-        this.username = username;
+    public void setAccountNo(String accountNo) {
+        this.accountNo = accountNo;
     }
 
     public String getRole() {
@@ -62,8 +63,8 @@ public class UserRoleEntity {
     @Override
     public String toString() {
         return "UserRoleEntity{" +
-                "id=" + id +
-                ", username='" + username + '\'' +
+                "uid='" + uid + '\'' +
+                ", accountNo='" + accountNo + '\'' +
                 ", role='" + role + '\'' +
                 ", createDate=" + createDate +
                 ", updateDate=" + updateDate +

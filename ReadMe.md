@@ -76,16 +76,22 @@
 drop table if exists `t_user`;
 CREATE TABLE `t_user` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `account_no` varchar(50) DEFAULT NULL COMMENT '账号',
   `username` varchar(50) DEFAULT NULL COMMENT '用户名',
   `password` varchar(50) DEFAULT NULL COMMENT '密码',
+    `email` varchar(50) DEFAULT NULL COMMENT '邮箱',
+    `birthday` datetime DEFAULT NULL COMMENT '生日',
+    `desc` varchar(50) DEFAULT NULL COMMENT '邮箱',
+    `is_delete` tinyint(1)  DEFAULT NULL COMMENT '是否删除 true 已删除 false 未删除',
   `create_date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '修改时间',
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `t_user_UN` (`account_no`)
 ) ENGINE=InnoDB COMMENT ='用户表';
 
 drop table if exists `t_user_role`;
 CREATE TABLE `t_user_role` (
-  `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `uid` varchar(50) NOT NULL  COMMENT 'UUID主键',
   `username` varchar(50) DEFAULT NULL COMMENT '用户名',
   `role` varchar(50) DEFAULT NULL COMMENT '角色',
   `create_date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
