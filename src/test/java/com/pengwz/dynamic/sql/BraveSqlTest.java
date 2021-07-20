@@ -4,17 +4,25 @@ package com.pengwz.dynamic.sql;
 import com.pengwz.dynamic.config.DatabaseConfig;
 import com.pengwz.dynamic.entity.UserEntity;
 import com.pengwz.dynamic.entity.UserRoleEntity;
+import com.pengwz.dynamic.exception.BraveException;
 import org.apache.commons.lang3.RandomUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.Assert.*;
 
@@ -98,7 +106,7 @@ public class BraveSqlTest {
     /**
      * 测试结束后删表
      */
-//    @AfterClass
+    @AfterClass
     public static void doAfterClass() {
         BraveSql.build(Void.class).executeSql(dropUserRoleTable, DatabaseConfig.class);
         BraveSql.build(Void.class).executeSql(dropUserTable, DatabaseConfig.class);
@@ -150,14 +158,70 @@ public class BraveSqlTest {
         assertEquals(pageInfo.getPageSize().intValue(), 100);
     }
 
+    /**
+     * 主要测试数字类型
+     */
+    @Test
     public void testExecuteQuery() {
-
+        //TODO 当执行sql未指定 数据源时，不应该直接抛出空指针   需要补充异常文案
+        List<UserEntity> userEntities = BraveSql.build(UserEntity.class).executeQuery("select id from t_user limit 1000", DatabaseConfig.class);
+        assertEquals(userEntities.size(), 1000);
+        List<Long> longs = BraveSql.build(Long.class).executeQuery("select id from t_user where id = 1", DatabaseConfig.class);
+        assertEquals(longs.size(), 1);
+        List<Double> doubles = BraveSql.build(Double.class).executeQuery("select id from t_user where id = 1", DatabaseConfig.class);
+        assertEquals(doubles.size(), 1);
+        List<Integer> integers = BraveSql.build(Integer.class).executeQuery("select id from t_user where id <= 100", DatabaseConfig.class);
+        assertEquals(integers.size(), 100);
+        List<BigInteger> bigIntegers = BraveSql.build(BigInteger.class).executeQuery("select id from t_user where id <= 500", DatabaseConfig.class);
+        assertEquals(bigIntegers.size(), 500);
     }
 
-    public void testTestExecuteQuery() {
+    /**
+     * 主要测试数字类型
+     */
+    @Test(expected = BraveException.class)
+    public void testExecuteQuery2() {
+        List<BigDecimal> bigDecimals = BraveSql.build(BigDecimal.class).executeQuery("select id from t_user where id <= 500", DatabaseConfig.class);
+        assertEquals(bigDecimals.size(), 500);
+        List<AtomicInteger> atomicIntegers = BraveSql.build(AtomicInteger.class).executeQuery("select id from t_user where id <= 500", DatabaseConfig.class);
+        assertEquals(atomicIntegers.size(), 500);
+        List<AtomicLong> atomicLongs = BraveSql.build(AtomicLong.class).executeQuery("select id from t_user where id <= 500", DatabaseConfig.class);
+        assertEquals(atomicLongs.size(), 500);
     }
 
+    /**
+     * 主要测试Object类型
+     */
+    @Test(expected = BraveException.class)
+    public void testExecuteQuery3() {
+        //TODO : 此处待优化 应该将Object类排除【映射实体类未发现可用属性，发生在类：java.lang.Object】
+        List<Object> objects = BraveSql.build(Object.class).executeQuery("select id from t_user where id <= 500", DatabaseConfig.class);
+        assertEquals(objects.size(), 500);
+    }
+
+    /**
+     * 主要测试 日期 类型
+     */
+    @Test
+    public void testExecuteQuery4() {
+        List<java.util.Date> dates = BraveSql.build(java.util.Date.class).executeQuery("select create_date from t_user where id <= 500", DatabaseConfig.class);
+        assertEquals(dates.size(), 500);
+        List<java.sql.Date> dates1 = BraveSql.build(java.sql.Date.class).executeQuery("select create_date from t_user where id <= 500", DatabaseConfig.class);
+        assertEquals(dates1.size(), 500);
+        List<LocalDateTime> localDateTimes = BraveSql.build(LocalDateTime.class).executeQuery("select create_date from t_user where id <= 500", DatabaseConfig.class);
+        assertEquals(localDateTimes.size(), 500);
+        List<LocalDate> localDates = BraveSql.build(LocalDate.class).executeQuery("select create_date from t_user where id <= 500", DatabaseConfig.class);
+        assertEquals(localDates.size(), 500);
+        List<LocalTime> localTimes = BraveSql.build(LocalTime.class).executeQuery("select create_date from t_user where id <= 500", DatabaseConfig.class);
+        assertEquals(localTimes.size(), 500);
+    }
+
+    @Test
     public void testExecuteQuerySingle() {
+        String single = BraveSql.build(String.class).executeQuerySingle("select `desc` from t_user where id = 1", DatabaseConfig.class);
+        assertNotNull(single);
+        UserEntity userEntity = BraveSql.build(UserEntity.class).executeQuerySingle("select `desc` from t_user where id = 1", DatabaseConfig.class);
+        assertNotNull(userEntity.getDesc());
     }
 
     public void testTestExecuteQuerySingle() {
