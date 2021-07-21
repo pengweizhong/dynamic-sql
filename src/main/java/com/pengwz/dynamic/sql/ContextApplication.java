@@ -9,6 +9,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import javax.sql.DataSource;
+import javax.sql.rowset.serial.SerialException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -39,6 +40,9 @@ public class ContextApplication {
     }
 
     public static DataSourceInfo getDataSourceInfo(String dataSourceName) {
+        if (null == dataSourceName) {
+            throw new BraveException("未指定数据源");
+        }
         return dataSourcesMap.get(dataSourceName);
     }
 

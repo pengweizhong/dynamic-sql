@@ -3,6 +3,7 @@ package com.pengwz.dynamic.utils.convert;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import java.sql.Timestamp;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
@@ -53,6 +54,9 @@ public class LocalDateTimeConverterAdapter implements ConverterAdapter {
         if (REGULAR_YYYY_MM_DD.matcher(valueStr).matches()) {
             LocalDate parse = LocalDate.parse(valueStr, YYYY_MM_DD);
             return (T) LocalDateTime.of(parse, LocalTime.MIN);
+        }
+        if (Timestamp.class.isAssignableFrom(currentValue.getClass())) {
+            return (T) ((Timestamp) currentValue).toLocalDateTime();
         }
         return (T) LocalDateTime.parse(valueStr, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
     }

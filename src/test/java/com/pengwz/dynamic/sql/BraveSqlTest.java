@@ -2,6 +2,7 @@ package com.pengwz.dynamic.sql;
 
 
 import com.pengwz.dynamic.config.DatabaseConfig;
+import com.pengwz.dynamic.entity.UserChildEntity;
 import com.pengwz.dynamic.entity.UserEntity;
 import com.pengwz.dynamic.entity.UserRoleEntity;
 import com.pengwz.dynamic.exception.BraveException;
@@ -191,7 +192,7 @@ public class BraveSqlTest {
     /**
      * 主要测试Object类型
      */
-    @Test(expected = BraveException.class)
+    @Test
     public void testExecuteQuery3() {
         //TODO : 此处待优化 应该将Object类排除【映射实体类未发现可用属性，发生在类：java.lang.Object】
         List<Object> objects = BraveSql.build(Object.class).executeQuery("select id from t_user where id <= 500", DatabaseConfig.class);
@@ -245,6 +246,15 @@ public class BraveSqlTest {
         UserEntity userEntity3 = BraveSql.build(dynamicSql, UserEntity.class).selectSingle();
         assertNull(userEntity3);
     }
+
+//    @Test
+//    public void testExecuteSql2() {
+//        DynamicSql<UserChildEntity> dynamicSql = DynamicSql.createDynamicSql();
+//        dynamicSql.andLessThan(UserChildEntity::getId, 50);
+//        List<UserChildEntity> select = BraveSql.build(dynamicSql, UserChildEntity.class).select();
+//        System.out.println(select.size());
+//        select.forEach(System.out::println);
+//    }
 
     public void testTestExecuteSql() {
     }

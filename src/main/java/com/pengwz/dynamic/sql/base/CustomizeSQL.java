@@ -133,7 +133,8 @@ public class CustomizeSQL<T> {
                 || Number.class.isAssignableFrom(target)
                 || Temporal.class.isAssignableFrom(target)
                 || java.util.Date.class.isAssignableFrom(target)
-                || java.sql.Date.class.isAssignableFrom(target)) {
+                || java.sql.Date.class.isAssignableFrom(target)
+                || Object.class.equals(target)) {
             return executeQueryForObject();
         } else {
             return executeQueryForCompoundObject();
@@ -210,7 +211,9 @@ public class CustomizeSQL<T> {
 
     private void fillingColumnFieldMap(ResultSetMetaData metaData) throws SQLException {
         int columnCount = metaData.getColumnCount();
-        List<Field> fieldList = Arrays.stream(target.getDeclaredFields()).filter(field -> !Check.checkedFieldType(field)).collect(Collectors.toList());
+        List<Field> allFieldList = new ArrayList<>();
+        Check.recursionGetAllFields(target, allFieldList);
+        List<Field> fieldList = allFieldList.stream().filter(field -> !Check.checkedFieldType(field)).collect(Collectors.toList());
         if (fieldList.isEmpty()) {
             throw new BraveException("映射实体类未发现可用属性，发生在类：" + target.getName());
         }

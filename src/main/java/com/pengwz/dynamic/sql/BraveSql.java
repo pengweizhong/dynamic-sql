@@ -33,10 +33,25 @@ public class BraveSql<T> {
         this.currentClass = currentClass;
     }
 
+    /**
+     * 使用动态SQL和对应表实体类构建出操作DB的对象
+     *
+     * @param dynamicSql   动态SQL条件，主要用于组装where条件
+     * @param currentClass 表对应实体类
+     * @param <T>          标注了{@code @Table}注解的任何实体类
+     * @return {@code BraveSql}实例
+     */
     public static <T> BraveSql<T> build(DynamicSql dynamicSql, Class<T> currentClass) {
         return new BraveSql<>(dynamicSql, currentClass);
     }
 
+    /**
+     * 构建出不包含where条件的操作DB对象
+     *
+     * @param currentClass 表对应实体类
+     * @param <T>          标注了{@code @Table}注解的任何实体类
+     * @return {@code BraveSql}实例
+     */
     public static <T> BraveSql<T> build(Class<T> currentClass) {
         return new BraveSql<>(DynamicSql.createDynamicSql(), currentClass);
     }
@@ -54,10 +69,13 @@ public class BraveSql<T> {
     }
 
     /**
-     * 单独为spring容器提供的方法，单体项目调用{@link this#executeQuery(String, Class)}
+     * 执行自定义查询语句，并使用自定义实体类接收，实体类属性和查询列名、列别名匹配上，就可以自动映射。<br>
+     * 此方法单独为{@code Spring}环境提供的方法，非{@code Spring}环境调用{@link this#executeQuery(String, Class)}
+     * <p/>
      *
-     * @param querySql 需要查询的sql
-     * @return
+     * @param querySql 查询的sql
+     * @return SQL查询后的结果集
+     * @see com.pengwz.dynamic.anno.Column 若成员变量标注了该注解，则注解内名称和结果集列名进行匹配
      */
     public List<T> executeQuery(String querySql) {
         return new CustomizeSQL<T>(ContextApplication.getDefalutDataSourceName(), currentClass, querySql).executeQuery();

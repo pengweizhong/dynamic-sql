@@ -14,10 +14,7 @@ import org.apache.commons.logging.LogFactory;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class Check {
@@ -29,10 +26,11 @@ public class Check {
         if (existsTable) {
             return;
         }
-        Field[] declaredFields = currentClass.getDeclaredFields();
+        List<Field> allFiledList = new ArrayList<>();
+        recursionGetAllFields(currentClass,allFiledList);
         int idCount = 0;
         List<TableInfo> tableInfos = new ArrayList<>();
-        for (Field field : declaredFields) {
+        for (Field field : allFiledList) {
             if (checkedFieldType(field)) {
                 continue;
             }
@@ -72,6 +70,17 @@ public class Check {
             }
         });
         ContextApplication.saveTable(dataSource, tableName, tableInfos);
+    }
+
+    public static void recursionGetAllFields(Class<?> fatherClass, List<Field> fieldList) {
+        //仅递归到Object的直接子类
+        if (Object.class.equals(fatherClass)) {
+            return;
+        }
+        //递归父类，获取所有字段，此处仅做获取，不过滤
+        Field[] declaredFields = fatherClass.getDeclaredFields();
+        Collections.addAll(fieldList, declaredFields);
+        recursionGetAllFields(fatherClass.getSuperclass(), fieldList);
     }
 
     public static <T> void checkPageInfo(PageInfo<T> pageInfo) {
