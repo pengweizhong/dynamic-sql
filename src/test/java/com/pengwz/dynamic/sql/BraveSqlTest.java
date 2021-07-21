@@ -337,10 +337,23 @@ public class BraveSqlTest {
     @Test
     public void testTestOrderByAsc() {
         DynamicSql<UserEntity> dynamicSql = DynamicSql.createDynamicSql();
-        dynamicSql.orderByDesc("createDate");
+        dynamicSql.orderByDesc("id");
         List<UserEntity> select = BraveSql.build(dynamicSql, UserEntity.class).select();
         assertEquals(select.get(0).getId().intValue(), tableDataRows);
         assertEquals(select.get(select.size() - 1).getId().intValue(), 1);
+    }
+
+    @Test
+    public void testTestOrderByAsc2() {
+        DynamicSql<UserEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.andLessThan(UserEntity::getId, 200);
+        dynamicSql.orderByDesc(UserEntity::getUsername)/*.thenOrderByAsc(UserEntity::getId).thenOrderByAsc(UserEntity::getId).thenOrderByAsc(UserEntity::getId).thenOrderByAsc(UserEntity::getId)*/;
+        dynamicSql.orderByAsc(UserEntity::getId);
+        dynamicSql.orderByDesc(UserEntity::getId);
+        dynamicSql.orderByDesc(UserEntity::getId);
+        dynamicSql.orderByAsc(UserEntity::getId);
+        List<UserEntity> select = BraveSql.build(dynamicSql, UserEntity.class).select();
+        select.forEach(System.out::println);
     }
 
     public void testOrderByDesc() {
