@@ -13,6 +13,7 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import javax.swing.text.html.parser.Entity;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.LocalDate;
@@ -257,6 +258,7 @@ public class BraveSqlTest {
 //    }
 
     public void testTestExecuteSql() {
+        BraveSql.build(UserEntity.class).executeQuery("");
     }
 
     public void testExistTable() {
@@ -274,7 +276,14 @@ public class BraveSqlTest {
     public void testSelectByPrimaryKey() {
     }
 
+    @Test
     public void testSelectCount() {
+        DynamicSql<UserEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.andLessThan(UserEntity::getId, 0);
+        Integer integer = BraveSql.build(dynamicSql, UserEntity.class).selectCount();
+        System.out.println(integer);
+        Integer integer2 = BraveSql.build(UserEntity.class).selectCount();
+        System.out.println(integer2);
     }
 
     public void testSelectPageInfo() {
@@ -328,7 +337,7 @@ public class BraveSqlTest {
     @Test
     public void testTestOrderByAsc() {
         DynamicSql<UserEntity> dynamicSql = DynamicSql.createDynamicSql();
-        dynamicSql.orderByDesc(UserEntity::getId);
+        dynamicSql.orderByDesc("createDate");
         List<UserEntity> select = BraveSql.build(dynamicSql, UserEntity.class).select();
         assertEquals(select.get(0).getId().intValue(), tableDataRows);
         assertEquals(select.get(select.size() - 1).getId().intValue(), 1);

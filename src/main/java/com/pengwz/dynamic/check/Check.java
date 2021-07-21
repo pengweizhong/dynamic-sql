@@ -27,7 +27,7 @@ public class Check {
             return;
         }
         List<Field> allFiledList = new ArrayList<>();
-        recursionGetAllFields(currentClass,allFiledList);
+        recursionGetAllFields(currentClass, allFiledList);
         int idCount = 0;
         List<TableInfo> tableInfos = new ArrayList<>();
         for (Field field : allFiledList) {
@@ -42,18 +42,19 @@ public class Check {
             if (Objects.nonNull(id)) {
                 idCount++;
                 tableInfo.setPrimary(true);
+                GeneratedValue generatedValue = field.getAnnotation(GeneratedValue.class);
+                if (Objects.nonNull(generatedValue)) {
+                    if (!Number.class.isAssignableFrom(field.getType()) && generatedValue.strategy().equals(GenerationType.AUTO)) {
+                        log.warn("当自增类型为GenerationType.AUTO时，只有类型为数值时才有意义。但是此时类型为：" + field.getType() + "，发生在表：" + tableName);
+                    }
+                    tableInfo.setGenerationType(generatedValue.strategy());
+                }
             } else {
                 tableInfo.setPrimary(false);
             }
             tableInfo.setField(field);
             tableInfo.setColumn(getColumnName(field, tableName));
-            GeneratedValue generatedValue = field.getAnnotation(GeneratedValue.class);
-            if (Objects.nonNull(generatedValue)) {
-                if (!Number.class.isAssignableFrom(field.getType()) && generatedValue.strategy().equals(GenerationType.AUTO)) {
-                    log.warn("当自增类型为GenerationType.AUTO时，只有类型为数值时才有意义。但是此时类型为：" + field.getType() + "，发生在表：" + tableName);
-                }
-                tableInfo.setGenerationType(generatedValue.strategy());
-            }
+
             tableInfos.add(tableInfo);
         }
         if (idCount > 1) {

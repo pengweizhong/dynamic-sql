@@ -43,11 +43,21 @@ public class DynamicSql<T> {
         return new DynamicSql<>();
     }
 
+    /**
+     * 创建一个左括号，用于创建复杂的查询
+     *
+     * @return this
+     */
     public DynamicSql<T> startBrackets() {
         this.getDeclarations().add(Declaration.buildDeclaration(LEFT_BRACKETS));
         return this;
     }
 
+    /**
+     * 创建一个右括号，用于创建复杂的查询
+     *
+     * @return this
+     */
     public DynamicSql<T> endBrackets() {
         this.getDeclarations().add(Declaration.buildDeclaration(RIGHT_BRACKETS));
         return this;
@@ -378,21 +388,45 @@ public class DynamicSql<T> {
         this.getDeclarations().add(Declaration.buildDeclaration(GROUP, String.join(",", personalCode), new GroupBy()));
     }
 
+    /**
+     * 根据实体类属性名（非表中列名）进行倒序排序，支持连续排序
+     *
+     * @param property 实体类属性名
+     * @return 排序后的数据
+     */
     public OrderByMode<T> orderByDesc(String property) {
         this.getDeclarations().add(Declaration.buildDeclaration(ORDER, property, new OrderBy("desc")));
         return orderByMode;
     }
 
+    /**
+     * 根据实体类属性名（非表中列名）进行倒序排序，支持连续排序
+     *
+     * @param fn 实体类属性名
+     * @return 排序后的数据
+     */
     public OrderByMode<T> orderByDesc(Fn<T, Object> fn) {
         this.getDeclarations().add(Declaration.buildDeclaration(ORDER, ReflectUtils.fnToFieldName(fn), new OrderBy("desc")));
         return orderByMode;
     }
 
+    /**
+     * 根据实体类属性名（非表中列名）进行正序排序，支持连续排序
+     *
+     * @param property 实体类属性名
+     * @return 排序后的数据
+     */
     public OrderByMode<T> orderByAsc(String property) {
         this.getDeclarations().add(Declaration.buildDeclaration(ORDER, property, new OrderBy("asc")));
         return orderByMode;
     }
 
+    /**
+     * 根据实体类属性名（非表中列名）进行正序排序，支持连续排序
+     *
+     * @param fn 实体类属性名
+     * @return 排序后的数据
+     */
     public OrderByMode<T> orderByAsc(Fn<T, Object> fn) {
         this.getDeclarations().add(Declaration.buildDeclaration(ORDER, ReflectUtils.fnToFieldName(fn), new OrderBy("asc")));
         return orderByMode;

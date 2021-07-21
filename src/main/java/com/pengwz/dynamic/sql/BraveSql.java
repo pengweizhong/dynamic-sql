@@ -15,6 +15,11 @@ import com.pengwz.dynamic.utils.StringUtils;
 
 import java.util.*;
 
+/**
+ * 数据库交互对象
+ *
+ * @param <T>
+ */
 @SuppressWarnings("all")
 public class BraveSql<T> {
 
@@ -81,14 +86,36 @@ public class BraveSql<T> {
         return new CustomizeSQL<T>(ContextApplication.getDefalutDataSourceName(), currentClass, querySql).executeQuery();
     }
 
+    /**
+     * 执行自定义查询语句，并使用自定义实体类接收，实体类属性和查询列名、列别名匹配上，就可以自动映射。<br>
+     *
+     * @param querySql        查询的sql
+     * @param dataSourceClass 指定数据源
+     * @return SQL查询后的结果集
+     * @see com.pengwz.dynamic.anno.Column 若成员变量标注了该注解，则注解内名称和结果集列名进行匹配
+     */
     public List<T> executeQuery(String querySql, Class<? extends DataSourceConfig> dataSourceClass) {
         return new CustomizeSQL<T>(dataSourceClass, currentClass, querySql).executeQuery();
     }
 
+    /**
+     * 执行自定义查询语句，并使用自定义实体类接收，实体类属性和查询列名、列别名匹配上，就可以自动映射。<br>
+     * 此方法单独为{@code Spring}环境提供的方法，非{@code Spring}环境调用{@link this#executeQuerySingle(String, Class)}
+     *
+     * @param querySql 查询的sql
+     * @return SQL查询后的结果集
+     */
     public T executeQuerySingle(String querySql) {
         return new CustomizeSQL<T>(ContextApplication.getDefalutDataSourceName(), currentClass, querySql).executeQuerySingle();
     }
 
+    /**
+     * 执行自定义查询语句，并使用自定义实体类接收，实体类属性和查询列名、列别名匹配上，就可以自动映射。<br>
+     *
+     * @param querySql        查询的sql
+     * @param dataSourceClass 指定数据源
+     * @return SQL查询后的结果集
+     */
     public T executeQuerySingle(String querySql, Class<? extends DataSourceConfig> dataSourceClass) {
         return new CustomizeSQL<T>(dataSourceClass, currentClass, querySql).executeQuerySingle();
     }
@@ -98,28 +125,60 @@ public class BraveSql<T> {
      * 如果执行未发生异常，则代表SQL成功执行，若果执行失败，将抛出异常。<br>
      * 调用者无需关心返回值。
      *
-     * @param ddlSql
+     * @param ddlSql SQL语句
      */
     public void executeSql(String executeSql) {
         new CustomizeSQL<T>(ContextApplication.getDefalutDataSourceName(), currentClass, executeSql).executeSql();
     }
 
+    /**
+     * 执行CREATE、ALTER、UPDATE、DROP等等语句。<br>
+     * 如果执行未发生异常，则代表SQL成功执行，若果执行失败，将抛出异常。<br>
+     * 调用者无需关心返回值。
+     *
+     * @param executeSql      SQL语句
+     * @param dataSourceClass 指定数据源
+     */
     public void executeSql(String executeSql, Class<? extends DataSourceConfig> dataSourceClass) {
         new CustomizeSQL<T>(dataSourceClass, currentClass, executeSql).executeSql();
     }
 
+    /**
+     * 判断表名是否存在
+     *
+     * @param tableName 表名称
+     * @return 如果存在返回{@code true}，否则{@code false}
+     */
     public boolean existTable(String tableName) {
         return new CustomizeSQL<T>(ContextApplication.getDefalutDataSourceName(), currentClass, tableName).existTable();
     }
 
+    /**
+     * 判断表名是否存在
+     *
+     * @param tableName       表名称
+     * @param dataSourceClass 指定数据源
+     * @return 如果存在返回{@code true}，否则{@code false}
+     */
     public boolean existTable(String tableName, Class<? extends DataSourceConfig> dataSourceClass) {
         return new CustomizeSQL<T>(dataSourceClass, currentClass, tableName).existTable();
     }
 
+    /**
+     * 查询表中全部的数据，若表中无数据，则返回空集合
+     *
+     * @return SQL查询后的结果集
+     */
     public List<T> select() {
         return mustShare().select();
     }
 
+    /**
+     * 根据where条件查询单条数据，若查询无数据，返回null
+     *
+     * @return SQL查询后的结果
+     * @throws BraveException 若返回多条数据，则抛出此异常
+     */
     public T selectSingle() {
         if (dynamicSql.getDeclarations().isEmpty()) {
             throw new BraveException("必须提供 where 条件语句");
@@ -127,6 +186,13 @@ public class BraveSql<T> {
         return mustShare().selectSingle();
     }
 
+    /**
+     * 根据主键值查询数据
+     *
+     * @param primaryValue 主键值
+     * @return SQL查询后的结果
+     * @see com.pengwz.dynamic.anno.Id 在实体类中标注主键属性
+     */
     public T selectByPrimaryKey(Object primaryValue) {
         if (Objects.isNull(primaryValue)) {
             throw new BraveException("主键值不可为空");
@@ -134,25 +200,45 @@ public class BraveSql<T> {
         return mustShare().selectByPrimaryKey(primaryValue);
     }
 
+    /**
+     * 查询条件（若有）查询总数量，若没有数据，则返回 0
+     *
+     * @return 查询结果集总数量
+     */
     public Integer selectCount() {
         return mustShare().selectCount();
     }
 
+    /**
+     * 分页查询<br>
+     * 查询数据库的前{@code pageSize} 条
+     *
+     * @param pageSize 查询当前页的数量
+     * @return 分页对象
+     */
     public PageInfo<T> selectPageInfo(int pageSize) {
         pageInfo = new PageInfo<>(0, pageSize);
         return mustShare().selectPageInfo();
     }
 
+    /**
+     * 分页查询<br>
+     * 查询数据库的第{@code pageIndex} 页的{@code pageSize}条记录
+     *
+     * @param pageIndex 查询当前页页码
+     * @param pageSize  查询当前页的数量
+     * @return 分页对象
+     */
     public PageInfo<T> selectPageInfo(int pageIndex, int pageSize) {
         pageInfo = new PageInfo<>(pageIndex, pageSize);
         return mustShare().selectPageInfo();
     }
 
     /**
-     * 新增全部属性，属性为null的则插入null
+     * 新增表记录，属性为null的则插入null
      *
-     * @param data
-     * @return
+     * @param data 待新增的数据
+     * @return 成功返回1，否则返回其他值
      */
     public Integer insert(T data) {
         if (Objects.isNull(data)) {
@@ -163,10 +249,10 @@ public class BraveSql<T> {
     }
 
     /**
-     * 属性为null的会使用数据库默认值
+     * 新增表记录，有选择的新增，当提供的列数据为null时，将使用数据库默认值。
      *
-     * @param data
-     * @return
+     * @param data 待新增的数据
+     * @return 成功返回1，否则返回其他值
      */
     public Integer insertActive(T data) {
         if (Objects.isNull(data)) {
@@ -176,6 +262,12 @@ public class BraveSql<T> {
         return mustShare().insertActive();
     }
 
+    /**
+     * 批量新增表记录，属性为null的则插入null
+     *
+     * @param iterable 待新增的数据集合
+     * @return 成功新增的数量
+     */
     public Integer batchInsert(Iterable<T> iterable) {
         if (Objects.isNull(iterable) || !iterable.iterator().hasNext()) {
             return 0;
@@ -185,12 +277,12 @@ public class BraveSql<T> {
     }
 
     /**
-     * 根据唯一约束，判断表中记录是否存在。
+     * 根据唯一约束、主键等判断表中记录是否存在。
      * 若表中记录存在，进行更新操作，否则插入
      * <p/>
      * <strong>
      * 注意，该方法将会执行类似如下SQL ... on duplicate key update ...<br/>
-     * 这种SQL回显的主键可能是不正确的，为了保险起见，请不要在业务中使用该方法所回填的主键
+     * 这种SQL在Mysql中回显的主键可能是不正确的，为了保险起见，请不要在业务中使用该方法所回填的主键
      * </strong>
      *
      * @param data 待插入的数据
@@ -229,6 +321,7 @@ public class BraveSql<T> {
      * 更新对象所有属性，包括null元素
      *
      * @param data 待更新的对象
+     * @return 若更新成功，返回1
      */
     public Integer update(T data) {
         if (Objects.isNull(data)) {
@@ -239,9 +332,10 @@ public class BraveSql<T> {
     }
 
     /**
-     * 当对象属性为null时，忽略更新
+     * 更新对象所有属性，如果类中属性为null，则使用数据库默认值（如果有）
      *
      * @param data 待更新的对象
+     * @return 若更新成功，返回1
      */
     public Integer updateActive(T data) {
         if (Objects.isNull(data)) {
@@ -251,6 +345,12 @@ public class BraveSql<T> {
         return mustShare().updateActive();
     }
 
+    /**
+     * 根据主键更新全部数据
+     *
+     * @param data 待更新的对象
+     * @return 若更新成功，返回1
+     */
     public Integer updateByPrimaryKey(T data) {
         if (Objects.isNull(data)) {
             throw new BraveException("必须提供待更新的主键值");
@@ -259,6 +359,12 @@ public class BraveSql<T> {
         return mustShare().updateByPrimaryKey();
     }
 
+    /**
+     * 根据主键更新全部数据，若属性为空，则使用数据库默认值
+     *
+     * @param data 待更新的对象
+     * @return 若更新成功，返回1
+     */
     public Integer updateActiveByPrimaryKey(T data) {
         if (Objects.isNull(data)) {
             throw new BraveException("必须提供待更新的主键值");
@@ -267,10 +373,21 @@ public class BraveSql<T> {
         return mustShare().updateActiveByPrimaryKey();
     }
 
+    /**
+     * 根据条件删除数据，若为提供where条件，则会删除全部数据
+     *
+     * @return 删除的数据量
+     */
     public Integer delete() {
         return mustShare().delete();
     }
 
+    /**
+     * 根据主键删除数据
+     *
+     * @param key
+     * @return 删除的数据量
+     */
     public Integer deleteByPrimaryKey(Object key) {
         if (Objects.isNull(key)) {
             throw new BraveException("必须提供待删除的主键值");
@@ -278,7 +395,12 @@ public class BraveSql<T> {
         return mustShare().deleteByPrimaryKey(key);
     }
 
-
+    /**
+     * 根据实体类属性名（非表中列名）进行正序排序
+     *
+     * @param feilds 实体类属性名，支持多个
+     * @return SQL查询后的数据
+     */
     public final BraveSql<T> orderByAsc(String... feilds) {
         if (Objects.isNull(feilds)) {
             throw new BraveException("当选择排序时，排序的字段不可为空");
@@ -293,6 +415,12 @@ public class BraveSql<T> {
         return this;
     }
 
+    /**
+     * 根据实体类属性名进行正序排序
+     *
+     * @param feilds 实体类属性名，支持多个
+     * @return SQL查询后的数据
+     */
     @SafeVarargs
     public final BraveSql<T> orderByAsc(Fn<T, Object>... fns) {
         if (Objects.isNull(fns)) {
@@ -305,6 +433,12 @@ public class BraveSql<T> {
         return this;
     }
 
+    /**
+     * 根据实体类属性名（非表中列名）进行倒序排序
+     *
+     * @param feilds 实体类属性名，支持多个
+     * @return SQL查询后的数据
+     */
     public final BraveSql<T> orderByDesc(String... feilds) {
         if (Objects.isNull(feilds)) {
             throw new BraveException("当选择排序时，排序的字段不可为空");
@@ -319,6 +453,12 @@ public class BraveSql<T> {
         return this;
     }
 
+    /**
+     * 根据实体类属性名进行倒序排序
+     *
+     * @param feilds 实体类属性名，支持多个
+     * @return SQL查询后的数据
+     */
     @SafeVarargs
     public final BraveSql<T> orderByDesc(Fn<T, Object>... fns) {
         if (Objects.isNull(fns)) {
