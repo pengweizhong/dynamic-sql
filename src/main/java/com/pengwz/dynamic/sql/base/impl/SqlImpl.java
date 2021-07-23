@@ -213,12 +213,6 @@ public class SqlImpl<T> implements Sqls<T> {
     }
 
 
-//    private void appendSqlActive(){
-//        prefix.append(SPACE).append(tableInfo.getColumn()).append(COMMA);
-//        suffix.append("?, ");
-//        insertValues.add(invoke);
-//    }
-
     private Integer setValuesExecuteSql(String sql, List<TableInfo> tableInfos) {
         Iterator<T> iterator = data.iterator();
         try {
@@ -466,11 +460,10 @@ public class SqlImpl<T> implements Sqls<T> {
     }
 
     private void printSql(PreparedStatement preparedStatement) {
-//        if (log.isDebugEnabled()) {
-        String sqlToString = preparedStatement.toString();
-        System.out.println(sqlToString.substring(sqlToString.indexOf(':') + 1));
-//        log.debug(sqlToString.substring(sqlToString.indexOf(':') + 1));
-//        }
+        if (log.isDebugEnabled()) {
+            String sqlToString = preparedStatement.toString();
+            log.debug(sqlToString.substring(sqlToString.indexOf(':') + 1));
+        }
     }
 
     private void buildPageInfo(PageInfo<T> pageInfo, List<T> list, Integer totalSize) {
