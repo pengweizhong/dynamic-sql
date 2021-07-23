@@ -24,14 +24,14 @@
 	<dependency>
 	    <groupId>com.pengwz</groupId>
 	    <artifactId>dynamic-sql</artifactId>
-	    <version>2.0.4</version>
+	    <version>2.0.5</version>
 	</dependency>
 	
 	<-- springBoot项目，已集成dynamic-sql -->
 	<dependency>
 	    <groupId>com.pengwz</groupId>
 	    <artifactId>dynamic-sql-spring-boot-starter</artifactId>
-	    <version>2.0.4</version>
+	    <version>2.0.5</version>
 	</dependency>
 
 ```
