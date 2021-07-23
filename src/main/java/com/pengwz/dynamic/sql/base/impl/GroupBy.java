@@ -8,7 +8,7 @@ import static com.pengwz.dynamic.constant.Constant.GROUP;
 
 public class GroupBy implements HandleFunction {
     @Override
-    public String execute(String tableName, Declaration declaration) {
-        return ParseSql.parseAggregateFunction(GROUP, tableName, declaration);
+    public String execute(String dataSource, String tableName, Declaration declaration) {
+        return ParseSql.parseAggregateFunction(GROUP, dataSource, tableName, declaration);
     }
 }

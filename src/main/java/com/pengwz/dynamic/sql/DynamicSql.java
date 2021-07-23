@@ -352,24 +352,57 @@ public class DynamicSql<T> {
         return this.orMin(ReflectUtils.fnToFieldName(fn));
     }
 
+    /**
+     * 获取表中指定属性最大的那条记录。<br>
+     * 请注意：调用该方法时，不支持传入 where 参数
+     *
+     * @param property 实体类字段名
+     * @return 查询结果
+     */
+    @Deprecated
     public DynamicSql<T> andMax(String property) {
         this.getDeclarations().add(Declaration.buildDeclaration(AND, property, new Max()));
         return this;
     }
 
+    /**
+     * 获取表中指定属性最大的那条记录。<br>
+     * 请注意：调用该方法时，不支持传入 where 参数
+     *
+     * @param fn 实体类字段名
+     * @return 查询结果
+     */
+    @Deprecated
     public DynamicSql<T> andMax(Fn<T, Object> fn) {
         return this.andMax(ReflectUtils.fnToFieldName(fn));
     }
 
+    /**
+     * 获取表中指定属性最小的那条记录。<br>
+     * 请注意：调用该方法时，不支持传入 where 参数
+     *
+     * @param property 实体类字段名
+     * @return 查询结果
+     */
+    @Deprecated
     public DynamicSql<T> orMax(String property) {
         this.getDeclarations().add(Declaration.buildDeclaration(OR, property, new Max()));
         return this;
     }
 
+    /**
+     * 获取表中指定属性最小的那条记录。<br>
+     * 请注意：调用该方法时，不支持传入 where 参数
+     *
+     * @param fn 实体类字段名
+     * @return 查询结果
+     */
+    @Deprecated
     public DynamicSql<T> orMax(Fn<T, Object> fn) {
         return this.orMax(ReflectUtils.fnToFieldName(fn));
     }
 
+    @Deprecated
     public void groupBy(List<Fn<T, Object>> fn) {
         List<String> list = new ArrayList<>();
         for (Fn<T, Object> f : fn) {
@@ -379,11 +412,13 @@ public class DynamicSql<T> {
         this.getDeclarations().add(Declaration.buildDeclaration(GROUP, String.join(",", list), new GroupBy()));
     }
 
+    @Deprecated
     public void groupBy(Fn<T, Object> fn) {
         String s = ReflectUtils.fnToFieldName(fn);
         this.getDeclarations().add(Declaration.buildDeclaration(GROUP, s, new GroupBy()));
     }
 
+    @Deprecated
     public void groupBy(String... personalCode) {
         this.getDeclarations().add(Declaration.buildDeclaration(GROUP, String.join(",", personalCode), new GroupBy()));
     }

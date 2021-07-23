@@ -4,5 +4,5 @@ import com.pengwz.dynamic.sql.Declaration;
 
 public interface HandleFunction {
 
-    String execute(String tableName, Declaration declaration);
+    String execute(String dataSource, String tableName, Declaration declaration);
 }
