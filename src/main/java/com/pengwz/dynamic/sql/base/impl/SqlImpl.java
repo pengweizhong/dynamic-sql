@@ -199,7 +199,7 @@ public class SqlImpl<T> implements Sqls<T> {
         try {
             preparedStatement = connection.prepareStatement(sql, RETURN_GENERATED_KEYS);
             for (int i = 1; i <= insertValues.size(); i++) {
-                preparedStatement.setObject(i, insertValues.get(i - 1));
+                preparedStatement.setObject(i, ConverterUtils.convertValueJdbc(insertValues.get(i - 1)));
             }
             printSql(preparedStatement);
             preparedStatement.addBatch();
@@ -234,7 +234,7 @@ public class SqlImpl<T> implements Sqls<T> {
                     } else {
                         fieldValue = ReflectUtils.getFieldValue(field, next);
                     }
-                    preparedStatement.setObject(i, fieldValue);
+                    preparedStatement.setObject(i, ConverterUtils.convertValueJdbc(fieldValue));
                 }
                 printSql(preparedStatement);
                 preparedStatement.addBatch();

@@ -7,6 +7,7 @@ import com.pengwz.dynamic.utils.convert.LocalDateTimeConverterAdapter;
 import com.pengwz.dynamic.utils.convert.LocalTimeConverterAdapter;
 import org.apache.commons.beanutils.ConversionException;
 import org.apache.commons.beanutils.ConvertUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -67,6 +68,10 @@ public class ConverterUtils {
         if (Object.class.equals(targetType)) {
             return (T) resultSet.getObject(columnName);
         }
+        //转换枚举
+        if (targetType.isEnum()) {
+            return (T) mappedEnum(resultSet, columnName, targetType);
+        }
         try {
             return resultSet.getObject(columnName, targetType);
         } catch (SQLException e) {
@@ -74,4 +79,38 @@ public class ConverterUtils {
             return convert(resultSet.getObject(columnName), targetType);
         }
     }
+
+    /**
+     * 设置值到SQL时，将java对象转为mysql认知的对象
+     */
+    @SuppressWarnings("unchecked")
+    public static Object convertValueJdbc(Object fieldValue) {
+        if (null == fieldValue) {
+            return null;
+        }
+        if (fieldValue.getClass().isEnum()) {
+            //若是枚举，则调用枚举的Tostring方法
+            return fieldValue.toString();
+        }
+        //其他值直接返回
+        return fieldValue;
+    }
+
+    private static <T> Object mappedEnum(ResultSet resultSet, String columnName, Class<T> targetType) throws SQLException {
+        //2 判断是否是枚举
+        Object enumerateValue = resultSet.getObject(columnName);
+        if (enumerateValue == null || StringUtils.isBlank(enumerateValue.toString())) {
+            return null;
+        }
+        //枚举对象
+        Object[] enumConstants = targetType.getEnumConstants();
+        for (Object enumObj : enumConstants) {
+            if (enumObj.toString().equalsIgnoreCase(enumerateValue.toString().trim())) {
+                return enumObj;
+            }
+        }
+        String canonicalEnumerateName = targetType.getCanonicalName() + "." + enumerateValue;
+        throw new BraveException("Failed to convert property value [" + columnName + "]; No enum constant ：" + canonicalEnumerateName);
+    }
+
 }
