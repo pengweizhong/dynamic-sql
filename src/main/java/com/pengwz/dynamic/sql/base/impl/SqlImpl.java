@@ -1,5 +1,6 @@
 package com.pengwz.dynamic.sql.base.impl;
 
+import com.alibaba.druid.pool.DruidPooledPreparedStatement;
 import com.pengwz.dynamic.anno.GenerationType;
 import com.pengwz.dynamic.config.DataSourceManagement;
 import com.pengwz.dynamic.constant.Constant;
@@ -484,13 +485,53 @@ public class SqlImpl<T> implements Sqls<T> {
         }
     }
 
-    private void printSql(PreparedStatement preparedStatement) {
+    //    private void printSql(PreparedStatement preparedStatement) throws SQLException {
 //        if (log.isDebugEnabled()) {
-//            String sqlToString = preparedStatement.toString();
-//            log.debug(sqlToString.substring(sqlToString.indexOf(':') + 1));
+//            switch (preparedStatement.getConnection().getMetaData().getDatabaseProductName().toUpperCase()) {
+//                case "ORACLE":
+//                    try {
+//                        String canonicalName = preparedStatement.getClass().getCanonicalName();
+//                        if (canonicalName.equals("com.alibaba.druid.pool.DruidPooledPreparedStatement")) {
+//                            DruidPooledPreparedStatement druidPooledPreparedStatement = (DruidPooledPreparedStatement) preparedStatement;
+//                            log.debug(druidPooledPreparedStatement.getSql());
+//                        } else {
+//                            log.debug("[" + canonicalName + "] is not support print sql.");
+//                        }
+//                    } catch (Exception e) {
+//                        e.printStackTrace();
+//                    }
+//                    break;
+//                case "MYSQL":
+//                    String temp = preparedStatement.toString();
+//                    log.debug(temp.substring(temp.indexOf(':') + 1));
+//                    break;
+//                default:
+//                    log.debug(preparedStatement.toString());
+//            }
 //        }
-        String sqlToString = preparedStatement.toString();
-        System.out.println(sqlToString.substring(sqlToString.indexOf(':') + 1));
+//    }
+    private void printSql(PreparedStatement preparedStatement) throws SQLException {
+        switch (preparedStatement.getConnection().getMetaData().getDatabaseProductName().toUpperCase()) {
+            case "ORACLE":
+                try {
+                    String canonicalName = preparedStatement.getClass().getCanonicalName();
+                    if (canonicalName.equals("com.alibaba.druid.pool.DruidPooledPreparedStatement")) {
+                        DruidPooledPreparedStatement druidPooledPreparedStatement = (DruidPooledPreparedStatement) preparedStatement;
+                        System.out.println(druidPooledPreparedStatement.getSql());
+                    } else {
+                        System.out.println("[" + canonicalName + "] is not support print sql.");
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                break;
+            case "MYSQL":
+                String temp = preparedStatement.toString();
+                System.out.println(temp.substring(temp.indexOf(':') + 1));
+                break;
+            default:
+                System.out.println(preparedStatement.toString());
+        }
     }
 
     private void buildPageInfo(PageInfo<T> pageInfo, List<T> list, Integer totalSize) {

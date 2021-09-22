@@ -1,27 +1,34 @@
 package com.pengwz.dynamic.sql;
 
 
-import com.pengwz.dynamic.config.OracleDatabaseConfig;
+import com.pengwz.dynamic.entity.oracle.TBCopyEntity;
 import org.junit.Test;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class OracleBraveSqlTest {
 
-    String createStudentTableSql = " ---1、创建模拟的数据表 ---\n" +
-            "  --1.1.创建学生表Student\n" +
-            "  create table Student(\n" +
-            "         StuId NUMBER NOT NULL,     --学生ID\n" +
-            "         StuName VARCHAR2(10) NOT NULL, --名称\n" +
-            "         Gender VARCHAR2(10)NOT NULL,  -- 性别\n" +
-            "         Age NUMBER(2) NOT NULL,    -- 年龄     \n" +
-            "         JoinDate DATE NULL,       --入学时间\n" +
-            "         ClassId NUMBER NOT NULL,   --班级ID\n" +
-            "         Address VARCHAR2(50) NULL   --家庭住址           \n" +
-            "  ); ";
-
+    @Test
+    public void testInsert() {
+        List<TBCopyEntity> tbCopyEntityList = new ArrayList<>();
+        for (int i = 0; i < 100; i++) {
+            TBCopyEntity entity = new TBCopyEntity();
+            entity.setTbColumn0("TbColumn0000_" + i);
+            entity.setTbColumn1("TbColumn1111_" + i);
+            entity.setTbColumn2("TbColumn2222_" + i);
+            tbCopyEntityList.add(entity);
+        }
+        Integer integer = BraveSql.build(TBCopyEntity.class).batchInsert(tbCopyEntityList);
+        System.out.println(integer);
+    }
 
     @Test
-    public void createStudentTable() {
-        BraveSql.build(Void.class).executeSql(createStudentTableSql, OracleDatabaseConfig.class);
-
+    public void testSelect() {
+        List<TBCopyEntity> select = BraveSql.build(TBCopyEntity.class).select();
+        System.out.println(select.size());
+        System.out.println(select.subList(0, 1));
     }
+
+
 }
