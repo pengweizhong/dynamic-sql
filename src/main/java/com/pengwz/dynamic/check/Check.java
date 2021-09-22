@@ -115,17 +115,17 @@ public class Check {
 
     public static String getTableName(String tableName, String dataSource) {
         DataSourceInfo dataSourceInfo = ContextApplication.getDataSourceInfo(dataSource);
-        if (tableName.contains("\\.")) {
+        if (tableName.contains(".")) {
             String[] splitTableName = tableName.split("\\.");
             if (splitTableName.length != 2) {
-                throw new BraveException("错误的表名称");
+                throw new BraveException("错误的表名称：" + tableName);
             }
             String database = splitTableName[0];
             String table = splitTableName[1];
             if (StringUtils.isBlank(database) || StringUtils.isBlank(table)) {
-                throw new BraveException("错误的表名称");
+                throw new BraveException("错误的表名称：" + tableName);
             }
-            return splicingName(dataSourceInfo, database) + "\\." + splicingName(dataSourceInfo, table);
+            return splicingName(dataSourceInfo, database) + "." + splicingName(dataSourceInfo, table);
         }
         return splicingName(dataSourceInfo, tableName);
     }

@@ -2,6 +2,7 @@ package com.pengwz.dynamic.sql;
 
 
 import com.pengwz.dynamic.config.DatabaseConfig;
+import com.pengwz.dynamic.entity.JobUserEntity;
 import com.pengwz.dynamic.entity.UserEntity;
 import com.pengwz.dynamic.entity.UserRoleEntity;
 import com.pengwz.dynamic.exception.BraveException;
@@ -269,6 +270,13 @@ public class BraveSqlTest {
     @Test
     public void testSelect() {
         List<UserEntity> select = BraveSql.build(UserEntity.class).select();
+        System.out.println(select.size());
+        System.out.println(select.subList(0, 1));
+    }
+
+    @Test
+    public void testSelect2() {
+        List<JobUserEntity> select = BraveSql.build(JobUserEntity.class).select();
         System.out.println(select.size());
         System.out.println(select.subList(0, 1));
     }
