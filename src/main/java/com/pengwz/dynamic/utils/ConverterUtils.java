@@ -65,6 +65,9 @@ public class ConverterUtils {
         if (columnName.contains("`")) {
             columnName = columnName.replace("`", "").trim();
         }
+        if (columnName.contains("\"")) {
+            columnName = columnName.replace("\"", "").trim();
+        }
         if (Object.class.equals(targetType)) {
             return (T) resultSet.getObject(columnName);
         }

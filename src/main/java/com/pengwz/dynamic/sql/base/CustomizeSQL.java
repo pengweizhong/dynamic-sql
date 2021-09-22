@@ -242,6 +242,9 @@ public class CustomizeSQL<T> {
         if (columnName.contains("`")) {
             columnName = columnName.replace("`", "").trim();
         }
+        if (columnName.contains("\"")) {
+            columnName = columnName.replace("\"", "").trim();
+        }
         return columnName;
     }
 

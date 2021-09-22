@@ -31,6 +31,8 @@ public interface Sqls<T> {
 
     Integer updateActive();
 
+//    Integer updateBatch();
+
     Integer updateByPrimaryKey();
 
     Integer updateActiveByPrimaryKey();
@@ -38,5 +40,6 @@ public interface Sqls<T> {
     Integer delete();
 
     Integer deleteByPrimaryKey(Object primaryKeyValue);
+
 
 }

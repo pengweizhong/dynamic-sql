@@ -1,5 +1,6 @@
 package com.pengwz.dynamic.sql;
 
+import com.pengwz.dynamic.anno.Table;
 import com.pengwz.dynamic.exception.BraveException;
 import com.pengwz.dynamic.sql.base.HandleFunction;
 import com.pengwz.dynamic.sql.base.impl.Count;
@@ -19,8 +20,9 @@ import static com.pengwz.dynamic.constant.Constant.*;
 
 public class ParseSql {
 
-    public static String parse(Class<?> currentClass, String tableName, String dataSource, List<Declaration> declarationList, Map<String, List<String>> orderByMap) {
-        checkAndSave(currentClass, tableName, dataSource);
+    public static String parse(Class<?> currentClass, Table table, String dataSource, List<Declaration> declarationList, Map<String, List<String>> orderByMap) {
+        String tableName = table.value().trim();
+        checkAndSave(currentClass, table, dataSource);
         StringBuilder whereSql = new StringBuilder();
         for (Declaration declaration : declarationList) {
             if (Objects.nonNull(declaration.getBrackets())) {

@@ -101,7 +101,7 @@ public class SqlImpl<T> implements Sqls<T> {
         int totalSize = executeQueryCount(sqlCount, false);
         String sql = "select " + columnList + " from " + tableName + (StringUtils.isEmpty(whereSql) ? SPACE : SPACE + WHERE + SPACE + whereSql.trim());
         sql = ParseSql.parseSql(sql);
-        sql += " limit " + pageInfo.getOffset() + " , " + (pageInfo.getPageSize() == 0 ? totalSize : pageInfo.getPageSize());
+        sql += " limit " + pageInfo.getOffset() + " , " + pageInfo.getPageSize();
         List<T> list = executeQuery(sql, tableName);
         buildPageInfo(pageInfo, list, totalSize);
         return pageInfo;
@@ -331,6 +331,25 @@ public class SqlImpl<T> implements Sqls<T> {
         return baseUpdate(sql);
     }
 
+//    @Override
+//    public Integer updateBatch() {
+//        List<TableInfo> tableInfos = ContextApplication.getTableInfos(dataSourceName, tableName);
+//        StringBuilder sql = new StringBuilder();
+//        sql.append("update ").append(tableName).append(" set");
+//        for (T next : data) {
+//            for (TableInfo tableInfo : tableInfos) {
+//                try {
+//                    Object invoke = ReflectUtils.getFieldValue(tableInfo.getField(), next);
+//                    sql.append(SPACE).append(tableInfo.getColumn()).append(SPACE).append(EQ).append(SPACE);
+//                    sql.append(ParseSql.matchValue(invoke)).append(COMMA);
+//                } catch (Exception ex) {
+//                    ExceptionUtils.boxingAndThrowBraveException(ex, sql.toString());
+//                }
+//            }
+//        }
+//        return setValuesExecuteSql(sql.toString(), tableInfos);
+//    }
+
     private Integer baseUpdate(StringBuilder sql) {
         if (sql.toString().endsWith("set")) {
             return 0;
@@ -466,10 +485,10 @@ public class SqlImpl<T> implements Sqls<T> {
     }
 
     private void printSql(PreparedStatement preparedStatement) {
-        if (log.isDebugEnabled()) {
-            String sqlToString = preparedStatement.toString();
-            log.debug(sqlToString.substring(sqlToString.indexOf(':') + 1));
-        }
+//        if (log.isDebugEnabled()) {
+        String sqlToString = preparedStatement.toString();
+        log.info(sqlToString.substring(sqlToString.indexOf(':') + 1));
+//        }
     }
 
     private void buildPageInfo(PageInfo<T> pageInfo, List<T> list, Integer totalSize) {
@@ -478,6 +497,8 @@ public class SqlImpl<T> implements Sqls<T> {
         pageInfo.setResultList(list);
         if (pageInfo.getPageSize() != 0) {
             pageInfo.setTotalPages((totalSize + pageInfo.getPageSize() - 1) / pageInfo.getPageSize());
+        } else {
+            pageInfo.setTotalPages(0);
         }
     }
 

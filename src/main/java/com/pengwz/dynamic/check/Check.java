@@ -1,9 +1,6 @@
 package com.pengwz.dynamic.check;
 
-import com.pengwz.dynamic.anno.Column;
-import com.pengwz.dynamic.anno.GeneratedValue;
-import com.pengwz.dynamic.anno.GenerationType;
-import com.pengwz.dynamic.anno.Id;
+import com.pengwz.dynamic.anno.*;
 import com.pengwz.dynamic.exception.BraveException;
 import com.pengwz.dynamic.model.TableInfo;
 import com.pengwz.dynamic.sql.ContextApplication;
@@ -21,9 +18,9 @@ public class Check {
 
     private static final Log log = LogFactory.getLog(Check.class);
 
-    public static void checkAndSave(Class<?> currentClass, String tableName, String dataSource) {
-        boolean existsTable = ContextApplication.existsTable(tableName, dataSource);
-        if (existsTable) {
+    public static void checkAndSave(Class<?> currentClass, Table table, String dataSource) {
+        String tableName = table.value().trim();
+        if (table.isCache() && ContextApplication.existsTable(tableName, dataSource)) {
             return;
         }
         List<Field> allFiledList = new ArrayList<>();
@@ -53,6 +50,7 @@ public class Check {
                 tableInfo.setPrimary(false);
             }
             tableInfo.setField(field);
+
             tableInfo.setColumn(getColumnName(field, tableName));
 
             tableInfos.add(tableInfo);
@@ -73,15 +71,15 @@ public class Check {
         ContextApplication.saveTable(dataSource, tableName, tableInfos);
     }
 
-    public static void recursionGetAllFields(Class<?> fatherClass, List<Field> fieldList) {
+    public static void recursionGetAllFields(Class<?> thisClass, List<Field> fieldList) {
         //仅递归到Object的直接子类
-        if (Object.class.equals(fatherClass)) {
+        if (Object.class.equals(thisClass)) {
             return;
         }
         //递归父类，获取所有字段，此处仅做获取，不过滤
-        Field[] declaredFields = fatherClass.getDeclaredFields();
+        Field[] declaredFields = thisClass.getDeclaredFields();
         Collections.addAll(fieldList, declaredFields);
-        recursionGetAllFields(fatherClass.getSuperclass(), fieldList);
+        recursionGetAllFields(thisClass.getSuperclass(), fieldList);
     }
 
     public static <T> void checkPageInfo(PageInfo<T> pageInfo) {
@@ -113,15 +111,11 @@ public class Check {
      */
     public static boolean checkedFieldType(Field field) {
         //静态类型，final类型等等不参与数据库查询
-        if (Modifier.isFinal(field.getModifiers())
+        return Modifier.isFinal(field.getModifiers())
                 || Modifier.isAbstract(field.getModifiers())
                 || Modifier.isStatic(field.getModifiers())
                 || Modifier.isNative(field.getModifiers())
-                || Modifier.isInterface(field.getModifiers()
-        )
-        ) {
-            return true;
-        }
-        return false;
+                || Modifier.isInterface(field.getModifiers())
+                || Modifier.isTransient(field.getModifiers());
     }
 }

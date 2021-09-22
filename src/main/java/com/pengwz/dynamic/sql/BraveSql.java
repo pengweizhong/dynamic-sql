@@ -345,6 +345,20 @@ public class BraveSql<T> {
         return mustShare().updateActive();
     }
 
+//    /**
+//     * 更新对象所有属性，如果类中属性为null，则使用数据库默认值（如果有）
+//     *
+//     * @param iterable 待更新的多个对象
+//     * @return 返回更新成功的数量
+//     */
+//    public Integer batchUpdate(Iterable<T> iterable) {
+//        if (Objects.isNull(iterable) || !iterable.iterator().hasNext()) {
+//            throw new BraveException("必须提供待插入的数据");
+//        }
+//        this.data = iterable;
+//        return mustShare().updateBatch();
+//    }
+
     /**
      * 根据主键更新全部数据
      *
@@ -480,7 +494,7 @@ public class BraveSql<T> {
         String tableName = table.value().trim();
         String defalutDataSource = DataSourceManagement.initDataSourceConfig(table.dataSourceClass(), tableName);
         Check.checkPageInfo(pageInfo);
-        String whereSql = ParseSql.parse(currentClass, tableName, defalutDataSource, dynamicSql.getDeclarations(), orderByMap);
+        String whereSql = ParseSql.parse(currentClass, table, defalutDataSource, dynamicSql.getDeclarations(), orderByMap);
         //调正where子句的sql顺序 ，将来把它单独抽出来  作为组件
         whereSql = ParseSql.fixWhereSql(whereSql);
         SqlImpl<T> sqls = new SqlImpl<>();

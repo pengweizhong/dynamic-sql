@@ -2,7 +2,6 @@ package com.pengwz.dynamic.sql;
 
 
 import com.pengwz.dynamic.config.DatabaseConfig;
-import com.pengwz.dynamic.entity.UserChildEntity;
 import com.pengwz.dynamic.entity.UserEntity;
 import com.pengwz.dynamic.entity.UserRoleEntity;
 import com.pengwz.dynamic.exception.BraveException;
@@ -13,7 +12,6 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import javax.swing.text.html.parser.Entity;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.LocalDate;
@@ -267,7 +265,11 @@ public class BraveSqlTest {
     public void testTestExistTable() {
     }
 
+    @Test
     public void testSelect() {
+        List<UserEntity> select = BraveSql.build(UserEntity.class).select();
+        System.out.println(select.size());
+        System.out.println(select.subList(0, 1));
     }
 
     public void testSelectSingle() {
@@ -286,7 +288,13 @@ public class BraveSqlTest {
         System.out.println(integer2);
     }
 
+    @Test
     public void testSelectPageInfo() {
+        PageInfo<UserEntity> userEntityPageInfo = BraveSql.build(UserEntity.class).selectPageInfo(3);
+        System.out.println(userEntityPageInfo);
+        System.out.println("===================================");
+        PageInfo<UserEntity> userEntityPageInfo2 = BraveSql.build(UserEntity.class).selectPageInfo(0);
+        System.out.println(userEntityPageInfo2);
     }
 
     public void testTestSelectPageInfo() {
