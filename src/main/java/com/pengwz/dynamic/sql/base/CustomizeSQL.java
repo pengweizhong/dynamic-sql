@@ -36,7 +36,7 @@ public class CustomizeSQL<T> {
 
     private Map<String, Field> columnFieldMap = new LinkedHashMap<>();
 
-    private List<String> columnCheckedList = new ArrayList<>();
+//    private List<String> columnCheckedList = new ArrayList<>();
 
     public CustomizeSQL(Class<? extends DataSourceConfig> dataSource, Class<T> target, String sql) {
         this.target = target;
@@ -129,12 +129,7 @@ public class CustomizeSQL<T> {
     }
 
     public List<T> executeQuery() {
-        if (String.class.isAssignableFrom(target)
-                || Number.class.isAssignableFrom(target)
-                || Temporal.class.isAssignableFrom(target)
-                || java.util.Date.class.isAssignableFrom(target)
-                || java.sql.Date.class.isAssignableFrom(target)
-                || Object.class.equals(target)) {
+        if (target.getClassLoader() == null) {
             return executeQueryForObject();
         } else {
             return executeQueryForCompoundObject();
@@ -238,7 +233,7 @@ public class CustomizeSQL<T> {
     }
 
     private String getColumnAndFixName(Field field) {
-        String columnName = Check.getColumnName(field, "unknown");
+        String columnName = Check.getColumnName(field, "", "");
         if (columnName.contains("`")) {
             columnName = columnName.replace("`", "").trim();
         }

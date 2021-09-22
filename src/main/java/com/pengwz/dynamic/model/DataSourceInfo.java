@@ -6,6 +6,7 @@ public class DataSourceInfo {
     private String classPath;
     private String classBeanName;
     private DataSource dataSource;
+    private DbType dbType;
     private String dataSourceBeanName;
     private boolean isDefault;
 
@@ -49,12 +50,21 @@ public class DataSourceInfo {
         isDefault = aDefault;
     }
 
+    public DbType getDbType() {
+        return dbType;
+    }
+
+    public void setDbType(DbType dbType) {
+        this.dbType = dbType;
+    }
+
     @Override
     public String toString() {
         return "DataSourceInfo{" +
                 "classPath='" + classPath + '\'' +
                 ", classBeanName='" + classBeanName + '\'' +
                 ", dataSource=" + dataSource +
+                ", dbType=" + dbType +
                 ", dataSourceBeanName='" + dataSourceBeanName + '\'' +
                 ", isDefault=" + isDefault +
                 '}';

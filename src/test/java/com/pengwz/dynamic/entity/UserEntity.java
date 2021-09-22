@@ -25,7 +25,7 @@ public class UserEntity {
     @Column("email")
     private String email;
     // `desc` varchar(50) DEFAULT NULL COMMENT '邮箱',
-    @Column("`desc`")
+    @Column("desc")
     private String desc;
     //    `birthday` datetime DEFAULT NULL COMMENT '生日',
     @Column("birthday")

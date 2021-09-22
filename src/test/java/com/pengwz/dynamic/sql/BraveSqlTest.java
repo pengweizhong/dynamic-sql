@@ -36,7 +36,7 @@ public class BraveSqlTest {
     private static final String dropUserRoleTable = "drop table if exists `t_user_role`;";
     private static final String createUserTable = "CREATE TABLE `t_user` (\n" +
             "  `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '主键',\n" +
-            "  `account_no` varchar(50) DEFAULT NULL COMMENT '账号',\n" +
+            "  `account_no` varchar(100) DEFAULT NULL COMMENT '账号',\n" +
             "  `username` varchar(50) DEFAULT NULL COMMENT '用户名',\n" +
             "  `password` varchar(50) DEFAULT NULL COMMENT '密码',\n" +
             "    `email` varchar(50) DEFAULT NULL COMMENT '邮箱',\n" +
@@ -255,6 +255,7 @@ public class BraveSqlTest {
 //        select.forEach(System.out::println);
 //    }
 
+    @Test
     public void testTestExecuteSql() {
         BraveSql.build(UserEntity.class).executeQuery("");
     }
@@ -272,10 +273,18 @@ public class BraveSqlTest {
         System.out.println(select.subList(0, 1));
     }
 
+    @Test
     public void testSelectSingle() {
+        DynamicSql<UserEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.andEqualTo(UserEntity::getId, 1);
+        UserEntity userEntity = BraveSql.build(dynamicSql, UserEntity.class).selectSingle();
+        System.out.println(userEntity);
     }
 
+    @Test
     public void testSelectByPrimaryKey() {
+        UserEntity userEntity = BraveSql.build(UserEntity.class).selectByPrimaryKey(1);
+        System.out.println(userEntity);
     }
 
     @Test
@@ -300,7 +309,13 @@ public class BraveSqlTest {
     public void testTestSelectPageInfo() {
     }
 
+    @Test
     public void testInsert() {
+        UserEntity userEntity = BraveSql.build(UserEntity.class).selectByPrimaryKey(1);
+        userEntity.setId(null);
+        userEntity.setAccountNo("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+        Integer integer = BraveSql.build(UserEntity.class).insertActive(userEntity);
+        System.out.println(integer);
     }
 
     public void testInsertActive() {

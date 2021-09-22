@@ -2,10 +2,12 @@ package com.pengwz.dynamic.check;
 
 import com.pengwz.dynamic.anno.*;
 import com.pengwz.dynamic.exception.BraveException;
+import com.pengwz.dynamic.model.DataSourceInfo;
+import com.pengwz.dynamic.model.DbType;
 import com.pengwz.dynamic.model.TableInfo;
 import com.pengwz.dynamic.sql.ContextApplication;
 import com.pengwz.dynamic.sql.PageInfo;
-import com.pengwz.dynamic.utils.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -51,7 +53,7 @@ public class Check {
             }
             tableInfo.setField(field);
 
-            tableInfo.setColumn(getColumnName(field, tableName));
+            tableInfo.setColumn(getColumnName(field, tableName, dataSource));
 
             tableInfos.add(tableInfo);
         }
@@ -68,7 +70,7 @@ public class Check {
                 throw new BraveException("重复的列名：" + column + "，发生在表：" + tableName);
             }
         });
-        ContextApplication.saveTable(dataSource, tableName, tableInfos);
+        ContextApplication.saveTable(dataSource, getTableName(tableName, dataSource), tableInfos);
     }
 
     public static void recursionGetAllFields(Class<?> thisClass, List<Field> fieldList) {
@@ -92,7 +94,8 @@ public class Check {
         pageInfo.setOffset((pageInfo.getPageIndex() - 1) * pageInfo.getPageSize());
     }
 
-    public static String getColumnName(Field field, String tableName) {
+
+    public static String getColumnName(Field field, String tableName, String dataSource) {
         Column columnAnno = field.getAnnotation(Column.class);
         String column;
         if (Objects.nonNull(columnAnno)) {
@@ -101,9 +104,38 @@ public class Check {
             }
             column = columnAnno.value().replace(" ", "");
         } else {
-            column = StringUtils.caseField(field.getName());
+            column = com.pengwz.dynamic.utils.StringUtils.caseField(field.getName());
+        }
+        if (StringUtils.isNotBlank(dataSource)) {
+            DataSourceInfo dataSourceInfo = ContextApplication.getDataSourceInfo(dataSource);
+            return splicingName(dataSourceInfo, column);
         }
         return column;
+    }
+
+    public static String getTableName(String tableName, String dataSource) {
+        DataSourceInfo dataSourceInfo = ContextApplication.getDataSourceInfo(dataSource);
+        if (tableName.contains("\\.")) {
+            String[] splitTableName = tableName.split("\\.");
+            if (splitTableName.length != 2) {
+                throw new BraveException("错误的表名称");
+            }
+            String database = splitTableName[0];
+            String table = splitTableName[1];
+            if (StringUtils.isBlank(database) || StringUtils.isBlank(table)) {
+                throw new BraveException("错误的表名称");
+            }
+            return splicingName(dataSourceInfo, database) + "\\." + splicingName(dataSourceInfo, table);
+        }
+        return splicingName(dataSourceInfo, tableName);
+    }
+
+    public static String splicingName(DataSourceInfo dataSourceInfo, String name) {
+        if (dataSourceInfo.getDbType().equals(DbType.ORACLE)) {
+            return "\"" + name + "\"";
+        }
+        //默认
+        return "`" + name + "`";
     }
 
     /**
