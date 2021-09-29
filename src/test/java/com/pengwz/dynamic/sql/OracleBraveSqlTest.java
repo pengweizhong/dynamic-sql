@@ -21,6 +21,7 @@ public class OracleBraveSqlTest {
         }
         Integer integer = BraveSql.build(TBCopyEntity.class).batchInsert(tbCopyEntityList);
         System.out.println(integer);
+        System.out.println(tbCopyEntityList);
     }
 
     @Test

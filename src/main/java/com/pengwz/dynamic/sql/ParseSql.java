@@ -22,7 +22,7 @@ import static com.pengwz.dynamic.constant.Constant.*;
 public class ParseSql {
 
     public static String parse(Class<?> currentClass, Table table, String dataSource, List<Declaration> declarationList, Map<String, List<String>> orderByMap) {
-        String tableName = Check.getTableName(table.value().trim(), dataSource);
+        String tableName = Check.getTableName(table.value(), dataSource);
         checkAndSave(currentClass, table, dataSource);
         StringBuilder whereSql = new StringBuilder();
         for (Declaration declaration : declarationList) {

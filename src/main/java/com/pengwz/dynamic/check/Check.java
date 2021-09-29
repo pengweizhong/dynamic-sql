@@ -18,6 +18,9 @@ import java.util.stream.Collectors;
 
 public class Check {
 
+    private Check() {
+    }
+
     private static final Log log = LogFactory.getLog(Check.class);
 
     public static void checkAndSave(Class<?> currentClass, Table table, String dataSource) {
@@ -44,9 +47,21 @@ public class Check {
                 GeneratedValue generatedValue = field.getAnnotation(GeneratedValue.class);
                 if (Objects.nonNull(generatedValue)) {
                     if (!Number.class.isAssignableFrom(field.getType()) && generatedValue.strategy().equals(GenerationType.AUTO)) {
-                        log.warn("当自增类型为GenerationType.AUTO时，只有类型为数值时才有意义。但是此时类型为：" + field.getType() + "，发生在表：" + tableName);
+                        log.warn("使用AUTO自增时，只有类型为数值时才有意义。但是此时类型为：" + field.getType() + "，发生在表：" + tableName);
                     }
-                    tableInfo.setGenerationType(generatedValue.strategy());
+                    List<GenerationType> uuidList = Arrays.asList(GenerationType.UUID, GenerationType.SIMPLE_UUID, GenerationType.UPPER_SIMPLE_UUID, GenerationType.UPPER_UUID);
+                    if (!String.class.equals(field.getType()) && uuidList.contains(generatedValue.strategy())) {
+                        throw new BraveException("使用UUID自增时，属性必须为String类型，但是此时类型为：" + field.getType() + "，发生在表：" + tableName);
+                    }
+                    if (GenerationType.SEQUENCE.equals(generatedValue.strategy())) {
+                        if (!Number.class.isAssignableFrom(field.getType())) {
+                            throw new BraveException("使用序列自增时，属性必须为Number类型，但是此时类型为：" + field.getType() + "，发生在表：" + tableName);
+                        }
+                        if (StringUtils.isBlank(generatedValue.sequenceName())) {
+                            throw new BraveException("使用序列自增时，必须指定序列名[GeneratedValue#sequenceName()]，且序列名不允许为空");
+                        }
+                    }
+                    tableInfo.setGeneratedValue(generatedValue);
                 }
             } else {
                 tableInfo.setPrimary(false);
@@ -108,13 +123,14 @@ public class Check {
         }
         if (StringUtils.isNotBlank(dataSource)) {
             DataSourceInfo dataSourceInfo = ContextApplication.getDataSourceInfo(dataSource);
-            return splicingName(dataSourceInfo, column);
+            return splicingName(dataSourceInfo.getDbType(), column);
         }
         return column;
     }
 
     public static String getTableName(String tableName, String dataSource) {
         DataSourceInfo dataSourceInfo = ContextApplication.getDataSourceInfo(dataSource);
+        tableName = tableName.trim();
         if (tableName.contains(".")) {
             String[] splitTableName = tableName.split("\\.");
             if (splitTableName.length != 2) {
@@ -125,17 +141,45 @@ public class Check {
             if (StringUtils.isBlank(database) || StringUtils.isBlank(table)) {
                 throw new BraveException("错误的表名称：" + tableName);
             }
-            return splicingName(dataSourceInfo, database) + "." + splicingName(dataSourceInfo, table);
+            return splicingName(dataSourceInfo.getDbType(), database) + "." + splicingName(dataSourceInfo.getDbType(), table);
         }
-        return splicingName(dataSourceInfo, tableName);
+        return splicingName(dataSourceInfo.getDbType(), tableName);
     }
 
-    public static String splicingName(DataSourceInfo dataSourceInfo, String name) {
-        if (dataSourceInfo.getDbType().equals(DbType.ORACLE)) {
-            return "\"" + name + "\"";
+    /**
+     * 将给定的表名或者字段名拼接上限定符，若限定符本身已经存在，则不会拼接
+     */
+    public static String splicingName(DbType dbType, String name) {
+        String fixName = "";
+        String trimName = name.trim();
+        if (dbType.equals(DbType.ORACLE)) {
+            if (!trimName.startsWith("\"")) {
+                fixName = fixName + "\"";
+            }
+            fixName = fixName + trimName;
+            if (!trimName.endsWith("\"")) {
+                fixName = fixName + "\"";
+            }
+            return fixName;
         }
-        //默认
-        return "`" + name + "`";
+        if (!trimName.startsWith("`")) {
+            fixName = fixName + "`";
+        }
+        fixName = fixName + trimName;
+        if (!trimName.endsWith("`")) {
+            fixName = fixName + "`";
+        }
+        return fixName;
+    }
+
+    public static String unSplicingName(String name) {
+        if (name.contains("`")) {
+            name = name.replace("`", "");
+        }
+        if (name.contains("\"")) {
+            name = name.replace("\"", "");
+        }
+        return name;
     }
 
     /**

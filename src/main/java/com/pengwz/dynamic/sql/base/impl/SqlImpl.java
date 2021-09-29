@@ -1,10 +1,14 @@
 package com.pengwz.dynamic.sql.base.impl;
 
 import com.alibaba.druid.pool.DruidPooledPreparedStatement;
+import com.pengwz.dynamic.anno.GeneratedValue;
 import com.pengwz.dynamic.anno.GenerationType;
+import com.pengwz.dynamic.check.Check;
 import com.pengwz.dynamic.config.DataSourceManagement;
 import com.pengwz.dynamic.constant.Constant;
 import com.pengwz.dynamic.exception.BraveException;
+import com.pengwz.dynamic.model.DataSourceInfo;
+import com.pengwz.dynamic.model.DbType;
 import com.pengwz.dynamic.model.TableInfo;
 import com.pengwz.dynamic.sql.ContextApplication;
 import com.pengwz.dynamic.sql.PageInfo;
@@ -14,7 +18,6 @@ import com.pengwz.dynamic.utils.*;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import java.lang.reflect.Field;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -22,6 +25,7 @@ import java.sql.SQLException;
 import java.util.*;
 
 import static com.pengwz.dynamic.anno.GenerationType.AUTO;
+import static com.pengwz.dynamic.anno.GenerationType.SEQUENCE;
 import static com.pengwz.dynamic.constant.Constant.*;
 import static java.sql.Statement.RETURN_GENERATED_KEYS;
 
@@ -176,16 +180,16 @@ public class SqlImpl<T> implements Sqls<T> {
         List<Object> insertValues = new ArrayList<>();
         for (TableInfo tableInfo : tableInfos) {
             try {
-                Object invoke;
-                //判断自增字符串型主键
-                if (tableInfo.getGenerationType() != null && !tableInfo.getGenerationType().equals(AUTO)) {
-                    invoke = setUUIDGenerationType(tableInfo, next);
-                } else {
-                    invoke = ReflectUtils.getFieldValue(tableInfo.getField(), next);
-                    if (Objects.isNull(invoke)) {
-                        continue;
-                    }
-                }
+                Object invoke = getTableFieldValue(tableInfo, next);
+//                //判断自增字符串型主键
+//                if (tableInfo.getGenerationType() != null && !tableInfo.getGenerationType().equals(AUTO)) {
+//                    invoke = setUUIDGenerationType(tableInfo, next);
+//                } else {
+//                    invoke = ReflectUtils.getFieldValue(tableInfo.getField(), next);
+//                    if (Objects.isNull(invoke)) {
+//                        continue;
+//                    }
+//                }
                 prefix.append(SPACE).append(tableInfo.getColumn()).append(COMMA);
                 suffix.append("?, ");
                 insertValues.add(invoke);
@@ -214,12 +218,6 @@ public class SqlImpl<T> implements Sqls<T> {
     }
 
 
-//    private void appendSqlActive(){
-//        prefix.append(SPACE).append(tableInfo.getColumn()).append(COMMA);
-//        suffix.append("?, ");
-//        insertValues.add(invoke);
-//    }
-
     private Integer setValuesExecuteSql(String sql, List<TableInfo> tableInfos) {
         Iterator<T> iterator = data.iterator();
         try {
@@ -228,13 +226,7 @@ public class SqlImpl<T> implements Sqls<T> {
                 T next = iterator.next();
                 for (int i = 1; i <= tableInfos.size(); i++) {
                     TableInfo tableInfo = tableInfos.get(i - 1);
-                    Field field = tableInfo.getField();
-                    Object fieldValue;
-                    if (tableInfo.getGenerationType() != null && !tableInfo.getGenerationType().equals(AUTO)) {
-                        fieldValue = setUUIDGenerationType(tableInfo, next);
-                    } else {
-                        fieldValue = ReflectUtils.getFieldValue(field, next);
-                    }
+                    Object fieldValue = getTableFieldValue(tableInfo, next);
                     preparedStatement.setObject(i, ConverterUtils.convertValueJdbc(fieldValue));
                 }
                 printSql(preparedStatement);
@@ -249,38 +241,99 @@ public class SqlImpl<T> implements Sqls<T> {
         return -1;
     }
 
-    private Object setUUIDGenerationType(TableInfo tableInfo, T next) {
+    /**
+     * 获取字段的值，若是主键则尝试生成主键的值，若是程序生成的主键，将生成的主键赋值给该主键字段
+     *
+     * @param tableInfo 主键 tableInfo
+     * @param next      当前查询的对象
+     * @return 主键值
+     */
+    private Object getTableFieldValue(TableInfo tableInfo, T next) throws SQLException {
+        //先确定源字段是否有值
         Object invoke = ReflectUtils.getFieldValue(tableInfo.getField(), next);
-        if (Objects.isNull(invoke)) {
-            if (!String.class.equals(tableInfo.getField().getType())) {
-                throw new BraveException("使用UUID自增时，属性必须为String类型，但是此时类型为：" + tableInfo.getField().getType() + "，发生在表：" + tableName);
-            }
-            invoke = GenerationType.UUID.equals(tableInfo.getGenerationType()) ? UUID.randomUUID().toString() : UUID.randomUUID().toString().replace("-", "");
-            ReflectUtils.setFieldValue(tableInfo.getField(), next, invoke);
+        if (null != invoke) {
+            return invoke;
         }
-        return invoke;
+        //若该值为null，则看看是不是需要程序生成主键
+        GeneratedValue generatedValue = tableInfo.getGeneratedValue();
+        if (generatedValue == null) {
+            //啥也没有，直接返回null
+            return null;
+        }
+        Object value = getPrimaryValue(tableInfo);
+        ReflectUtils.setFieldValue(tableInfo.getField(), next, value);
+        return value;
     }
+
+    private Object getPrimaryValue(TableInfo tableInfo) {
+        GeneratedValue generatedValue = tableInfo.getGeneratedValue();
+        switch (generatedValue.strategy()) {
+            case AUTO:
+                //直接返回null，使用数据库机制自增主键
+                return null;
+            case UUID:
+            case UPPER_UUID:
+            case SIMPLE_UUID:
+            case UPPER_SIMPLE_UUID:
+                if (generatedValue.strategy().equals(GenerationType.UUID))
+                    return UUID.randomUUID().toString();
+                if (generatedValue.strategy().equals(GenerationType.UPPER_UUID))
+                    return UUID.randomUUID().toString().toUpperCase();
+                if (generatedValue.strategy().equals(GenerationType.SIMPLE_UUID))
+                    return UUID.randomUUID().toString().replace("-", "");
+                if (generatedValue.strategy().equals(GenerationType.UPPER_SIMPLE_UUID))
+                    return UUID.randomUUID().toString().replace("-", "").toUpperCase();
+                //不会走到这里
+                return null;
+            case SEQUENCE:
+                String sql = "SELECT " + generatedValue.sequenceName().trim() + ".NEXTVAL FROM DUAL";
+                try {
+                    PreparedStatement preparedStatement = connection.prepareStatement(sql);
+                    printSql(preparedStatement);
+                    ResultSet resultSet = preparedStatement.executeQuery();
+                    resultSet.next();
+                    return resultSet.getObject(1, tableInfo.getField().getType());
+                } catch (SQLException sqlException) {
+                    ExceptionUtils.boxingAndThrowBraveException(sqlException, sql);
+                }
+                //不会走到这里
+                return null;
+            //不会走到default这里
+            default:
+                throw new IllegalStateException("Unexpected value: " + tableInfo.getGeneratedValue());
+        }
+    }
+
 
     private Integer executeSqlAndReturnAffectedRows() throws SQLException {
         int successCount = -1;
         int[] ints = preparedStatement.executeBatch();
         successCount = ints.length;
         TableInfo tableInfoPrimaryKey = ContextApplication.getTableInfoPrimaryKey(dataSourceName, tableName);
-        if (Objects.nonNull(tableInfoPrimaryKey) && Objects.nonNull(tableInfoPrimaryKey.getGenerationType()) && tableInfoPrimaryKey.getGenerationType().equals(AUTO)) {
-            if (!Number.class.isAssignableFrom(tableInfoPrimaryKey.getField().getType())) {
-                return successCount;
+        //若没有设置主键，直接返回
+        if (tableInfoPrimaryKey == null)
+            return successCount;
+        //不是自增的直接返回，因为在执行前已经获取到了
+        if (!tableInfoPrimaryKey.getGeneratedValue().strategy().equals(AUTO)) {
+            return successCount;
+        }
+        DataSourceInfo dataSourceInfo = ContextApplication.getDataSourceInfo(dataSourceName);
+        //若是oracle 且 执行的是序列，直接返回
+        if (dataSourceInfo.getDbType().equals(DbType.ORACLE) && tableInfoPrimaryKey.getGeneratedValue().strategy().equals(SEQUENCE))
+            return successCount;
+        //使用数据库机制的，接收返回值并且对返回对象赋值
+        Iterator<T> resultIterator = data.iterator();
+        ResultSet generatedKeys = preparedStatement.getGeneratedKeys();
+        while (resultIterator.hasNext()) {
+            T next = resultIterator.next();
+            generatedKeys.next();
+            Object object;
+            if (dataSourceInfo.getDbType().equals(DbType.ORACLE)) {
+                object = generatedKeys.getObject(Check.unSplicingName(tableInfoPrimaryKey.getColumn()), tableInfoPrimaryKey.getField().getType());
+            } else {
+                object = generatedKeys.getObject(RETURN_GENERATED_KEYS, tableInfoPrimaryKey.getField().getType());
             }
-            Iterator<T> resultIterator = data.iterator();
-            ResultSet generatedKeys = preparedStatement.getGeneratedKeys();
-            while (resultIterator.hasNext()) {
-                T next = resultIterator.next();
-                Object primaryKeyValue = ReflectUtils.getFieldValue(tableInfoPrimaryKey.getField(), next);
-                if (Objects.isNull(primaryKeyValue)) {
-                    generatedKeys.next();
-                    Object object = generatedKeys.getObject(RETURN_GENERATED_KEYS, tableInfoPrimaryKey.getField().getType());
-                    ReflectUtils.setFieldValue(tableInfoPrimaryKey.getField(), next, object);
-                }
-            }
+            ReflectUtils.setFieldValue(tableInfoPrimaryKey.getField(), next, object);
         }
         return successCount;
     }

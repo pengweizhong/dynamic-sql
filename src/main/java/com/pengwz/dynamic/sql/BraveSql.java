@@ -496,7 +496,7 @@ public class BraveSql<T> {
         Check.checkPageInfo(pageInfo);
         String whereSql = ParseSql.parse(currentClass, table, defalutDataSource, dynamicSql.getDeclarations(), orderByMap);
         //调正where子句的sql顺序 ，将来把它单独抽出来  作为组件
-        whereSql = ParseSql.fixWhereSql(whereSql);
+        //whereSql = ParseSql.fixWhereSql(whereSql);
         SqlImpl<T> sqls = new SqlImpl<>();
         sqls.init(currentClass, pageInfo, data, dynamicSql.getUpdateNullProperties(), Check.getTableName(tableName, defalutDataSource), defalutDataSource, whereSql);
         //优化他

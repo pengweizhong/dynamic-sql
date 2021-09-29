@@ -55,6 +55,9 @@ public class ExceptionUtils {
             if (sqlState.startsWith("HY")) {
                 throw new BraveException("缺少必要的字段", sql, throwable.getMessage());
             }
+            if (sqlState.startsWith("99")) {
+                throw new BraveException(throwable.getMessage(), throwable);
+            }
             if (StringUtils.isBlank(sql)) {
                 throw new BraveException(throwable.getMessage(), throwable);
             } else {

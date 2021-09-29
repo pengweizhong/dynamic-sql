@@ -17,4 +17,10 @@ public @interface GeneratedValue {
      * 自增策略，默认使用数据库自增机制
      */
     GenerationType strategy() default AUTO;
+
+    /**
+     * 自增序列名
+     * {@link this#strategy()} 为 SEQUENCE，该序列名才会生效
+     */
+    String sequenceName() default "";
 }

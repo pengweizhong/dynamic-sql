@@ -3,11 +3,11 @@ package com.pengwz.dynamic.entity.oracle;
 import com.pengwz.dynamic.anno.*;
 import com.pengwz.dynamic.config.OracleDatabaseConfig;
 
-@Table(value = "TB_copy666", dataSourceClass = OracleDatabaseConfig.class)
+@Table(value = "C##TESTSYSTTEM.TB_copy666", dataSourceClass = OracleDatabaseConfig.class)
 public class TBCopyEntity {
     @Column("ID")
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, sequenceName = "TB_copy666_AutoID")
     private Integer id;
     @Column("TBCOLUMN0")
     private String tbColumn0;
@@ -38,6 +38,14 @@ public class TBCopyEntity {
 
     public void setTbColumn2(String tbColumn2) {
         this.tbColumn2 = tbColumn2;
+    }
+
+    public Integer getId() {
+        return id;
+    }
+
+    public void setId(Integer id) {
+        this.id = id;
     }
 
     @Override
