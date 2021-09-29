@@ -15,6 +15,7 @@ import com.pengwz.dynamic.sql.PageInfo;
 import com.pengwz.dynamic.sql.ParseSql;
 import com.pengwz.dynamic.sql.base.Sqls;
 import com.pengwz.dynamic.utils.*;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -23,6 +24,8 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Stream;
 
 import static com.pengwz.dynamic.anno.GenerationType.AUTO;
 import static com.pengwz.dynamic.anno.GenerationType.SEQUENCE;
@@ -107,9 +110,56 @@ public class SqlImpl<T> implements Sqls<T> {
         String sql = "select " + columnList + " from " + tableName + (StringUtils.isEmpty(whereSql) ? SPACE : SPACE + WHERE + SPACE + whereSql.trim());
         sql = ParseSql.parseSql(sql);
         sql += " limit " + pageInfo.getOffset() + " , " + pageInfo.getPageSize();
-        List<T> list = executeQuery(sql, tableName);
+        DataSourceInfo dataSourceInfo = ContextApplication.getDataSourceInfo(dataSourceName);
+        List<T> list;
+        if (dataSourceInfo.getDbType().equals(DbType.ORACLE)) {
+            list = executeQuery(limitConversionPageSql(sql), tableName);
+        } else {
+            list = executeQuery(sql, tableName);
+        }
         buildPageInfo(pageInfo, list, totalSize);
         return pageInfo;
+    }
+
+    private String limitConversionPageSql(String sql) {
+        if (Stream.of(sql.split(" ")).noneMatch(str -> str.equalsIgnoreCase("limit"))) {
+            return sql;
+        }
+        //将 limit 转为 rownum
+        //rownum 别名
+        String rowNumAlias = "ROW_NUMBER";
+        //一级表别名
+        String firstTableAlias = RandomStringUtils.randomAlphabetic(15).toUpperCase();
+        //二级表别名
+        String secondTableAlias = RandomStringUtils.randomAlphabetic(15).toUpperCase();
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append("SELECT * FROM (SELECT ROWNUM AS ").append(rowNumAlias).append(",").append(firstTableAlias).append(".* FROM (");
+        stringBuilder.append(cropLimitSql(sql));
+        stringBuilder.append(") ").append(firstTableAlias).append(") ").append(secondTableAlias).append(" WHERE ")
+                .append(secondTableAlias).append(".").append(rowNumAlias).append(" > ").append(pageInfo.getOffset())
+                .append(" AND ").append(secondTableAlias).append(".").append(rowNumAlias).append(" <=  ").append(pageInfo.getPageSize());
+
+        return stringBuilder.toString()/*.toUpperCase()*/;
+    }
+
+    private String cropLimitSql(String sql) {
+        List<String> sqlList = Arrays.asList(sql.split(" "));
+        AtomicInteger limitIndex = new AtomicInteger();
+        boolean hasLimit = sqlList.stream().anyMatch(str -> {
+            if (str.equalsIgnoreCase("limit")) {
+                return true;
+            }
+            limitIndex.addAndGet(1);
+            return false;
+        });
+        //不是limit的语句直接跳过
+        if (!hasLimit) {
+            return sql;
+        }
+        List<String> strings = sqlList.subList(0, limitIndex.get());
+        StringBuilder stringBuilder = new StringBuilder();
+        strings.forEach(sqlSplit -> stringBuilder.append(" ").append(sqlSplit));
+        return stringBuilder.toString()/*.toUpperCase()*/;
     }
 
     private Integer executeQueryCount(String sql, boolean isCloseConnection) {
@@ -181,15 +231,9 @@ public class SqlImpl<T> implements Sqls<T> {
         for (TableInfo tableInfo : tableInfos) {
             try {
                 Object invoke = getTableFieldValue(tableInfo, next);
-//                //判断自增字符串型主键
-//                if (tableInfo.getGenerationType() != null && !tableInfo.getGenerationType().equals(AUTO)) {
-//                    invoke = setUUIDGenerationType(tableInfo, next);
-//                } else {
-//                    invoke = ReflectUtils.getFieldValue(tableInfo.getField(), next);
-//                    if (Objects.isNull(invoke)) {
-//                        continue;
-//                    }
-//                }
+                if (Objects.isNull(invoke) && !tableInfo.isPrimary()) {
+                    continue;
+                }
                 prefix.append(SPACE).append(tableInfo.getColumn()).append(COMMA);
                 suffix.append("?, ");
                 insertValues.add(invoke);
@@ -248,7 +292,7 @@ public class SqlImpl<T> implements Sqls<T> {
      * @param next      当前查询的对象
      * @return 主键值
      */
-    private Object getTableFieldValue(TableInfo tableInfo, T next) throws SQLException {
+    private Object getTableFieldValue(TableInfo tableInfo, T next) {
         //先确定源字段是否有值
         Object invoke = ReflectUtils.getFieldValue(tableInfo.getField(), next);
         if (null != invoke) {
@@ -591,7 +635,7 @@ public class SqlImpl<T> implements Sqls<T> {
         pageInfo.setTotalSize(totalSize);
         pageInfo.setRealPageSize(list.size());
         pageInfo.setResultList(list);
-        if (pageInfo.getPageSize() != 0) {
+        if (pageInfo.getPageSize() > 0) {
             pageInfo.setTotalPages((totalSize + pageInfo.getPageSize() - 1) / pageInfo.getPageSize());
         } else {
             pageInfo.setTotalPages(0);
