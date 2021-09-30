@@ -384,6 +384,10 @@ public class SqlImpl<T> implements Sqls<T> {
 
     @Override
     public Integer insertOrUpdate() {
+        DataSourceInfo dataSourceInfo = ContextApplication.getDataSourceInfo(dataSourceName);
+        if (dataSourceInfo.getDbType().equals(DbType.ORACLE)) {
+            throw new BraveException("oracle 尚未支持 insertOrUpdate");
+        }
         String columnToStr = ContextApplication.formatAllColumToStr(dataSourceName, tableName);
         List<TableInfo> tableInfos = ContextApplication.getTableInfos(dataSourceName, tableName);
         StringBuilder sql = new StringBuilder();

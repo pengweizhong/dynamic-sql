@@ -1,7 +1,7 @@
 package com.pengwz.dynamic.model;
 
 public enum DbType {
-    MYSQL,MARIADB, ORACLE,
+    MYSQL, MARIADB, ORACLE, HIVE,
 
     OTHER;
 }

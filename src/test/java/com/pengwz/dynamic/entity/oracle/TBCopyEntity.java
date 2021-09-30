@@ -3,6 +3,8 @@ package com.pengwz.dynamic.entity.oracle;
 import com.pengwz.dynamic.anno.*;
 import com.pengwz.dynamic.config.OracleDatabaseConfig;
 
+import java.math.BigInteger;
+
 @Table(value = "C##TESTSYSTTEM.TB_copy666", dataSourceClass = OracleDatabaseConfig.class)
 public class TBCopyEntity {
     @Column("ID")
@@ -15,6 +17,16 @@ public class TBCopyEntity {
     private String tbColumn1;
     @Column("TBCOLUMN2")
     private String tbColumn2;
+    @Column("TBCOLUMN3")
+    private BigInteger tbColumn3;
+
+    public Integer getId() {
+        return id;
+    }
+
+    public void setId(Integer id) {
+        this.id = id;
+    }
 
     public String getTbColumn0() {
         return tbColumn0;
@@ -40,12 +52,12 @@ public class TBCopyEntity {
         this.tbColumn2 = tbColumn2;
     }
 
-    public Integer getId() {
-        return id;
+    public BigInteger getTbColumn3() {
+        return tbColumn3;
     }
 
-    public void setId(Integer id) {
-        this.id = id;
+    public void setTbColumn3(BigInteger tbColumn3) {
+        this.tbColumn3 = tbColumn3;
     }
 
     @Override
@@ -55,6 +67,7 @@ public class TBCopyEntity {
                 ", tbColumn0='" + tbColumn0 + '\'' +
                 ", tbColumn1='" + tbColumn1 + '\'' +
                 ", tbColumn2='" + tbColumn2 + '\'' +
+                ", tbColumn3='" + tbColumn3 + '\'' +
                 '}';
     }
 }

@@ -8,7 +8,9 @@ import com.pengwz.dynamic.exception.BraveException;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class OracleBraveSqlTest {
@@ -180,6 +182,16 @@ public class OracleBraveSqlTest {
         entity.setTbColumn0("1111");
         entity.setTbColumn1("2222");
         entity.setTbColumn2("3333");
+        entity.setTbColumn3(BigInteger.valueOf(1L));
+        Integer insert = BraveSql.build(TBCopyEntity.class).insertActive(entity);
+        Assert.assertNotNull(insert);
+        System.out.println(insert);
+        System.out.println(entity);
+    }
+
+    @Test
+    public void insertActive3() {
+        TBCopyEntity entity = new TBCopyEntity();
         Integer insert = BraveSql.build(TBCopyEntity.class).insertActive(entity);
         Assert.assertNotNull(insert);
         System.out.println(insert);
@@ -188,7 +200,7 @@ public class OracleBraveSqlTest {
 
 
     @Test
-    public void testInsert() {
+    public void batchInsert() {
         List<TBCopyEntity> tbCopyEntityList = new ArrayList<>();
         for (int i = 0; i < 100; i++) {
             TBCopyEntity entity = new TBCopyEntity();
@@ -198,9 +210,189 @@ public class OracleBraveSqlTest {
             tbCopyEntityList.add(entity);
         }
         Integer integer = BraveSql.build(TBCopyEntity.class).batchInsert(tbCopyEntityList);
+        Assert.assertNotNull(integer);
         System.out.println(integer);
         System.out.println(tbCopyEntityList);
     }
+
+    @Test
+    public void insertOrUpdate() {
+        TBCopyEntity entity = new TBCopyEntity();
+        entity.setTbColumn0("TbColumn0000_");
+        entity.setTbColumn1("TbColumn1111_");
+        entity.setTbColumn2("TbColumn2222_");
+        Integer integer = BraveSql.build(TBCopyEntity.class).insertOrUpdate(entity);
+        Assert.assertNotNull(integer);
+        System.out.println(integer);
+    }
+
+    @Test
+    public void batchInsertOrUpdate() {
+        TBCopyEntity entity = new TBCopyEntity();
+        entity.setTbColumn0("TbColumn0000_");
+        entity.setTbColumn1("TbColumn1111_");
+        entity.setTbColumn2("TbColumn2222_");
+        Integer integer = BraveSql.build(TBCopyEntity.class).batchInsertOrUpdate(Collections.singleton(entity));
+        Assert.assertNotNull(integer);
+        System.out.println(integer);
+    }
+
+    @Test
+    public void update() {
+        DynamicSql<TBCopyEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.andEqualTo(TBCopyEntity::getId, 1200);
+        TBCopyEntity entity = new TBCopyEntity();
+        entity.setTbColumn0("update1");
+        entity.setTbColumn1("update2");
+        entity.setTbColumn2("update3");
+        entity.setId(1200);
+        entity.setTbColumn3(BigInteger.valueOf(9999L));
+        Integer update = BraveSql.build(dynamicSql, TBCopyEntity.class).update(entity);
+        Assert.assertNotNull(update);
+        System.out.println(update);
+    }
+
+    @Test
+    public void update2() {
+        DynamicSql<TBCopyEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.andEqualTo(TBCopyEntity::getId, 1200);
+        TBCopyEntity entity = new TBCopyEntity();
+        entity.setTbColumn0("update1");
+        entity.setTbColumn1("update2");
+        entity.setId(1200);
+        entity.setTbColumn3(BigInteger.valueOf(9999L));
+        Integer update = BraveSql.build(dynamicSql, TBCopyEntity.class).update(entity);
+        Assert.assertNotNull(update);
+        System.out.println(update);
+    }
+
+    @Test
+    public void updateActive() {
+        DynamicSql<TBCopyEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.andEqualTo(TBCopyEntity::getId, 1200);
+        TBCopyEntity entity = new TBCopyEntity();
+        entity.setTbColumn0("update1");
+        entity.setTbColumn1("update2");
+        entity.setId(1200);
+        Integer update = BraveSql.build(dynamicSql, TBCopyEntity.class).updateActive(entity);
+        Assert.assertNotNull(update);
+        System.out.println(update);
+    }
+
+    @Test
+    public void updateActive2() {
+        DynamicSql<TBCopyEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.andEqualTo(TBCopyEntity::getId, 1200);
+        TBCopyEntity entity = new TBCopyEntity();
+        Integer update = BraveSql.build(dynamicSql, TBCopyEntity.class).updateActive(entity);
+        Assert.assertNotNull(update);
+        System.out.println(update);
+    }
+
+    @Test
+    public void updateByPrimaryKey() {
+        TBCopyEntity entity = new TBCopyEntity();
+        Integer update = BraveSql.build(TBCopyEntity.class).updateByPrimaryKey(entity);
+        Assert.assertNotNull(update);
+        System.out.println(update);
+    }
+
+    @Test
+    public void updateByPrimaryKey2() {
+        TBCopyEntity entity = new TBCopyEntity();
+        entity.setId(1200);
+        Integer update = BraveSql.build(TBCopyEntity.class).updateByPrimaryKey(entity);
+        Assert.assertNotNull(update);
+        System.out.println(update);
+    }
+
+    @Test
+    public void updateByPrimaryKey3() {
+        TBCopyEntity entity = new TBCopyEntity();
+        entity.setId(1200);
+        entity.setTbColumn0("not");
+        entity.setTbColumn1("not");
+        Integer update = BraveSql.build(TBCopyEntity.class).updateByPrimaryKey(entity);
+        Assert.assertNotNull(update);
+        System.out.println(update);
+    }
+
+    @Test
+    public void updateActiveByPrimaryKey() {
+        TBCopyEntity entity = new TBCopyEntity();
+        entity.setId(1200);
+        entity.setTbColumn0("not11");
+        entity.setTbColumn1("not222");
+        Integer update = BraveSql.build(TBCopyEntity.class).updateActiveByPrimaryKey(entity);
+        Assert.assertNotNull(update);
+        System.out.println(update);
+    }
+
+    @Test
+    public void updateActiveByPrimaryKey2() {
+        TBCopyEntity entity = new TBCopyEntity();
+        entity.setId(1200);
+        entity.setTbColumn0("not11");
+        entity.setTbColumn1("not222");
+        entity.setTbColumn2("not333");
+        Integer update = BraveSql.build(TBCopyEntity.class).updateActiveByPrimaryKey(entity);
+        Assert.assertNotNull(update);
+        System.out.println(update);
+    }
+
+    @Test
+    public void delete() {
+        Integer delete = BraveSql.build(TBCopyEntity.class).delete();
+        Assert.assertNotNull(delete);
+        System.out.println(delete);
+    }
+
+    @Test
+    public void delete2() {
+        DynamicSql<TBCopyEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.andEqualTo(TBCopyEntity::getTbColumn1, 2);
+        Integer delete = BraveSql.build(dynamicSql, TBCopyEntity.class).delete();
+        Assert.assertNotNull(delete);
+        System.out.println(delete);
+    }
+
+    @Test
+    public void deleteByPrimaryKey() {
+        Integer delete = BraveSql.build(TBCopyEntity.class).deleteByPrimaryKey(1200);
+        Assert.assertNotNull(delete);
+        System.out.println(delete);
+    }
+
+    @Test
+    public void deleteByPrimaryKey2() {
+        Integer delete = BraveSql.build(TBCopyEntity.class).deleteByPrimaryKey("abc");
+        Assert.assertNotNull(delete);
+        System.out.println(delete);
+    }
+
+    @Test
+    public void orderByAsc() {
+        List<TBCopyEntity> tbColumn0 = BraveSql.build(TBCopyEntity.class).orderByAsc("tbColumn0").select();
+        Assert.assertNotNull(tbColumn0);
+        System.out.println(tbColumn0);
+    }
+
+    @Test
+    public void orderByAsc2() {
+        DynamicSql<TBCopyEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.andGreaterThanOrEqualTo(TBCopyEntity::getTbColumn0, 2);
+        List<TBCopyEntity> tbColumn0 = BraveSql.build(dynamicSql, TBCopyEntity.class).orderByAsc("tbColumn0", "tbColumn1").select();
+        Assert.assertNotNull(tbColumn0);
+        System.out.println(tbColumn0);
+    }
+
+    @Test
+    public void orderByAsc3() {
+        List<TBCopyEntity> tbColumn0 = BraveSql.build(TBCopyEntity.class).orderByAsc("tbColumn0").orderByAsc("tbColumn1").select();
+        Assert.assertNotNull(tbColumn0);
+        System.out.println(tbColumn0);
+    }
+
 
     @Test
     public void testSelect() {
