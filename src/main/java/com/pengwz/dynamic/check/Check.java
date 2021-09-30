@@ -30,7 +30,25 @@ public class Check {
         }
         List<Field> allFiledList = new ArrayList<>();
         recursionGetAllFields(currentClass, allFiledList);
-        int idCount = 0;
+        List<TableInfo> tableInfos = builderTableInfos(allFiledList, tableName, dataSource);
+        //校验重复列  空列
+        if (tableInfos.isEmpty()) {
+            throw new BraveException("映射实体类未发现可用属性，发生在表：" + tableName);
+        }
+        List<TableInfo> primaryList = tableInfos.stream().filter(TableInfo::isPrimary).collect(Collectors.toList());
+        if (primaryList.size() > 1) {
+            throw new BraveException("获取到多个主键，发生在表：" + tableName);
+        }
+        Map<String, List<TableInfo>> stringListMap = tableInfos.stream().collect(Collectors.groupingBy(TableInfo::getColumn));
+        stringListMap.forEach((column, tableInfoList) -> {
+            if (tableInfoList.size() > 1) {
+                throw new BraveException("重复的列名：" + column + "，发生在表：" + tableName);
+            }
+        });
+        ContextApplication.saveTable(dataSource, getTableName(tableName, dataSource), tableInfos);
+    }
+
+    public static List<TableInfo> builderTableInfos(List<Field> allFiledList, String tableName, String dataSource) {
         List<TableInfo> tableInfos = new ArrayList<>();
         for (Field field : allFiledList) {
             if (checkedFieldType(field)) {
@@ -42,7 +60,6 @@ public class Check {
             TableInfo tableInfo = new TableInfo();
             Id id = field.getAnnotation(Id.class);
             if (Objects.nonNull(id)) {
-                idCount++;
                 tableInfo.setPrimary(true);
                 GeneratedValue generatedValue = field.getAnnotation(GeneratedValue.class);
                 if (Objects.nonNull(generatedValue)) {
@@ -74,22 +91,8 @@ public class Check {
 
             tableInfos.add(tableInfo);
         }
-        if (idCount > 1) {
-            throw new BraveException("获取到多个主键，发生在表：" + tableName);
-        }
-        //校验重复列  空列
-        if (tableInfos.isEmpty()) {
-            throw new BraveException("映射实体类未发现可用属性，发生在表：" + tableName);
-        }
-        Map<String, List<TableInfo>> stringListMap = tableInfos.stream().collect(Collectors.groupingBy(TableInfo::getColumn));
-        stringListMap.forEach((column, tableInfoList) -> {
-            if (tableInfoList.size() > 1) {
-                throw new BraveException("重复的列名：" + column + "，发生在表：" + tableName);
-            }
-        });
-        ContextApplication.saveTable(dataSource, getTableName(tableName, dataSource), tableInfos);
+        return tableInfos;
     }
-
 
     public static void recursionGetAllFields(Class<?> thisClass, List<Field> fieldList) {
         //仅递归到Object的直接子类

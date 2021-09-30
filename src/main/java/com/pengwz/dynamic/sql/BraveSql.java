@@ -83,7 +83,7 @@ public class BraveSql<T> {
      * @see com.pengwz.dynamic.anno.Column 若成员变量标注了该注解，则注解内名称和结果集列名进行匹配
      */
     public List<T> executeQuery(String querySql) {
-        return new CustomizeSQL<T>(ContextApplication.getDefalutDataSourceName(), currentClass, querySql).executeQuery();
+        return new CustomizeSQL<T>(currentClass, querySql).executeQuery();
     }
 
     /**
@@ -106,7 +106,7 @@ public class BraveSql<T> {
      * @return SQL查询后的结果集
      */
     public T executeQuerySingle(String querySql) {
-        return new CustomizeSQL<T>(ContextApplication.getDefalutDataSourceName(), currentClass, querySql).executeQuerySingle();
+        return new CustomizeSQL<T>(currentClass, querySql).executeQuerySingle();
     }
 
     /**
@@ -128,7 +128,7 @@ public class BraveSql<T> {
      * @param ddlSql SQL语句
      */
     public void executeSql(String executeSql) {
-        new CustomizeSQL<T>(ContextApplication.getDefalutDataSourceName(), currentClass, executeSql).executeSql();
+        new CustomizeSQL<T>(currentClass, executeSql).executeSql();
     }
 
     /**
@@ -150,7 +150,7 @@ public class BraveSql<T> {
      * @return 如果存在返回{@code true}，否则{@code false}
      */
     public boolean existTable(String tableName) {
-        return new CustomizeSQL<T>(ContextApplication.getDefalutDataSourceName(), currentClass, tableName).existTable();
+        return new CustomizeSQL<T>(currentClass, tableName).existTable();
     }
 
     /**

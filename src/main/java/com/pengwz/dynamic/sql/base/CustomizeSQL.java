@@ -1,14 +1,14 @@
 package com.pengwz.dynamic.sql.base;
 
-import com.pengwz.dynamic.anno.Column;
 import com.pengwz.dynamic.check.Check;
 import com.pengwz.dynamic.config.DataSourceConfig;
 import com.pengwz.dynamic.config.DataSourceManagement;
 import com.pengwz.dynamic.exception.BraveException;
+import com.pengwz.dynamic.model.TableInfo;
+import com.pengwz.dynamic.sql.ContextApplication;
 import com.pengwz.dynamic.utils.ConverterUtils;
 import com.pengwz.dynamic.utils.ExceptionUtils;
 import com.pengwz.dynamic.utils.ReflectUtils;
-import com.pengwz.dynamic.utils.StringUtils;
 import org.apache.commons.beanutils.ConversionException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -33,15 +33,13 @@ public class CustomizeSQL<T> {
 
     private final String dataSourceName;
 
-    private Map<String, Field> columnFieldMap = new LinkedHashMap<>();
-
-//    private List<String> columnCheckedList = new ArrayList<>();
+    private final String tableName = "unknown";
 
     public CustomizeSQL(Class<? extends DataSourceConfig> dataSource, Class<T> target, String sql) {
         this.target = target;
         this.sql = sql;
         this.dataSourceName = dataSource.getName();
-        DataSourceManagement.initDataSourceConfig(dataSource, "");
+        DataSourceManagement.initDataSourceConfig(dataSource, tableName);
         this.connection = DataSourceManagement.initConnection(dataSource.getName());
     }
 
@@ -59,6 +57,13 @@ public class CustomizeSQL<T> {
         this.connection = DataSourceManagement.initConnection(dataSourceName);
     }
 
+    public CustomizeSQL(Class<T> target, String sql) {
+        this.target = target;
+        this.sql = sql;
+        this.dataSourceName = ContextApplication.getDefalutDataSourceName();
+        this.connection = DataSourceManagement.initConnection(this.dataSourceName);
+    }
+
     @Deprecated
     public T selectSqlAndReturnSingle() {
         List<T> ts = selectSqlAndReturnList();
@@ -74,6 +79,9 @@ public class CustomizeSQL<T> {
             log.debug(sql);
         }
         List<T> selectResult = new ArrayList<>();
+        List<TableInfo> tableInfos = initTableInfo();
+        Map<String, TableInfo> tableInfoMap = tableInfos.stream().collect(Collectors.toMap(k -> Check.unSplicingName(k.getColumn()), v -> v));
+        Field[] declaredFields = target.getDeclaredFields();
         PreparedStatement preparedStatement = null;
         ResultSet resultSet = null;
         try {
@@ -81,15 +89,12 @@ public class CustomizeSQL<T> {
             resultSet = preparedStatement.executeQuery();
             while (resultSet.next()) {
                 T obj = target.newInstance();
-                Field[] declaredFields = target.getDeclaredFields();
                 for (Field field : declaredFields) {
-                    Column column = field.getAnnotation(Column.class);
-                    Object object;
-                    if (Objects.isNull(column)) {
-                        object = ConverterUtils.convertJdbc(resultSet, StringUtils.caseField(field.getName()), field.getType());
-                    } else {
-                        object = ConverterUtils.convertJdbc(resultSet, column.value().trim(), field.getType());
+                    TableInfo tableInfo = tableInfoMap.get(Check.getColumnName(field, tableName));
+                    if (tableInfo == null) {
+                        continue;
                     }
+                    Object object = ConverterUtils.convertJdbc(resultSet, tableInfo);
                     ReflectUtils.setFieldValue(field, obj, object);
                 }
                 selectResult.add(obj);
@@ -100,6 +105,12 @@ public class CustomizeSQL<T> {
             DataSourceManagement.close(dataSourceName, resultSet, preparedStatement, connection);
         }
         return selectResult;
+    }
+
+    private List<TableInfo> initTableInfo() {
+        List<Field> allFiledList = new ArrayList<>();
+        Check.recursionGetAllFields(target, allFiledList);
+        return Check.builderTableInfos(allFiledList, tableName, dataSourceName);
     }
 
     @Deprecated
@@ -136,13 +147,15 @@ public class CustomizeSQL<T> {
     }
 
     /**
-     * 处理单体对象，如Integer，String等
+     * 处理单体对象，如 Integer，String等
      */
     public List<T> executeQueryForObject() {
         if (log.isDebugEnabled()) {
             log.debug(sql);
         }
         PreparedStatement preparedStatement = null;
+        List<TableInfo> tableInfos = initTableInfo();
+        Map<String, TableInfo> tableInfoMap = tableInfos.stream().collect(Collectors.toMap(k -> Check.unSplicingName(k.getColumn()), v -> v));
         try {
             preparedStatement = connection.prepareStatement(sql);
             ResultSet resultSet = preparedStatement.executeQuery();
@@ -152,7 +165,11 @@ public class CustomizeSQL<T> {
             while (resultSet.next()) {
                 for (int i = 1; i <= columnCount; i++) {
                     String columnName = metaData.getColumnName(i);
-                    T obj = ConverterUtils.convertJdbc(resultSet, columnName, target);
+                    TableInfo tableInfo = tableInfoMap.get(columnName);
+                    if (tableInfo == null) {
+                        continue;
+                    }
+                    T obj = ConverterUtils.convertJdbc(resultSet, tableInfo);
                     resultList.add(obj);
                 }
             }
@@ -173,6 +190,8 @@ public class CustomizeSQL<T> {
             log.debug(sql);
         }
         PreparedStatement preparedStatement = null;
+        List<TableInfo> tableInfos = initTableInfo();
+        Map<String, TableInfo> tableInfoMap = tableInfos.stream().collect(Collectors.toMap(k -> Check.unSplicingName(k.getColumn()), v -> v));
         try {
             preparedStatement = connection.prepareStatement(sql);
             ResultSet resultSet = preparedStatement.executeQuery();
@@ -184,12 +203,12 @@ public class CustomizeSQL<T> {
                 T instance = target.newInstance();
                 for (int i = 1; i <= columnCount; i++) {
                     String columnName = metaData.getColumnName(i);
-                    Field field = columnFieldMap.get(columnName);
-                    if (null == field) {
+                    TableInfo tableInfo = tableInfoMap.get(columnName);
+                    if (tableInfo == null) {
                         continue;
                     }
-                    Object o = ConverterUtils.convertJdbc(resultSet, columnName, field.getType());
-                    ReflectUtils.setFieldValue(field, instance, o);
+                    Object value = ConverterUtils.convertJdbc(resultSet, tableInfo);
+                    ReflectUtils.setFieldValue(tableInfo.getField(), instance, value);
                 }
                 resultList.add(instance);
             }
@@ -217,6 +236,7 @@ public class CustomizeSQL<T> {
         } catch (Exception ex) {
             throw new BraveException("重复的列名，发生在类：" + target.getName());
         }
+        Map<String, Field> columnFieldMap = new LinkedHashMap<>();
         for (int i = 1; i <= columnCount; i++) {
             String columnName = metaData.getColumnName(i);
             Field field = columnFieldClassMap.get(columnName);
@@ -232,7 +252,7 @@ public class CustomizeSQL<T> {
     }
 
     private String getColumnAndFixName(Field field) {
-        String columnName = Check.getColumnName(field, "unknown");
+        String columnName = Check.getColumnName(field, tableName);
         return Check.unSplicingName(columnName).trim();
     }
 

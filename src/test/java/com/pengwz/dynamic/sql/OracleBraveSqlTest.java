@@ -433,6 +433,13 @@ public class OracleBraveSqlTest {
     }
 
     @Test
+    public void testSelect3() {
+        String sql = "select * from \"TB_copy666\" where ID = 1200";
+        List<TBCopyEntity> copyEntities = BraveSql.build(TBCopyEntity.class).executeQuery(sql, OracleDatabaseConfig.class);
+        System.out.println(copyEntities.get(0));
+    }
+
+    @Test
     public void testColumnJson() {
         List<TBCopyEntity> select = BraveSql.build(TBCopyEntity.class).select();
         select.forEach(System.out::println);
