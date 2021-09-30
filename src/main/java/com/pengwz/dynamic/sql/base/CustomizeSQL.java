@@ -33,13 +33,13 @@ public class CustomizeSQL<T> {
 
     private final String dataSourceName;
 
-    private final String tableName = "unknown";
+    private static final String TABLE_NAME = "unknown";
 
     public CustomizeSQL(Class<? extends DataSourceConfig> dataSource, Class<T> target, String sql) {
         this.target = target;
         this.sql = sql;
         this.dataSourceName = dataSource.getName();
-        DataSourceManagement.initDataSourceConfig(dataSource, tableName);
+        DataSourceManagement.initDataSourceConfig(dataSource, TABLE_NAME);
         this.connection = DataSourceManagement.initConnection(dataSource.getName());
     }
 
@@ -90,7 +90,7 @@ public class CustomizeSQL<T> {
             while (resultSet.next()) {
                 T obj = target.newInstance();
                 for (Field field : declaredFields) {
-                    TableInfo tableInfo = tableInfoMap.get(Check.getColumnName(field, tableName));
+                    TableInfo tableInfo = tableInfoMap.get(Check.getColumnName(field, TABLE_NAME));
                     if (tableInfo == null) {
                         continue;
                     }
@@ -110,7 +110,7 @@ public class CustomizeSQL<T> {
     private List<TableInfo> initTableInfo() {
         List<Field> allFiledList = new ArrayList<>();
         Check.recursionGetAllFields(target, allFiledList);
-        return Check.builderTableInfos(allFiledList, tableName, dataSourceName);
+        return Check.builderTableInfos(allFiledList, TABLE_NAME, dataSourceName);
     }
 
     @Deprecated
@@ -154,8 +154,6 @@ public class CustomizeSQL<T> {
             log.debug(sql);
         }
         PreparedStatement preparedStatement = null;
-        List<TableInfo> tableInfos = initTableInfo();
-        Map<String, TableInfo> tableInfoMap = tableInfos.stream().collect(Collectors.toMap(k -> Check.unSplicingName(k.getColumn()), v -> v));
         try {
             preparedStatement = connection.prepareStatement(sql);
             ResultSet resultSet = preparedStatement.executeQuery();
@@ -165,11 +163,7 @@ public class CustomizeSQL<T> {
             while (resultSet.next()) {
                 for (int i = 1; i <= columnCount; i++) {
                     String columnName = metaData.getColumnName(i);
-                    TableInfo tableInfo = tableInfoMap.get(columnName);
-                    if (tableInfo == null) {
-                        continue;
-                    }
-                    T obj = ConverterUtils.convertJdbc(resultSet, tableInfo);
+                    T obj = ConverterUtils.convertJdbc(resultSet, columnName, target);
                     resultList.add(obj);
                 }
             }
@@ -252,7 +246,7 @@ public class CustomizeSQL<T> {
     }
 
     private String getColumnAndFixName(Field field) {
-        String columnName = Check.getColumnName(field, tableName);
+        String columnName = Check.getColumnName(field, TABLE_NAME);
         return Check.unSplicingName(columnName).trim();
     }
 

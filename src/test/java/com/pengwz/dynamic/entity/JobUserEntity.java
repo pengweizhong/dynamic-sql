@@ -1,5 +1,7 @@
 package com.pengwz.dynamic.entity;
 
+import com.pengwz.dynamic.anno.ColumnJson;
+import com.pengwz.dynamic.anno.Id;
 import com.pengwz.dynamic.anno.Table;
 import com.pengwz.dynamic.config.DatabaseConfig;
 import org.apache.commons.logging.Log;
@@ -8,11 +10,13 @@ import org.apache.commons.logging.LogFactory;
 @Table(value = "test2.job_user_1", dataSourceClass = DatabaseConfig.class)
 public class JobUserEntity {
     private transient Log log = LogFactory.getLog(getClass());
+    @Id
     private Integer id;
     private String username;
     private String password;
     private String role;
-    private String permission;
+    @ColumnJson(value = "permission")
+    private JobUserEntity permission;
 
     public Integer getId() {
         return id;
@@ -46,11 +50,11 @@ public class JobUserEntity {
         this.role = role;
     }
 
-    public String getPermission() {
+    public JobUserEntity getPermission() {
         return permission;
     }
 
-    public void setPermission(String permission) {
+    public void setPermission(JobUserEntity permission) {
         this.permission = permission;
     }
 

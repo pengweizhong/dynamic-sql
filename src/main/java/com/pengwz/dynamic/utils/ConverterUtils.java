@@ -124,11 +124,6 @@ public class ConverterUtils {
             //若是枚举，则调用枚举的Tostring方法
             return fieldValue.toString();
         }
-//        ColumnJson columnJson = fieldValueClass.getAnnotation(ColumnJson.class);
-//        if (null != columnJson) {
-//            Gson gson = getGson(columnJson.jsonMode());
-//            return gson.toJson(fieldValue);
-//        }
         //其他值直接返回
         return fieldValue;
     }

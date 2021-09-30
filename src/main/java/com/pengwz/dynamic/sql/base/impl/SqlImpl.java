@@ -359,7 +359,7 @@ public class SqlImpl<T> implements Sqls<T> {
         successCount = ints.length;
         TableInfo tableInfoPrimaryKey = ContextApplication.getTableInfoPrimaryKey(dataSourceName, tableName);
         //若没有设置主键，直接返回
-        if (tableInfoPrimaryKey == null)
+        if (tableInfoPrimaryKey == null || tableInfoPrimaryKey.getGeneratedValue() == null)
             return successCount;
         //不是自增的直接返回，因为在执行前已经获取到了
         if (!tableInfoPrimaryKey.getGeneratedValue().strategy().equals(AUTO)) {

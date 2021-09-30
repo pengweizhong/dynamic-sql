@@ -128,6 +128,16 @@ public class OracleBraveSqlTest {
         tbCopyEntityPageInfo.getResultList().forEach(System.out::println);
     }
 
+    @Test
+    public void selectPageInfo6() {
+        DynamicSql<TBCopyEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.andIsNotNull(TBCopyEntity::getJson);
+        PageInfo<TBCopyEntity> tbCopyEntityPageInfo = BraveSql.build(dynamicSql, TBCopyEntity.class).selectPageInfo(1, 10);
+        Assert.assertNotNull(tbCopyEntityPageInfo);
+        System.out.println(tbCopyEntityPageInfo);
+        tbCopyEntityPageInfo.getResultList().forEach(System.out::println);
+    }
+
     //测试序列自动插入主键
     @Test
     public void insert() {
@@ -437,6 +447,9 @@ public class OracleBraveSqlTest {
         String sql = "select * from \"TB_copy666\" where ID = 1200";
         List<TBCopyEntity> copyEntities = BraveSql.build(TBCopyEntity.class).executeQuery(sql, OracleDatabaseConfig.class);
         System.out.println(copyEntities.get(0));
+        String sql2 = "select ID,JSON_COL from \"TB_copy666\" where ID = 1200";
+        List<TBCopyEntity> copyEntities2 = BraveSql.build(TBCopyEntity.class).executeQuery(sql2, OracleDatabaseConfig.class);
+        System.out.println(copyEntities2.get(0));
     }
 
     @Test

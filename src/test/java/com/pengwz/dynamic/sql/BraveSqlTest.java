@@ -5,12 +5,12 @@ import com.pengwz.dynamic.config.DatabaseConfig;
 import com.pengwz.dynamic.entity.JobUserEntity;
 import com.pengwz.dynamic.entity.UserEntity;
 import com.pengwz.dynamic.entity.UserRoleEntity;
-import com.pengwz.dynamic.entity.oracle.TBCopyEntity;
 import com.pengwz.dynamic.exception.BraveException;
 import org.apache.commons.lang3.RandomUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -257,7 +257,7 @@ public class BraveSqlTest {
 //        select.forEach(System.out::println);
 //    }
 
-    @Test
+    @Test(expected = BraveException.class)
     public void testTestExecuteSql() {
         BraveSql.build(UserEntity.class).executeQuery("");
     }
@@ -279,8 +279,9 @@ public class BraveSqlTest {
     public void testSelect2() {
         List<JobUserEntity> select = BraveSql.build(JobUserEntity.class).select();
         System.out.println(select.size());
-        System.out.println(select.subList(0, 1));
+        Assert.assertEquals(0, select.size());
     }
+
 
     @Test
     public void testSelectSingle() {
@@ -392,5 +393,20 @@ public class BraveSqlTest {
     }
 
     public void testTestOrderByDesc() {
+    }
+
+    //临时
+    @Test
+    public void testJobUserEntity() {
+        JobUserEntity jobUserEntity = BraveSql.build(JobUserEntity.class).selectByPrimaryKey(11);
+        JobUserEntity jobUserEntity2 = new JobUserEntity();
+        jobUserEntity2.setPassword("12121");
+//        jobUserEntity2.setRole("role");
+        jobUserEntity2.setUsername("hello3");
+        jobUserEntity2.setPermission(jobUserEntity);
+        Integer integer = BraveSql.build(JobUserEntity.class).insertActive(jobUserEntity2);
+        System.out.println(integer);
+
+
     }
 }
