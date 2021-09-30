@@ -1,10 +1,13 @@
 package com.pengwz.dynamic.sql.base;
 
 import com.pengwz.dynamic.sql.PageInfo;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import java.util.List;
 
 public interface Sqls<T> {
+    Log log = LogFactory.getLog(Sqls.class);
 
     T selectByPrimaryKey(Object primaryKeyValue);
 
@@ -41,5 +44,9 @@ public interface Sqls<T> {
 
     Integer deleteByPrimaryKey(Object primaryKeyValue);
 
-
+    default void printSql(String sql) {
+        if (log.isDebugEnabled()) {
+            log.debug(sql);
+        }
+    }
 }

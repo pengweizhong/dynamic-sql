@@ -142,9 +142,9 @@ public class OracleBraveSqlTest {
     @Test
     public void insert() {
         TBCopyEntity entity = new TBCopyEntity();
-        entity.setTbColumn0("aaa");
-        entity.setTbColumn1("bbb");
-        entity.setTbColumn2("ccc");
+        entity.setTbColumn0("aaaaa");
+        entity.setTbColumn1("bbbbb");
+        entity.setTbColumn2("ccccc");
         TBCopyEntity entity1 = new TBCopyEntity();
         BeanUtils.copyProperties(entity, entity1);
         entity.setJson(entity1);

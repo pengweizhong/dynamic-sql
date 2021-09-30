@@ -1,6 +1,5 @@
 package com.pengwz.dynamic.sql.base.impl;
 
-import com.alibaba.druid.pool.DruidPooledPreparedStatement;
 import com.pengwz.dynamic.anno.GeneratedValue;
 import com.pengwz.dynamic.anno.GenerationType;
 import com.pengwz.dynamic.check.Check;
@@ -164,9 +163,9 @@ public class SqlImpl<T> implements Sqls<T> {
 
     private Integer executeQueryCount(String sql, boolean isCloseConnection) {
         try {
+            printSql(sql);
             preparedStatement = connection.prepareStatement(sql);
             resultSet = preparedStatement.executeQuery();
-            printSql(preparedStatement);
             resultSet.next();
             return resultSet.getInt(1);
         } catch (Exception ex) {
@@ -186,10 +185,10 @@ public class SqlImpl<T> implements Sqls<T> {
     private List<T> executeQuery(String sql, String tableName) {
         List<TableInfo> tableInfos = ContextApplication.getTableInfos(dataSourceName, tableName);
         List<T> list = new ArrayList<>();
+        printSql(sql);
         try {
             preparedStatement = connection.prepareStatement(sql);
             resultSet = preparedStatement.executeQuery();
-            printSql(preparedStatement);
             while (resultSet.next()) {
                 T t = (T) currentClass.newInstance();
                 for (TableInfo tableInfo : tableInfos) {
@@ -245,12 +244,12 @@ public class SqlImpl<T> implements Sqls<T> {
         prefix.deleteCharAt(prefix.lastIndexOf(","));
         prefix.append(" ) values (").append(suffix).append(")");
         String sql = prefix.toString();
+        printSql(sql);
         try {
             preparedStatement = connection.prepareStatement(sql, RETURN_GENERATED_KEYS);
             for (int i = 1; i <= insertValues.size(); i++) {
                 preparedStatement.setObject(i, ConverterUtils.convertValueJdbc(insertValues.get(i - 1)));
             }
-            printSql(preparedStatement);
             preparedStatement.addBatch();
             return executeSqlAndReturnAffectedRows();
         } catch (Exception ex) {
@@ -273,7 +272,7 @@ public class SqlImpl<T> implements Sqls<T> {
                     Object fieldValue = getTableFieldValue(tableInfo, next);
                     preparedStatement.setObject(i, ConverterUtils.convertValueJdbc(fieldValue));
                 }
-                printSql(preparedStatement);
+                printSql(sql);
                 preparedStatement.addBatch();
             }
             return executeSqlAndReturnAffectedRows();
@@ -335,13 +334,17 @@ public class SqlImpl<T> implements Sqls<T> {
                 return null;
             case SEQUENCE:
                 String sql = "SELECT " + generatedValue.sequenceName().trim() + ".NEXTVAL FROM DUAL";
+                printSql(sql);
+                PreparedStatement ps = null;
+                ResultSet rs = null;
                 try {
-                    PreparedStatement preparedStatement = connection.prepareStatement(sql);
-                    printSql(preparedStatement);
-                    ResultSet resultSet = preparedStatement.executeQuery();
-                    resultSet.next();
-                    return resultSet.getObject(1, tableInfo.getField().getType());
+                    ps = connection.prepareStatement(sql);//NOSONAR
+                    rs = ps.executeQuery();
+                    rs.next();
+                    return rs.getObject(1, tableInfo.getField().getType());
                 } catch (SQLException sqlException) {
+                    //此处关闭。。。。
+                    DataSourceManagement.close(dataSourceName, rs, ps, connection);
                     ExceptionUtils.boxingAndThrowBraveException(sqlException, sql);
                 }
                 //不会走到这里
@@ -556,10 +559,9 @@ public class SqlImpl<T> implements Sqls<T> {
 
     private Integer executeUpdateSqlAndReturnAffectedRows(String sql) {
         try {
+            printSql(sql);
             preparedStatement = connection.prepareStatement(sql);
-            int i = preparedStatement.executeUpdate();
-            printSql(preparedStatement);
-            return i;
+            return preparedStatement.executeUpdate();
         } catch (SQLException ex) {
             ExceptionUtils.boxingAndThrowBraveException(ex, sql);
         } finally {
@@ -583,31 +585,32 @@ public class SqlImpl<T> implements Sqls<T> {
         }
     }
 
-    private void printSql(PreparedStatement preparedStatement) throws SQLException {
-        if (log.isDebugEnabled()) {
-            switch (preparedStatement.getConnection().getMetaData().getDatabaseProductName().toUpperCase()) {
-                case "ORACLE":
-                    try {
-                        String canonicalName = preparedStatement.getClass().getCanonicalName();
-                        if (canonicalName.equals("com.alibaba.druid.pool.DruidPooledPreparedStatement")) {
-                            DruidPooledPreparedStatement druidPooledPreparedStatement = (DruidPooledPreparedStatement) preparedStatement;
-                            log.debug(druidPooledPreparedStatement.getSql());
-                        } else {
-                            log.debug("[" + canonicalName + "] is not support print sql.");
-                        }
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                    break;
-                case "MYSQL":
-                    String temp = preparedStatement.toString();
-                    log.debug(temp.substring(temp.indexOf(':') + 1));
-                    break;
-                default:
-                    log.debug(preparedStatement.toString());
-            }
-        }
-    }
+    //    private void printSql(PreparedStatement preparedStatement, String sql) throws SQLException {
+//        if (log.isDebugEnabled()) {
+//            log.debug(sql);
+//            switch (preparedStatement.getConnection().getMetaData().getDatabaseProductName().toUpperCase()) {
+//                case "ORACLE":
+//                    try {
+//                        String canonicalName = preparedStatement.getClass().getCanonicalName();
+//                        if (canonicalName.equals("com.alibaba.druid.pool.DruidPooledPreparedStatement")) {
+//                            DruidPooledPreparedStatement druidPooledPreparedStatement = (DruidPooledPreparedStatement) preparedStatement;
+//                            log.debug(druidPooledPreparedStatement.getSql());
+//                        } else {
+//                            log.debug("[" + canonicalName + "] is not support print sql.");
+//                        }
+//                    } catch (Exception e) {
+//                        e.printStackTrace();
+//                    }
+//                    break;
+//                case "MYSQL":
+//                    String temp = preparedStatement.toString();
+//                    log.debug(temp.substring(temp.indexOf(':') + 1));
+//                    break;
+//                default:
+//                    log.debug(preparedStatement.toString());
+//            }
+//        }
+//    }
 
     private void buildPageInfo(PageInfo<T> pageInfo, List<T> list, Integer totalSize) {
         pageInfo.setTotalSize(totalSize);
