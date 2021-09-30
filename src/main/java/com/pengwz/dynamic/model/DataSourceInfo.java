@@ -3,11 +3,14 @@ package com.pengwz.dynamic.model;
 import javax.sql.DataSource;
 
 public class DataSourceInfo {
+    //数据库对象所在类路径
     private String classPath;
+    //数据库对象所在类Bean名称
     private String classBeanName;
     private DataSource dataSource;
     private DbType dbType;
     private String dataSourceBeanName;
+    //是否是默认数据源
     private boolean isDefault;
 
     public String getClassPath() {
