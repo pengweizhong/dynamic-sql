@@ -64,7 +64,7 @@ public class Check {
                 GeneratedValue generatedValue = field.getAnnotation(GeneratedValue.class);
                 if (Objects.nonNull(generatedValue)) {
                     if (!Number.class.isAssignableFrom(field.getType()) && generatedValue.strategy().equals(GenerationType.AUTO)) {
-                        log.warn("使用AUTO自增时，只有类型为数值时才有意义。但是此时类型为：" + field.getType() + "，发生在表：" + tableName);
+                        throw new BraveException("使用AUTO自增时，只有类型为数值时才有意义。但是此时类型为：" + field.getType() + "，发生在表：" + tableName);
                     }
                     List<GenerationType> uuidList = Arrays.asList(GenerationType.UUID, GenerationType.SIMPLE_UUID, GenerationType.UPPER_SIMPLE_UUID, GenerationType.UPPER_UUID);
                     if (!String.class.equals(field.getType()) && uuidList.contains(generatedValue.strategy())) {
