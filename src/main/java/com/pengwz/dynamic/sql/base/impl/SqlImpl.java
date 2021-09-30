@@ -193,7 +193,7 @@ public class SqlImpl<T> implements Sqls<T> {
             while (resultSet.next()) {
                 T t = (T) currentClass.newInstance();
                 for (TableInfo tableInfo : tableInfos) {
-                    Object o = ConverterUtils.convertJdbc(resultSet, tableInfo.getColumn(), tableInfo.getField().getType());
+                    Object o = ConverterUtils.convertJdbc(resultSet, tableInfo);
                     ReflectUtils.setFieldValue(tableInfo.getField(), t, o);
                 }
                 list.add(t);
@@ -292,10 +292,14 @@ public class SqlImpl<T> implements Sqls<T> {
      * @param next      当前查询的对象
      * @return 主键值
      */
-    private Object getTableFieldValue(TableInfo tableInfo, T next) {
+    private Object getTableFieldValue(TableInfo tableInfo, Object next) {
         //先确定源字段是否有值
         Object invoke = ReflectUtils.getFieldValue(tableInfo.getField(), next);
         if (null != invoke) {
+            //判断写入前是否需要转json
+            if (tableInfo.getJsonMode() != null) {
+                return ConverterUtils.getGson(tableInfo.getJsonMode()).toJson(invoke);
+            }
             return invoke;
         }
         //若该值为null，则看看是不是需要程序生成主键
@@ -409,15 +413,7 @@ public class SqlImpl<T> implements Sqls<T> {
         StringBuilder sql = new StringBuilder();
         sql.append("update ").append(tableName).append(" set");
         for (T next : data) {
-            for (TableInfo tableInfo : tableInfos) {
-                try {
-                    Object invoke = ReflectUtils.getFieldValue(tableInfo.getField(), next);
-                    sql.append(SPACE).append(tableInfo.getColumn()).append(SPACE).append(EQ).append(SPACE);
-                    sql.append(ParseSql.matchValue(invoke)).append(COMMA);
-                } catch (Exception ex) {
-                    ExceptionUtils.boxingAndThrowBraveException(ex, sql.toString());
-                }
-            }
+            appendSetValueSql(tableInfos, sql, next);
         }
         return baseUpdate(sql);
     }
@@ -478,15 +474,11 @@ public class SqlImpl<T> implements Sqls<T> {
         StringBuilder sql = new StringBuilder();
         sql.append("update ").append(tableName).append(" set");
         T next = data.iterator().next();
-        for (TableInfo tableInfo : tableInfos) {
-            try {
-                Object invoke = ReflectUtils.getFieldValue(tableInfo.getField(), next);
-                sql.append(SPACE).append(tableInfo.getColumn()).append(SPACE).append(EQ).append(SPACE);
-                sql.append(ParseSql.matchValue(invoke)).append(COMMA);
-            } catch (Exception ex) {
-                ExceptionUtils.boxingAndThrowBraveException(ex, sql.toString());
-            }
-        }
+        appendSetValueSql(tableInfos, sql, next);
+        return assertEndSet(tableInfoPrimaryKey, sql, next);
+    }
+
+    private Integer assertEndSet(TableInfo tableInfoPrimaryKey, StringBuilder sql, T next) {
         if (sql.toString().endsWith("set")) {
             return 0;
         }
@@ -495,6 +487,18 @@ public class SqlImpl<T> implements Sqls<T> {
         sqlPrefix = sqlPrefix + SPACE + WHERE + SPACE + tableInfoPrimaryKey.getColumn() + SPACE + EQ + SPACE + ParseSql.matchValue(primaryKeyValue);
         String parseSql = ParseSql.parseSql(sqlPrefix);
         return executeUpdateSqlAndReturnAffectedRows(parseSql);
+    }
+
+    private void appendSetValueSql(List<TableInfo> tableInfos, StringBuilder sql, Object next) {
+        for (TableInfo tableInfo : tableInfos) {
+            try {
+                sql.append(SPACE).append(tableInfo.getColumn()).append(SPACE).append(EQ).append(SPACE);
+                Object invoke = getTableFieldValue(tableInfo, next);
+                sql.append(ParseSql.matchValue(invoke)).append(COMMA);
+            } catch (Exception ex) {
+                ExceptionUtils.boxingAndThrowBraveException(ex, sql.toString());
+            }
+        }
     }
 
     private Object getPrimaryKeyValue(TableInfo tableInfoPrimaryKey, Object next) {
@@ -521,14 +525,7 @@ public class SqlImpl<T> implements Sqls<T> {
         StringBuilder sql = new StringBuilder();
         sql.append("update ").append(tableName).append(" set");
         updateSqlCheckSetNullProperties(sql, tableInfos, next);
-        if (sql.toString().endsWith("set")) {
-            return 0;
-        }
-        String sqlPrefix = sql.substring(0, sql.length() - 1);
-        Object primaryKeyValue = getPrimaryKeyValue(tableInfoPrimaryKey, next);
-        sqlPrefix = sqlPrefix + SPACE + WHERE + SPACE + tableInfoPrimaryKey.getColumn() + SPACE + EQ + SPACE + ParseSql.matchValue(primaryKeyValue);
-        String parseSql = ParseSql.parseSql(sqlPrefix);
-        return executeUpdateSqlAndReturnAffectedRows(parseSql);
+        return assertEndSet(tableInfoPrimaryKey, sql, next);
     }
 
     @Override
@@ -574,7 +571,7 @@ public class SqlImpl<T> implements Sqls<T> {
     private void updateSqlCheckSetNullProperties(StringBuilder sql, List<TableInfo> tableInfos, T nextObject) {
         for (TableInfo tableInfo : tableInfos) {
             try {
-                Object invoke = ReflectUtils.getFieldValue(tableInfo.getField(), nextObject);
+                Object invoke = getTableFieldValue(tableInfo, nextObject);
                 if (Objects.isNull(invoke) && !updateNullProperties.contains(tableInfo.getField().getName())) {
                     continue;
                 }
@@ -586,31 +583,6 @@ public class SqlImpl<T> implements Sqls<T> {
         }
     }
 
-    //    private void printSql(PreparedStatement preparedStatement) throws SQLException {
-//        if (log.isDebugEnabled()) {
-//            switch (preparedStatement.getConnection().getMetaData().getDatabaseProductName().toUpperCase()) {
-//                case "ORACLE":
-//                    try {
-//                        String canonicalName = preparedStatement.getClass().getCanonicalName();
-//                        if (canonicalName.equals("com.alibaba.druid.pool.DruidPooledPreparedStatement")) {
-//                            DruidPooledPreparedStatement druidPooledPreparedStatement = (DruidPooledPreparedStatement) preparedStatement;
-//                            log.debug(druidPooledPreparedStatement.getSql());
-//                        } else {
-//                            log.debug("[" + canonicalName + "] is not support print sql.");
-//                        }
-//                    } catch (Exception e) {
-//                        e.printStackTrace();
-//                    }
-//                    break;
-//                case "MYSQL":
-//                    String temp = preparedStatement.toString();
-//                    log.debug(temp.substring(temp.indexOf(':') + 1));
-//                    break;
-//                default:
-//                    log.debug(preparedStatement.toString());
-//            }
-//        }
-//    }
     private void printSql(PreparedStatement preparedStatement) throws SQLException {
         switch (preparedStatement.getConnection().getMetaData().getDatabaseProductName().toUpperCase()) {
             case "ORACLE":

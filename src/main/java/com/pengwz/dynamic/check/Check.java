@@ -70,6 +70,8 @@ public class Check {
 
             tableInfo.setColumn(getColumnName(field, tableName, dataSource));
 
+            tableInfo.setJsonMode(getJsonMode(field));
+
             tableInfos.add(tableInfo);
         }
         if (idCount > 1) {
@@ -87,6 +89,7 @@ public class Check {
         });
         ContextApplication.saveTable(dataSource, getTableName(tableName, dataSource), tableInfos);
     }
+
 
     public static void recursionGetAllFields(Class<?> thisClass, List<Field> fieldList) {
         //仅递归到Object的直接子类
@@ -109,8 +112,25 @@ public class Check {
         pageInfo.setOffset((pageInfo.getPageIndex() - 1) * pageInfo.getPageSize());
     }
 
+    private static JsonMode getJsonMode(Field field) {
+        ColumnJson columnJson = field.getAnnotation(ColumnJson.class);
+        if (columnJson == null) {
+            return null;
+        }
+        return columnJson.jsonMode();
+    }
 
     public static String getColumnName(Field field, String tableName, String dataSource) {
+        String column = getColumnName(field, tableName);
+        if (StringUtils.isNotBlank(dataSource)) {
+            DataSourceInfo dataSourceInfo = ContextApplication.getDataSourceInfo(dataSource);
+            return splicingName(dataSourceInfo.getDbType(), column);
+        }
+        return column;
+    }
+
+
+    public static String getColumnName(Field field, String tableName) {
         Column columnAnno = field.getAnnotation(Column.class);
         String column;
         if (Objects.nonNull(columnAnno)) {
@@ -119,11 +139,15 @@ public class Check {
             }
             column = columnAnno.value().replace(" ", "");
         } else {
-            column = com.pengwz.dynamic.utils.StringUtils.caseField(field.getName());
-        }
-        if (StringUtils.isNotBlank(dataSource)) {
-            DataSourceInfo dataSourceInfo = ContextApplication.getDataSourceInfo(dataSource);
-            return splicingName(dataSourceInfo.getDbType(), column);
+            ColumnJson columnJson = field.getAnnotation(ColumnJson.class);
+            if (Objects.nonNull(columnJson)) {
+                if (StringUtils.isEmpty(columnJson.value())) {
+                    throw new BraveException("ColumnJson列名不可以为空，字段名：" + field.getName() + "，发生在表：" + tableName);
+                }
+                column = columnJson.value().replace(" ", "");
+            } else {
+                column = com.pengwz.dynamic.utils.StringUtils.caseField(field.getName());
+            }
         }
         return column;
     }

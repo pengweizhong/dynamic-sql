@@ -14,9 +14,9 @@ public class OracleDatabaseConfig implements DataSourceConfig {
         ds.setUsername("C##TESTSYSTTEM");
         ds.setPassword("1231");
         ds.setDriverClassName("oracle.jdbc.OracleDriver");
-        ds.setInitialSize(5);
-        ds.setMaxActive(50);
-        ds.setMinIdle(5);
+        ds.setInitialSize(2);
+        ds.setMaxActive(10);
+        ds.setMinIdle(2);
         ds.setValidationQuery("select 1 FROM DUAL");
         ds.setTestOnBorrow(true);
         ds.setTestOnReturn(false);

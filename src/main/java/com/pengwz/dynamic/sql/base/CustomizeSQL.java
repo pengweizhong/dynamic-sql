@@ -15,7 +15,6 @@ import org.apache.commons.logging.LogFactory;
 
 import java.lang.reflect.Field;
 import java.sql.*;
-import java.time.temporal.Temporal;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -233,14 +232,8 @@ public class CustomizeSQL<T> {
     }
 
     private String getColumnAndFixName(Field field) {
-        String columnName = Check.getColumnName(field, "", "");
-        if (columnName.contains("`")) {
-            columnName = columnName.replace("`", "").trim();
-        }
-        if (columnName.contains("\"")) {
-            columnName = columnName.replace("\"", "").trim();
-        }
-        return columnName;
+        String columnName = Check.getColumnName(field, "unknown");
+        return Check.unSplicingName(columnName).trim();
     }
 
     public void executeSql() {

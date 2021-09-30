@@ -1,17 +1,19 @@
 package com.pengwz.dynamic.sql;
 
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.pengwz.dynamic.config.OracleDatabaseConfig;
 import com.pengwz.dynamic.entity.oracle.TBCopyEntity;
 import com.pengwz.dynamic.entity.oracle.TBCopyEntity2;
 import com.pengwz.dynamic.exception.BraveException;
 import org.junit.Assert;
 import org.junit.Test;
+import org.springframework.beans.BeanUtils;
 
 import java.math.BigInteger;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.time.LocalDateTime;
+import java.util.*;
 
 public class OracleBraveSqlTest {
 
@@ -133,6 +135,9 @@ public class OracleBraveSqlTest {
         entity.setTbColumn0("aaa");
         entity.setTbColumn1("bbb");
         entity.setTbColumn2("ccc");
+        TBCopyEntity entity1 = new TBCopyEntity();
+        BeanUtils.copyProperties(entity, entity1);
+        entity.setJson(entity1);
         Integer insert = BraveSql.build(TBCopyEntity.class).insert(entity);
         Assert.assertNotNull(insert);
         System.out.println(insert);
@@ -281,6 +286,22 @@ public class OracleBraveSqlTest {
 
     @Test
     public void updateActive2() {
+        TBCopyEntity entity = new TBCopyEntity();
+        entity.setTbColumn0("hahahahah");
+        entity.setTbColumn1("hahahahah");
+        entity.setId(1200);
+        TBCopyEntity entity1 = new TBCopyEntity();
+        BeanUtils.copyProperties(entity, entity1);
+        entity.setJson(entity1);
+        DynamicSql<TBCopyEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.andIn(TBCopyEntity::getId, Collections.singleton(1200));
+        Integer update = BraveSql.build(dynamicSql, TBCopyEntity.class).updateActive(entity);
+        Assert.assertNotNull(update);
+        System.out.println(update);
+    }
+
+    @Test
+    public void updateActive3() {
         DynamicSql<TBCopyEntity> dynamicSql = DynamicSql.createDynamicSql();
         dynamicSql.andEqualTo(TBCopyEntity::getId, 1200);
         TBCopyEntity entity = new TBCopyEntity();
@@ -332,9 +353,9 @@ public class OracleBraveSqlTest {
     public void updateActiveByPrimaryKey2() {
         TBCopyEntity entity = new TBCopyEntity();
         entity.setId(1200);
-        entity.setTbColumn0("not11");
-        entity.setTbColumn1("not222");
-        entity.setTbColumn2("not333");
+        entity.setTbColumn0("aaaa");
+        entity.setTbColumn1("aaaa");
+        entity.setTbColumn2("aaaa");
         Integer update = BraveSql.build(TBCopyEntity.class).updateActiveByPrimaryKey(entity);
         Assert.assertNotNull(update);
         System.out.println(update);
@@ -401,5 +422,120 @@ public class OracleBraveSqlTest {
         System.out.println(select.subList(0, 1));
     }
 
+    @Test
+    public void testSelect2() {
+        DynamicSql<TBCopyEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.andBetween(TBCopyEntity::getId, 1200, 1400);
+        dynamicSql.andLike("json", "%tbColumn0%");
+        List<TBCopyEntity> select = BraveSql.build(dynamicSql, TBCopyEntity.class).select();
+        System.out.println(select.size());
+        select.forEach(System.out::println);
+    }
 
+    @Test
+    public void testColumnJson() {
+        List<TBCopyEntity> select = BraveSql.build(TBCopyEntity.class).select();
+        select.forEach(System.out::println);
+        System.out.println(select.size());
+
+
+    }
+
+    @Test
+    public void testGson() {
+        TBCopyEntity entity = new TBCopyEntity();
+        entity.setId(123);
+        Gson gson = new Gson();
+        String s = gson.toJson(entity);
+        System.out.println(s);
+        System.out.println(gson.toJson(null));
+
+        Gson gson1 = new GsonBuilder().serializeNulls().create();
+        System.out.println(gson1.toJson(entity));
+
+        System.out.println("---------------------");
+
+        JsonEntity jsonEntity = new JsonEntity();
+        jsonEntity.setDate(new Date());
+        jsonEntity.setId(23);
+        jsonEntity.setJsonEntity(jsonEntity);
+        jsonEntity.setList(Collections.singletonList("hello"));
+        jsonEntity.setLocalDateTime(LocalDateTime.now());
+//        jsonEntity.setMap(new HashMap<>());
+        System.out.println(gson.toJson(jsonEntity));
+        JsonEntity jsonEntity1 = gson.fromJson(gson.toJson(jsonEntity), JsonEntity.class);
+        System.out.println(jsonEntity1);
+
+    }
+
+
+}
+
+class JsonEntity {
+    private Integer id;
+    private Date date;
+    private LocalDateTime localDateTime;
+    private List<String> list;
+    private Map<Integer, List<Integer>> map;
+    private JsonEntity jsonEntity;
+
+    public Integer getId() {
+        return id;
+    }
+
+    public void setId(Integer id) {
+        this.id = id;
+    }
+
+    public Date getDate() {
+        return date;
+    }
+
+    public void setDate(Date date) {
+        this.date = date;
+    }
+
+    public LocalDateTime getLocalDateTime() {
+        return localDateTime;
+    }
+
+    public void setLocalDateTime(LocalDateTime localDateTime) {
+        this.localDateTime = localDateTime;
+    }
+
+    public List<String> getList() {
+        return list;
+    }
+
+    public void setList(List<String> list) {
+        this.list = list;
+    }
+
+    public Map<Integer, List<Integer>> getMap() {
+        return map;
+    }
+
+    public void setMap(Map<Integer, List<Integer>> map) {
+        this.map = map;
+    }
+
+    public JsonEntity getJsonEntity() {
+        return jsonEntity;
+    }
+
+    public void setJsonEntity(JsonEntity jsonEntity) {
+        this.jsonEntity = jsonEntity;
+    }
+
+    @Override
+    public String toString() {
+        return "JsonEntity{" +
+                "id=" + id +
+                ", date=" + date +
+                ", localDateTime=" + localDateTime +
+                ", list=" + list +
+                ", map=" + map +
+                ", jsonEntity=" + jsonEntity +
+                '}';
+    }
 }

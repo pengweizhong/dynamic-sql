@@ -1,6 +1,11 @@
 package com.pengwz.dynamic.utils;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.pengwz.dynamic.anno.JsonMode;
+import com.pengwz.dynamic.check.Check;
 import com.pengwz.dynamic.exception.BraveException;
+import com.pengwz.dynamic.model.TableInfo;
 import com.pengwz.dynamic.utils.convert.ConverterAdapter;
 import com.pengwz.dynamic.utils.convert.LocalDateConverterAdapter;
 import com.pengwz.dynamic.utils.convert.LocalDateTimeConverterAdapter;
@@ -58,22 +63,36 @@ public class ConverterUtils {
     }
 
     @SuppressWarnings("unchecked")
-    public static <T> T convertJdbc(ResultSet resultSet, String columnName, Class<T> targetType) throws SQLException {
+    public static <T> T convertJdbc(ResultSet resultSet, TableInfo tableInfo) throws SQLException {
         if (Objects.isNull(resultSet)) {
             throw new BraveException("java.sql.ResultSet不可为null");
         }
-        if (columnName.contains("`")) {
-            columnName = columnName.replace("`", "").trim();
+        return convertJdbc(resultSet, tableInfo.getColumn(), (Class<T>) tableInfo.getField().getType(), tableInfo.getJsonMode());
+    }
+
+    public static <T> T convertJdbc(ResultSet resultSet, String columnName, Class<T> targetType) throws SQLException {
+        return convertJdbc(resultSet, columnName, targetType, null);
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <T> T convertJdbc(ResultSet resultSet, String columnName, Class<T> targetType, JsonMode jsonMode) throws SQLException {
+        if (Objects.isNull(resultSet)) {
+            throw new BraveException("java.sql.ResultSet不可为null");
         }
-        if (columnName.contains("\"")) {
-            columnName = columnName.replace("\"", "").trim();
-        }
+        columnName = Check.unSplicingName(columnName);
         if (Object.class.equals(targetType)) {
             return (T) resultSet.getObject(columnName);
         }
         //转换枚举
         if (targetType.isEnum()) {
             return (T) mappedEnum(resultSet, columnName, targetType);
+        }
+        if (jsonMode != null) {
+            Object objectValue = resultSet.getObject(columnName);
+            if (null == objectValue) {
+                return null;
+            }
+            return getGson(jsonMode).fromJson(objectValue.toString(), targetType);
         }
         try {
             return resultSet.getObject(columnName, targetType);
@@ -83,18 +102,33 @@ public class ConverterUtils {
         }
     }
 
+    public static Gson getGson(JsonMode jsonMode) {
+        Gson gson;
+        if (jsonMode.equals(JsonMode.SERIALIZE_WRITE_NULLS)) {
+            gson = new GsonBuilder().serializeNulls().create();
+        } else {
+            gson = new Gson();
+        }
+        return gson;
+    }
+
     /**
-     * 设置值到SQL时，将java对象转为mysql认知的对象
+     * 设置值到SQL时，将java对象转为数据库认知的对象
      */
-    @SuppressWarnings("unchecked")
     public static Object convertValueJdbc(Object fieldValue) {
         if (null == fieldValue) {
             return null;
         }
-        if (fieldValue.getClass().isEnum()) {
+        Class<?> fieldValueClass = fieldValue.getClass();
+        if (fieldValueClass.isEnum()) {
             //若是枚举，则调用枚举的Tostring方法
             return fieldValue.toString();
         }
+//        ColumnJson columnJson = fieldValueClass.getAnnotation(ColumnJson.class);
+//        if (null != columnJson) {
+//            Gson gson = getGson(columnJson.jsonMode());
+//            return gson.toJson(fieldValue);
+//        }
         //其他值直接返回
         return fieldValue;
     }
