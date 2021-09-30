@@ -584,26 +584,28 @@ public class SqlImpl<T> implements Sqls<T> {
     }
 
     private void printSql(PreparedStatement preparedStatement) throws SQLException {
-        switch (preparedStatement.getConnection().getMetaData().getDatabaseProductName().toUpperCase()) {
-            case "ORACLE":
-                try {
-                    String canonicalName = preparedStatement.getClass().getCanonicalName();
-                    if (canonicalName.equals("com.alibaba.druid.pool.DruidPooledPreparedStatement")) {
-                        DruidPooledPreparedStatement druidPooledPreparedStatement = (DruidPooledPreparedStatement) preparedStatement;
-                        System.out.println(druidPooledPreparedStatement.getSql());
-                    } else {
-                        System.out.println("[" + canonicalName + "] is not support print sql.");
+        if (log.isDebugEnabled()) {
+            switch (preparedStatement.getConnection().getMetaData().getDatabaseProductName().toUpperCase()) {
+                case "ORACLE":
+                    try {
+                        String canonicalName = preparedStatement.getClass().getCanonicalName();
+                        if (canonicalName.equals("com.alibaba.druid.pool.DruidPooledPreparedStatement")) {
+                            DruidPooledPreparedStatement druidPooledPreparedStatement = (DruidPooledPreparedStatement) preparedStatement;
+                            log.debug(druidPooledPreparedStatement.getSql());
+                        } else {
+                            log.debug("[" + canonicalName + "] is not support print sql.");
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
                     }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-                break;
-            case "MYSQL":
-                String temp = preparedStatement.toString();
-                System.out.println(temp.substring(temp.indexOf(':') + 1));
-                break;
-            default:
-                System.out.println(preparedStatement.toString());
+                    break;
+                case "MYSQL":
+                    String temp = preparedStatement.toString();
+                    log.debug(temp.substring(temp.indexOf(':') + 1));
+                    break;
+                default:
+                    log.debug(preparedStatement.toString());
+            }
         }
     }
 
