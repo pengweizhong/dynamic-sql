@@ -23,7 +23,7 @@ public enum GenerationType {
      */
     AUTO,
     /**
-     * 使用序列进行自增，当使用序列类型自增时，需要执行序列名。目前仅Oracle支持
+     * 使用序列进行自增，当使用序列类型自增时，需要执行序列名。目前已验证的仅Oracle支持
      *
      * @see GeneratedValue#sequenceName()
      */

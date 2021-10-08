@@ -9,7 +9,7 @@ public interface DataSourceConfig {
     DataSource getDataSource();
 
     /**
-     * 默认数据源，默认false，仅支持一个默认数据源，非springBoot环境请不要重写该属性，因为普通项目目前未能实现扫描该接口下的所有子类。
+     * 默认数据源，默认false，仅支持一个默认数据源，非springBoot环境请不要重写该属性，因为普通项目目前未能完美实现扫描该接口下的所有子类。
      * 等找到解决方案时，修复该问题。
      * github地址：{ https://github.com/pengweizhong/dynamic-sql}
      */
