@@ -24,7 +24,7 @@ public class ExceptionUtils {
         log.error(throwable.getMessage(), throwable);
 
         if (throwable instanceof SQLFeatureNotSupportedException) {
-            throw new BraveException("数据库驱动不支持或版本过低，请检查");
+            throw new BraveException("数据库/驱动不支持或版本过低，请检查");
         }
         if (throwable instanceof SQLException) {
             String sqlState = ((SQLException) throwable).getSQLState();

@@ -302,7 +302,7 @@ public class BraveSql<T> {
      * @return 最大值，若没有数据，返回 null
      */
     public BigDecimal selectMax(Fn<T, Object> fn) {
-        return this.selectMin(ReflectUtils.fnToFieldName(fn));
+        return this.selectMax(ReflectUtils.fnToFieldName(fn));
     }
 
     /**

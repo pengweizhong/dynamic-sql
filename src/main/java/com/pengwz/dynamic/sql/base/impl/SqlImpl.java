@@ -194,7 +194,7 @@ public class SqlImpl<T> implements Sqls<T> {
             preparedStatement = connection.prepareStatement(sql);
             resultSet = preparedStatement.executeQuery();
             resultSet.next();
-            return resultSet.getObject(1, returnType);
+            return ConverterUtils.convertJdbc(resultSet, "1", returnType);
         } catch (Exception ex) {
             //如果发生异常，则必须归还链接资源
             if (!isCloseConnection)

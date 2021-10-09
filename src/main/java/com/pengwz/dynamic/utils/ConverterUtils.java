@@ -75,9 +75,14 @@ public class ConverterUtils {
     }
 
     @SuppressWarnings("unchecked")
-    public static <T> T convertJdbc(ResultSet resultSet, String columnName, Class<T> targetType, JsonMode jsonMode) throws SQLException {
+    public static <T> T convertJdbc(ResultSet resultSet, Object columnRecord, Class<T> targetType, JsonMode jsonMode) throws SQLException {
         if (Objects.isNull(resultSet)) {
             throw new BraveException("java.sql.ResultSet不可为null");
+        }
+        String columnName = String.valueOf(columnRecord);
+        //判断columnRecord是不是数字，取的是字段下表的话，直接获取
+        if (NumberUtils.isNumeric(columnName)) {
+            return getColumnIndexValue(resultSet, Integer.valueOf(columnName), targetType, jsonMode);
         }
         columnName = Check.unSplicingName(columnName);
         if (Object.class.equals(targetType)) {
@@ -99,6 +104,30 @@ public class ConverterUtils {
         } catch (SQLException e) {
             // ignore exception,try again
             return convert(resultSet.getObject(columnName), targetType);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <T> T getColumnIndexValue(ResultSet resultSet, Integer columnIndex, Class<T> targetType, JsonMode jsonMode) throws SQLException {
+        if (Object.class.equals(targetType)) {
+            return (T) resultSet.getObject(columnIndex);
+        }
+        //转换枚举
+        if (targetType.isEnum()) {
+            return (T) mappedEnum(resultSet, columnIndex, targetType);
+        }
+        if (jsonMode != null) {
+            Object objectValue = resultSet.getObject(columnIndex);
+            if (null == objectValue) {
+                return null;
+            }
+            return getGson(jsonMode).fromJson(objectValue.toString(), targetType);
+        }
+        try {
+            return resultSet.getObject(columnIndex, targetType);
+        } catch (SQLException e) {
+            // ignore exception,try again
+            return convert(resultSet.getObject(columnIndex), targetType);
         }
     }
 
@@ -128,9 +157,19 @@ public class ConverterUtils {
         return fieldValue;
     }
 
+    private static <T> Object mappedEnum(ResultSet resultSet, Integer columnIndex, Class<T> targetType) throws SQLException {
+        //2 判断是否是枚举
+        Object enumerateValue = resultSet.getObject(columnIndex);
+        return innerMappedEnum(enumerateValue, columnIndex, targetType);
+    }
+
     private static <T> Object mappedEnum(ResultSet resultSet, String columnName, Class<T> targetType) throws SQLException {
         //2 判断是否是枚举
         Object enumerateValue = resultSet.getObject(columnName);
+        return innerMappedEnum(enumerateValue, columnName, targetType);
+    }
+
+    private static <T> Object innerMappedEnum(Object enumerateValue, Object columnRec, Class<T> targetType) {
         if (enumerateValue == null || StringUtils.isBlank(enumerateValue.toString())) {
             return null;
         }
@@ -142,7 +181,7 @@ public class ConverterUtils {
             }
         }
         String canonicalEnumerateName = targetType.getCanonicalName() + "." + enumerateValue;
-        throw new BraveException("Failed to convert property value [" + columnName + "]; No enum constant ：" + canonicalEnumerateName);
+        throw new BraveException("Failed to convert property value [" + columnRec + "]; No enum constant ：" + canonicalEnumerateName);
     }
 
 }
