@@ -257,7 +257,7 @@ public class SqlImpl<T> implements Sqls<T> {
         List<Object> insertValues = new ArrayList<>();
         for (TableInfo tableInfo : tableInfos) {
             try {
-                Object invoke = getTableFieldValue(tableInfo, next);
+                Object invoke = getTableFieldValue(tableInfo, next, true);
                 if (Objects.isNull(invoke) && !tableInfo.isPrimary()) {
                     continue;
                 }
@@ -297,7 +297,7 @@ public class SqlImpl<T> implements Sqls<T> {
                 T next = iterator.next();
                 for (int i = 1; i <= tableInfos.size(); i++) {
                     TableInfo tableInfo = tableInfos.get(i - 1);
-                    Object fieldValue = getTableFieldValue(tableInfo, next);
+                    Object fieldValue = getTableFieldValue(tableInfo, next, true);
                     preparedStatement.setObject(i, ConverterUtils.convertValueJdbc(fieldValue));
                 }
                 printSql(sql);
@@ -315,11 +315,12 @@ public class SqlImpl<T> implements Sqls<T> {
     /**
      * 获取字段的值，若是主键则尝试生成主键的值，若是程序生成的主键，将生成的主键赋值给该主键字段
      *
-     * @param tableInfo 主键 tableInfo
-     * @param next      当前查询的对象
+     * @param tableInfo        主键 tableInfo
+     * @param next             当前查询的对象
+     * @param isGeneratedValue 主键值为null时，是否生成主键 true 生成，false不生成
      * @return 主键值
      */
-    private Object getTableFieldValue(TableInfo tableInfo, Object next) {
+    private Object getTableFieldValue(TableInfo tableInfo, Object next, boolean isGeneratedValue) {
         //先确定源字段是否有值
         Object invoke = ReflectUtils.getFieldValue(tableInfo.getField(), next);
         if (null != invoke) {
@@ -335,12 +336,22 @@ public class SqlImpl<T> implements Sqls<T> {
             //啥也没有，直接返回null
             return null;
         }
-        Object value = getPrimaryValue(tableInfo);
+        Object value = generatedPrimaryValue(tableInfo, isGeneratedValue);
         ReflectUtils.setFieldValue(tableInfo.getField(), next, value);
         return value;
     }
 
-    private Object getPrimaryValue(TableInfo tableInfo) {
+    /**
+     * 生成主键值
+     *
+     * @param tableInfo        表信息
+     * @param isGeneratedValue 是否生成新的主键
+     * @return 主键值，若不生成主键，则返回 null
+     */
+    private Object generatedPrimaryValue(TableInfo tableInfo, boolean isGeneratedValue) {
+        if (!isGeneratedValue) {
+            return null;
+        }
         GeneratedValue generatedValue = tableInfo.getGeneratedValue();
         switch (generatedValue.strategy()) {
             case AUTO:
@@ -524,7 +535,7 @@ public class SqlImpl<T> implements Sqls<T> {
         for (TableInfo tableInfo : tableInfos) {
             try {
                 sql.append(SPACE).append(tableInfo.getColumn()).append(SPACE).append(EQ).append(SPACE);
-                Object invoke = getTableFieldValue(tableInfo, next);
+                Object invoke = getTableFieldValue(tableInfo, next, false);
                 sql.append(ParseSql.matchValue(invoke)).append(COMMA);
             } catch (Exception ex) {
                 ExceptionUtils.boxingAndThrowBraveException(ex, sql.toString());
@@ -601,7 +612,7 @@ public class SqlImpl<T> implements Sqls<T> {
     private void updateSqlCheckSetNullProperties(StringBuilder sql, List<TableInfo> tableInfos, T nextObject) {
         for (TableInfo tableInfo : tableInfos) {
             try {
-                Object invoke = getTableFieldValue(tableInfo, nextObject);
+                Object invoke = getTableFieldValue(tableInfo, nextObject, false);
                 if (Objects.isNull(invoke) && !updateNullProperties.contains(tableInfo.getField().getName())) {
                     continue;
                 }

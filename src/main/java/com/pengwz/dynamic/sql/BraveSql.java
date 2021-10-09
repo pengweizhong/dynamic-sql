@@ -123,7 +123,7 @@ public class BraveSql<T> {
     }
 
     /**
-     * 执行CREATE、ALTER、UPDATE、DROP等等语句。<br>
+     * 执行任意SQL语句。<br>
      * 如果执行未发生异常，则代表SQL成功执行，若果执行失败，将抛出异常。<br>
      * 调用者无需关心返回值。
      *
@@ -134,7 +134,7 @@ public class BraveSql<T> {
     }
 
     /**
-     * 执行CREATE、ALTER、UPDATE、DROP等等语句。<br>
+     * 执行任意SQL语句。<br>
      * 如果执行未发生异常，则代表SQL成功执行，若果执行失败，将抛出异常。<br>
      * 调用者无需关心返回值。
      *
@@ -169,16 +169,16 @@ public class BraveSql<T> {
     /**
      * 查询表中全部的数据，若表中无数据，则返回空集合
      *
-     * @return SQL查询后的结果集
+     * @return SQL查询后的结果集，若表中无数据，则返回空集合
      */
     public List<T> select() {
         return mustShare().select();
     }
 
     /**
-     * 根据where条件查询单条数据，若查询无数据，返回null
+     * 根据where条件（若有）查询单条数据，若查询无数据，返回null
      *
-     * @return SQL查询后的结果
+     * @return SQL查询后的结果，若查询无数据，返回null
      * @throws BraveException 若返回多条数据，则抛出此异常
      */
     public T selectSingle() {
@@ -189,10 +189,10 @@ public class BraveSql<T> {
     }
 
     /**
-     * 根据主键值查询数据
+     * 根据主键值查询数据，若实体类未标注主键值，则抛出异常
      *
      * @param primaryValue 主键值
-     * @return SQL查询后的结果
+     * @return SQL查询后的结果，没有数据则返回 null
      * @see com.pengwz.dynamic.anno.Id 在实体类中标注主键属性
      */
     public T selectByPrimaryKey(Object primaryValue) {
@@ -316,11 +316,11 @@ public class BraveSql<T> {
     }
 
     /**
-     * 分页查询<br>
+     * 分页查询表数据<br>
      * 查询数据库的前{@code pageSize} 条
      *
      * @param pageSize 查询当前页的数量
-     * @return 分页对象
+     * @return 分页对象，若没有数据，则 {@code PageInfo}中{@code resultList}集合为空，不是null。
      */
     public PageInfo<T> selectPageInfo(int pageSize) {
         pageInfo = new PageInfo<>(0, pageSize);
@@ -333,7 +333,7 @@ public class BraveSql<T> {
      *
      * @param pageIndex 查询当前页页码
      * @param pageSize  查询当前页的数量
-     * @return 分页对象
+     * @return 分页对象，若没有数据，则 {@code PageInfo}中{@code resultList}集合为空，不是null。
      */
     public PageInfo<T> selectPageInfo(int pageIndex, int pageSize) {
         pageInfo = new PageInfo<>(pageIndex, pageSize);
@@ -388,7 +388,8 @@ public class BraveSql<T> {
      * <p/>
      * <strong>
      * 注意，该方法将会执行类似如下SQL ... on duplicate key update ...<br/>
-     * 这种SQL在Mysql中回显的主键可能是不正确的，为了保险起见，请不要在业务中使用该方法所回填的主键
+     * 这种SQL在Mysql中回显的主键可能是不正确的，为了保险起见，请不要在业务中使用该方法所回填的主键。<br/>
+     * 注意，oracle尚未支持该函数。
      * </strong>
      *
      * @param data 待插入的数据
@@ -408,7 +409,8 @@ public class BraveSql<T> {
      * <p/>
      * <strong>
      * 注意，该方法将会执行类似如下SQL ... on duplicate key update ...<br/>
-     * 这种SQL回显的主键可能是不正确的，为了保险起见，请不要在业务中使用该方法所回填的主键
+     * 这种SQL回显的主键可能是不正确的，为了保险起见，请不要在业务中使用该方法所回填的主键<br/>
+     * 注意，oracle尚未支持该函数。
      * </strong>
      *
      * @param iterable 待插入的数据集合
@@ -427,7 +429,7 @@ public class BraveSql<T> {
      * 更新对象所有属性，包括null元素
      *
      * @param data 待更新的对象
-     * @return 若更新成功，返回1
+     * @return 若更新成功，返回1，否则返回其他值
      */
     public Integer update(T data) {
         if (Objects.isNull(data)) {
@@ -441,7 +443,7 @@ public class BraveSql<T> {
      * 更新对象所有属性，如果类中属性为null，则使用数据库默认值（如果有）
      *
      * @param data 待更新的对象
-     * @return 若更新成功，返回1
+     * @return 若更新成功，返回1，否则返回其他值
      */
     public Integer updateActive(T data) {
         if (Objects.isNull(data)) {

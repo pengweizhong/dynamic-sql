@@ -1,6 +1,7 @@
 package com.pengwz.dynamic.entity;
 
 import com.pengwz.dynamic.anno.ColumnJson;
+import com.pengwz.dynamic.anno.GeneratedValue;
 import com.pengwz.dynamic.anno.Id;
 import com.pengwz.dynamic.anno.Table;
 import com.pengwz.dynamic.config.DatabaseConfig;
@@ -11,6 +12,7 @@ import org.apache.commons.logging.LogFactory;
 public class JobUserEntity {
     private transient Log log = LogFactory.getLog(getClass());
     @Id
+    @GeneratedValue
     private Integer id;
     private String username;
     private String password;

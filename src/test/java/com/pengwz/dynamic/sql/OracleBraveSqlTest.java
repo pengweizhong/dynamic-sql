@@ -313,8 +313,10 @@ public class OracleBraveSqlTest {
     @Test
     public void updateActive3() {
         DynamicSql<TBCopyEntity> dynamicSql = DynamicSql.createDynamicSql();
-        dynamicSql.andEqualTo(TBCopyEntity::getId, 1200);
+        dynamicSql.andEqualTo(TBCopyEntity::getId, 1);
+        dynamicSql.setNullColumnByUpdateActive(TBCopyEntity::getTbColumn2);
         TBCopyEntity entity = new TBCopyEntity();
+        entity.setId(1);
         Integer update = BraveSql.build(dynamicSql, TBCopyEntity.class).updateActive(entity);
         Assert.assertNotNull(update);
         System.out.println(update);
@@ -555,6 +557,7 @@ public class OracleBraveSqlTest {
         dynamicSql.andLessThanOrEqualTo(TBCopyEntity::getId, 0);
         System.out.println(BraveSql.build(dynamicSql, TBCopyEntity.class).selectMax("id"));
     }
+
 
 }
 

@@ -344,7 +344,15 @@ public class BraveSqlTest {
     public void testUpdate() {
     }
 
+    @Test
     public void testUpdateActive() {
+        DynamicSql<JobUserEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.andEqualTo(JobUserEntity::getId, 0);
+        JobUserEntity jobUserEntity = new JobUserEntity();
+        jobUserEntity.setId(0);
+        Integer integer = BraveSql.build(dynamicSql, JobUserEntity.class).updateActive(jobUserEntity);
+        System.out.println(integer);
+
     }
 
     public void testUpdateByPrimaryKey() {
