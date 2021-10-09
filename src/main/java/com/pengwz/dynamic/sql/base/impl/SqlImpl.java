@@ -180,8 +180,8 @@ public class SqlImpl<T> implements Sqls<T> {
                 DataSourceManagement.close(dataSourceName, resultSet, preparedStatement, connection);
             }
         }
-        //不会走到这的
-        return null;
+        //不会走到这的  此处仅仅是为了编译器开心
+        return ConverterUtils.convert("-1", returnType);
     }
 
     @SuppressWarnings("unchecked")
