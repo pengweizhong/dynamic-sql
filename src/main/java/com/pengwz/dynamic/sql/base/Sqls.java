@@ -1,6 +1,7 @@
 package com.pengwz.dynamic.sql.base;
 
 import com.pengwz.dynamic.sql.PageInfo;
+import com.pengwz.dynamic.sql.base.enumerate.FunctionEnum;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -19,11 +20,12 @@ public interface Sqls<T> {
      * 执行聚合函数，已验证5个，分别是
      * sum(), avg(), min(), max(),  count()
      *
-     * @param property   实体类字段名
-     * @param returnType 期待返回的类型
+     * @param property     实体类字段名
+     * @param functionEnum 函数类型
+     * @param returnType   期待返回的类型
      * @return 期待执行的结果
      */
-    <R> R selectAggregateFunction(String property, Class<R> returnType);
+    <R> R selectAggregateFunction(String property, FunctionEnum functionEnum, Class<R> returnType);
 
     List<T> selectAll();
 

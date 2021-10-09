@@ -13,6 +13,7 @@ import com.pengwz.dynamic.sql.ContextApplication;
 import com.pengwz.dynamic.sql.PageInfo;
 import com.pengwz.dynamic.sql.ParseSql;
 import com.pengwz.dynamic.sql.base.Sqls;
+import com.pengwz.dynamic.sql.base.enumerate.FunctionEnum;
 import com.pengwz.dynamic.utils.*;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.logging.Log;
@@ -84,15 +85,39 @@ public class SqlImpl<T> implements Sqls<T> {
     }
 
     @Override
-    public <R> R selectAggregateFunction(String property, Class<R> returnType) {
-        String count = org.apache.commons.lang3.StringUtils.isBlank(property)
-                ? "count(1)" : "count(" + ContextApplication.getColumnByField(dataSourceName, tableName, property) + ")";
-        String sql = SELECT + SPACE + count + SPACE + FROM + SPACE + tableName;
+    public <R> R selectAggregateFunction(String property, FunctionEnum functionEnum, Class<R> returnType) {
+        String function = splicingFunction(property, functionEnum);
+        String sql = SELECT + SPACE + function + SPACE + FROM + SPACE + tableName;
         if (StringUtils.isNotEmpty(whereSql)) {
             sql += SPACE + WHERE + SPACE + whereSql;
         }
         sql = ParseSql.parseSql(sql);
         return executeQueryCount(sql, returnType, true);
+    }
+
+    private String splicingFunction(String property, FunctionEnum functionEnum) {
+        String column;
+        //这里，count时可能会传入1
+        if (property.equals("1")) {
+            column = "1";
+        } else {
+            column = ContextApplication.getColumnByField(dataSourceName, tableName, property);
+        }
+        switch (functionEnum) {
+            case AVG:
+                return "avg(" + column + ")";
+            case MAX:
+                return "max(" + column + ")";
+            case MIN:
+                return "min(" + column + ")";
+            case SUM:
+                return "sum(" + column + ")";
+            case COUNT:
+                return "count(" + column + ")";
+            default:
+                //不会走到这里，这么做是为了让sonarlint开心
+                return "";
+        }
     }
 
     @Override

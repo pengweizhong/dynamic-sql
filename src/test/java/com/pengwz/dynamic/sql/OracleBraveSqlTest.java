@@ -520,10 +520,41 @@ public class OracleBraveSqlTest {
         System.out.println(BraveSql.build(TBCopyEntity.class).selectCount("tbColumn2"));
         System.out.println(BraveSql.build(TBCopyEntity.class).selectCount(TBCopyEntity::getTbColumn3));
         DynamicSql<TBCopyEntity> dynamicSql = DynamicSql.createDynamicSql();
-        dynamicSql.andLessThanOrEqualTo(TBCopyEntity::getId, 1833);
+        dynamicSql.andLessThanOrEqualTo(TBCopyEntity::getId, 0);
         System.out.println(BraveSql.build(dynamicSql, TBCopyEntity.class).selectCount());
     }
 
+    @Test
+    public void sum() {
+        System.out.println(BraveSql.build(TBCopyEntity.class).selectSum("id"));
+        DynamicSql<TBCopyEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.andLessThanOrEqualTo(TBCopyEntity::getId, 100);
+        System.out.println(BraveSql.build(dynamicSql, TBCopyEntity.class).selectSum("id"));
+    }
+
+    @Test
+    public void avg() {
+        System.out.println(BraveSql.build(TBCopyEntity.class).selectAvg("id"));
+        DynamicSql<TBCopyEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.andLessThanOrEqualTo(TBCopyEntity::getId, 0);
+        System.out.println(BraveSql.build(dynamicSql, TBCopyEntity.class).selectAvg("id"));
+    }
+
+    @Test
+    public void min2() {
+        System.out.println(BraveSql.build(TBCopyEntity.class).selectMin("id"));
+        DynamicSql<TBCopyEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.andLessThanOrEqualTo(TBCopyEntity::getId, 0);
+        System.out.println(BraveSql.build(dynamicSql, TBCopyEntity.class).selectMin("id"));
+    }
+
+    @Test
+    public void max2() {
+        System.out.println(BraveSql.build(TBCopyEntity.class).selectMax("id"));
+        DynamicSql<TBCopyEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.andLessThanOrEqualTo(TBCopyEntity::getId, 0);
+        System.out.println(BraveSql.build(dynamicSql, TBCopyEntity.class).selectMax("id"));
+    }
 
 }
 

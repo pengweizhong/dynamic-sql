@@ -5,6 +5,7 @@ import com.pengwz.dynamic.config.DatabaseConfig;
 import com.pengwz.dynamic.entity.JobUserEntity;
 import com.pengwz.dynamic.entity.UserEntity;
 import com.pengwz.dynamic.entity.UserRoleEntity;
+import com.pengwz.dynamic.entity.oracle.TBCopyEntity;
 import com.pengwz.dynamic.exception.BraveException;
 import org.apache.commons.lang3.RandomUtils;
 import org.apache.commons.logging.Log;
@@ -407,6 +408,14 @@ public class BraveSqlTest {
         Integer integer = BraveSql.build(JobUserEntity.class).insertActive(jobUserEntity2);
         System.out.println(integer);
 
-
     }
+
+    @Test
+    public void sum() {
+        System.out.println(BraveSql.build(JobUserEntity.class).selectSum("id"));
+        DynamicSql<JobUserEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.andLessThanOrEqualTo(JobUserEntity::getId, 0);
+        System.out.println(BraveSql.build(dynamicSql, JobUserEntity.class).selectSum("id"));
+    }
+
 }

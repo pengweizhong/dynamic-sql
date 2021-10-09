@@ -8,11 +8,13 @@ import com.pengwz.dynamic.exception.BraveException;
 import com.pengwz.dynamic.sql.base.CustomizeSQL;
 import com.pengwz.dynamic.sql.base.Fn;
 import com.pengwz.dynamic.sql.base.Sqls;
+import com.pengwz.dynamic.sql.base.enumerate.FunctionEnum;
 import com.pengwz.dynamic.sql.base.impl.SqlImpl;
 import com.pengwz.dynamic.utils.CollectionUtils;
 import com.pengwz.dynamic.utils.ReflectUtils;
 import com.pengwz.dynamic.utils.StringUtils;
 
+import java.math.BigDecimal;
 import java.util.*;
 
 /**
@@ -204,10 +206,10 @@ public class BraveSql<T> {
      * 查询条件（若有）查询总数量，若没有数据，则返回 0
      * 这里执行 count(1)
      *
-     * @return 查询结果集总数量
+     * @return 查询结果集总数量，若没有数据，则返回 0
      */
     public Integer selectCount() {
-        return this.selectCount("");
+        return this.selectCount("1");
     }
 
     /**
@@ -215,7 +217,7 @@ public class BraveSql<T> {
      * 这里执行 count(fn)
      *
      * @param fn 作为count参数查询
-     * @return 查询结果集总数量
+     * @return 查询结果集总数量，若没有数据，则返回 0
      */
     public Integer selectCount(Fn<T, Object> fn) {
         return this.selectCount(ReflectUtils.fnToFieldName(fn));
@@ -227,10 +229,90 @@ public class BraveSql<T> {
      * 这里执行 count(property)
      *
      * @param property 作为count参数查询
-     * @return 查询结果集总数量
+     * @return 查询结果集总数量，若没有数据，则返回 0
      */
     public Integer selectCount(String property) {
-        return mustShare().selectAggregateFunction(property.trim(), Integer.class);
+        return mustShare().selectAggregateFunction(property.trim(), FunctionEnum.COUNT, Integer.class);
+    }
+
+    /**
+     * 对指定字段求和
+     *
+     * @param fn 实体类字段名
+     * @return 和值，若没有数据，返回 null
+     */
+    public BigDecimal selectSum(Fn<T, Object> fn) {
+        return this.selectSum(ReflectUtils.fnToFieldName(fn));
+    }
+
+    /**
+     * 对指定字段求和
+     *
+     * @param property 实体类字段名
+     * @return 和值，若没有数据，返回 null
+     */
+    public BigDecimal selectSum(String property) {
+        return mustShare().selectAggregateFunction(property.trim(), FunctionEnum.SUM, BigDecimal.class);
+    }
+
+    /**
+     * 对指定字段求平均值
+     *
+     * @param fn 实体类字段名
+     * @return 平均值，若没有数据，返回 null
+     */
+    public BigDecimal selectAvg(Fn<T, Object> fn) {
+        return this.selectAvg(ReflectUtils.fnToFieldName(fn));
+    }
+
+    /**
+     * 对指定字段求平均值
+     *
+     * @param property 实体类字段名
+     * @return 平均值，若没有数据，返回 null
+     */
+    public BigDecimal selectAvg(String property) {
+        return mustShare().selectAggregateFunction(property.trim(), FunctionEnum.AVG, BigDecimal.class);
+    }
+
+    /**
+     * 对指定字段求最小值
+     *
+     * @param property 实体类字段名
+     * @return 最小值，若没有数据，返回 null
+     */
+    public BigDecimal selectMin(Fn<T, Object> fn) {
+        return this.selectMin(ReflectUtils.fnToFieldName(fn));
+    }
+
+    /**
+     * 对指定字段求最小值
+     *
+     * @param property 实体类字段名
+     * @return 最小值，若没有数据，返回 null
+     */
+    public BigDecimal selectMin(String property) {
+        return mustShare().selectAggregateFunction(property.trim(), FunctionEnum.MIN, BigDecimal.class);
+    }
+
+    /**
+     * 对指定字段求最大值
+     *
+     * @param property 实体类字段名
+     * @return 最大值，若没有数据，返回 null
+     */
+    public BigDecimal selectMax(Fn<T, Object> fn) {
+        return this.selectMin(ReflectUtils.fnToFieldName(fn));
+    }
+
+    /**
+     * 对指定字段求最大值
+     *
+     * @param property 实体类字段名
+     * @return 最大值，若没有数据，返回 null
+     */
+    public BigDecimal selectMax(String property) {
+        return mustShare().selectAggregateFunction(property.trim(), FunctionEnum.MAX, BigDecimal.class);
     }
 
     /**
@@ -539,6 +621,5 @@ public class BraveSql<T> {
         strings.add(feild);
         orderByMap.put(ascOrDesc, strings);
     }
-
 
 }
