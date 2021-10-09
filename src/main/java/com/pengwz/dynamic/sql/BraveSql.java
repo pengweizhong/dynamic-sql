@@ -221,6 +221,7 @@ public class BraveSql<T> {
         return this.selectCount(ReflectUtils.fnToFieldName(fn));
     }
 
+
     /**
      * 查询条件（若有）查询总数量，若没有数据，则返回 0
      * 这里执行 count(property)
@@ -229,7 +230,7 @@ public class BraveSql<T> {
      * @return 查询结果集总数量
      */
     public Integer selectCount(String property) {
-        return mustShare().selectCount(property.trim());
+        return mustShare().selectAggregateFunction(property.trim(), Integer.class);
     }
 
     /**
@@ -538,4 +539,6 @@ public class BraveSql<T> {
         strings.add(feild);
         orderByMap.put(ascOrDesc, strings);
     }
+
+
 }

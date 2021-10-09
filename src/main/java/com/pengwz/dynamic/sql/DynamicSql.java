@@ -334,6 +334,13 @@ public class DynamicSql<T> {
         return this.andNotLike(ReflectUtils.fnToFieldName(fn), value);
     }
 
+    /**
+     * 该方法不支持传入 where 条件
+     *
+     * @param property 字段名
+     * @return 查询结果
+     */
+    @Deprecated
     public DynamicSql<T> andMin(String property) {
         this.getDeclarations().add(Declaration.buildDeclaration(AND, property, new Min()));
         return this;

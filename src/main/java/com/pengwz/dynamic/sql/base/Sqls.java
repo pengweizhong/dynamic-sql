@@ -15,9 +15,14 @@ public interface Sqls<T> {
 
     List<T> select();
 
-//    Integer selectCount();
-
-    Integer selectCount(String property);
+    /**
+     * 执行聚合函数，已验证5个，分别是
+     * sum(), avg(), min(), max(),  count()
+     *
+     * @param property 实体类字段名
+     * @return 期待执行的结果
+     */
+    <R> R selectAggregateFunction(String property, Class<R> returnType);
 
     List<T> selectAll();
 

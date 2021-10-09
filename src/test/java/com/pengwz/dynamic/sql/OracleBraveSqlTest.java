@@ -519,11 +519,9 @@ public class OracleBraveSqlTest {
         System.out.println(BraveSql.build(TBCopyEntity.class).selectCount());
         System.out.println(BraveSql.build(TBCopyEntity.class).selectCount("tbColumn2"));
         System.out.println(BraveSql.build(TBCopyEntity.class).selectCount(TBCopyEntity::getTbColumn3));
-
         DynamicSql<TBCopyEntity> dynamicSql = DynamicSql.createDynamicSql();
         dynamicSql.andLessThanOrEqualTo(TBCopyEntity::getId, 1833);
         System.out.println(BraveSql.build(dynamicSql, TBCopyEntity.class).selectCount());
-
     }
 
 

@@ -84,7 +84,7 @@ public class SqlImpl<T> implements Sqls<T> {
     }
 
     @Override
-    public Integer selectCount(String property) {
+    public <R> R selectAggregateFunction(String property, Class<R> returnType) {
         String count = org.apache.commons.lang3.StringUtils.isBlank(property)
                 ? "count(1)" : "count(" + ContextApplication.getColumnByField(dataSourceName, tableName, property) + ")";
         String sql = SELECT + SPACE + count + SPACE + FROM + SPACE + tableName;
@@ -92,7 +92,7 @@ public class SqlImpl<T> implements Sqls<T> {
             sql += SPACE + WHERE + SPACE + whereSql;
         }
         sql = ParseSql.parseSql(sql);
-        return executeQueryCount(sql, true);
+        return executeQueryCount(sql, returnType, true);
     }
 
     @Override
@@ -107,7 +107,7 @@ public class SqlImpl<T> implements Sqls<T> {
         String columnList = ContextApplication.formatAllColumToStr(dataSourceName, tableName);
         String sqlCount = SELECT + SPACE + "count(1)" + SPACE + FROM + SPACE + tableName + (StringUtils.isEmpty(whereSql) ? SPACE : SPACE + WHERE + SPACE + whereSql.trim());
         sqlCount = ParseSql.parseSql(sqlCount);
-        int totalSize = executeQueryCount(sqlCount, false);
+        int totalSize = executeQueryCount(sqlCount, Integer.class, false);
         String sql = "select " + columnList + " from " + tableName + (StringUtils.isEmpty(whereSql) ? SPACE : SPACE + WHERE + SPACE + whereSql.trim());
         sql = ParseSql.parseSql(sql);
         sql += " limit " + pageInfo.getOffset() + " , " + pageInfo.getPageSize();
@@ -163,13 +163,13 @@ public class SqlImpl<T> implements Sqls<T> {
         return stringBuilder.toString()/*.toUpperCase()*/;
     }
 
-    private Integer executeQueryCount(String sql, boolean isCloseConnection) {
+    private <R> R executeQueryCount(String sql, Class<R> returnType, boolean isCloseConnection) {
         try {
             printSql(sql);
             preparedStatement = connection.prepareStatement(sql);
             resultSet = preparedStatement.executeQuery();
             resultSet.next();
-            return resultSet.getInt(1);
+            return resultSet.getObject(1, returnType);
         } catch (Exception ex) {
             //如果发生异常，则必须归还链接资源
             if (!isCloseConnection)
@@ -180,7 +180,8 @@ public class SqlImpl<T> implements Sqls<T> {
                 DataSourceManagement.close(dataSourceName, resultSet, preparedStatement, connection);
             }
         }
-        return -1;
+        //不会走到这的
+        return null;
     }
 
     @SuppressWarnings("unchecked")
