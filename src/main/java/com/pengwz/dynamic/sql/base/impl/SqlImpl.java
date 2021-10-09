@@ -84,8 +84,10 @@ public class SqlImpl<T> implements Sqls<T> {
     }
 
     @Override
-    public Integer selectCount() {
-        String sql = SELECT + SPACE + "count(1)" + SPACE + FROM + SPACE + tableName;
+    public Integer selectCount(String property) {
+        String count = org.apache.commons.lang3.StringUtils.isBlank(property)
+                ? "count(1)" : "count(" + ContextApplication.getColumnByField(dataSourceName, tableName, property) + ")";
+        String sql = SELECT + SPACE + count + SPACE + FROM + SPACE + tableName;
         if (StringUtils.isNotEmpty(whereSql)) {
             sql += SPACE + WHERE + SPACE + whereSql;
         }

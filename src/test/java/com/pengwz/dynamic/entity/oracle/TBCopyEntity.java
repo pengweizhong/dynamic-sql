@@ -21,8 +21,7 @@ public class TBCopyEntity {
     @Column("TBCOLUMN3")
     private BigInteger tbColumn3;
     //    @Column("JSON_COL")
-//    @ColumnJson(value = "JSON_COL", jsonMode = JsonMode.SERIALIZE_WRITE_NULLS)
-    @ColumnJson(value = "JSON_COL", jsonMode = JsonMode.SERIALIZE_WRITE_NO_NULLS)
+    @ColumnJson(value = "JSON_COL", jsonMode = JsonMode.SERIALIZE_WRITE_NULLS)
     private TBCopyEntity json;
     @ColumnJson(value = "JSON_COL2", jsonMode = JsonMode.SERIALIZE_WRITE_NO_NULLS)
     private List<TBCopyEntity> json2;

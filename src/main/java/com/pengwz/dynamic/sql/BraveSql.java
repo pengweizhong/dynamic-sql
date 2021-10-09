@@ -202,11 +202,34 @@ public class BraveSql<T> {
 
     /**
      * 查询条件（若有）查询总数量，若没有数据，则返回 0
+     * 这里执行 count(1)
      *
      * @return 查询结果集总数量
      */
     public Integer selectCount() {
-        return mustShare().selectCount();
+        return this.selectCount("");
+    }
+
+    /**
+     * 查询条件（若有）查询总数量，若没有数据，则返回 0
+     * 这里执行 count(fn)
+     *
+     * @param fn 作为count参数查询
+     * @return 查询结果集总数量
+     */
+    public Integer selectCount(Fn<T, Object> fn) {
+        return this.selectCount(ReflectUtils.fnToFieldName(fn));
+    }
+
+    /**
+     * 查询条件（若有）查询总数量，若没有数据，则返回 0
+     * 这里执行 count(property)
+     *
+     * @param property 作为count参数查询
+     * @return 查询结果集总数量
+     */
+    public Integer selectCount(String property) {
+        return mustShare().selectCount(property.trim());
     }
 
     /**

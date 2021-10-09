@@ -15,7 +15,9 @@ public interface Sqls<T> {
 
     List<T> select();
 
-    Integer selectCount();
+//    Integer selectCount();
+
+    Integer selectCount(String property);
 
     List<T> selectAll();
 

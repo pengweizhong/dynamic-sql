@@ -494,8 +494,38 @@ public class OracleBraveSqlTest {
         System.out.println(att);
         boolean att2 = BraveSql.existTable("att", OracleDatabaseConfig.class);
         System.out.println(att2);
+    }
+
+    @Test
+    public void min() {
+        DynamicSql<TBCopyEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.andEqualTo(TBCopyEntity::getTbColumn0, "TbColumn0000_2");
+        dynamicSql.andMin(TBCopyEntity::getId);
+        List<TBCopyEntity> select = BraveSql.build(dynamicSql, TBCopyEntity.class).select();
+        System.out.println(select);
+    }
+
+    @Test
+    public void max() {
+        DynamicSql<TBCopyEntity> dynamicSql = DynamicSql.createDynamicSql();
+//        dynamicSql.andEqualTo(TBCopyEntity::getTbColumn0, "TbColumn0000_2");
+        dynamicSql.andMax(TBCopyEntity::getId);
+        List<TBCopyEntity> select = BraveSql.build(dynamicSql, TBCopyEntity.class).select();
+        System.out.println(select);
+    }
+
+    @Test
+    public void count() {
+        System.out.println(BraveSql.build(TBCopyEntity.class).selectCount());
+        System.out.println(BraveSql.build(TBCopyEntity.class).selectCount("tbColumn2"));
+        System.out.println(BraveSql.build(TBCopyEntity.class).selectCount(TBCopyEntity::getTbColumn3));
+
+        DynamicSql<TBCopyEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.andLessThanOrEqualTo(TBCopyEntity::getId, 1833);
+        System.out.println(BraveSql.build(dynamicSql, TBCopyEntity.class).selectCount());
 
     }
+
 
 }
 
