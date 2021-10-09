@@ -558,6 +558,14 @@ public class OracleBraveSqlTest {
         System.out.println(BraveSql.build(dynamicSql, TBCopyEntity.class).selectMax("id"));
     }
 
+    @Test
+    public void between() {
+        DynamicSql<TBCopyEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.andBetween(TBCopyEntity::getId, 0, 100);
+        List<TBCopyEntity> select = BraveSql.build(dynamicSql, TBCopyEntity.class).select();
+        select.forEach(System.out::println);
+    }
+
 
 }
 

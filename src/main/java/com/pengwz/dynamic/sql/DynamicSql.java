@@ -226,39 +226,39 @@ public class DynamicSql<T> {
         return this.orLessThanOrEqualTo(ReflectUtils.fnToFieldName(fn), value);
     }
 
-    public DynamicSql<T> andIn(String property, Iterable values) {
+    public DynamicSql<T> andIn(String property, Iterable<?> values) {
         this.getDeclarations().add(Declaration.buildDeclaration(AND, property, IN, values));
         return this;
     }
 
-    public DynamicSql<T> andIn(Fn<T, Object> fn, Iterable values) {
+    public DynamicSql<T> andIn(Fn<T, Object> fn, Iterable<?> values) {
         return this.andIn(ReflectUtils.fnToFieldName(fn), values);
     }
 
-    public DynamicSql<T> orIn(String property, Iterable values) {
+    public DynamicSql<T> orIn(String property, Iterable<?> values) {
         this.getDeclarations().add(Declaration.buildDeclaration(OR, property, IN, values));
         return this;
     }
 
-    public DynamicSql<T> orIn(Fn<T, Object> fn, Iterable values) {
+    public DynamicSql<T> orIn(Fn<T, Object> fn, Iterable<?> values) {
         return this.andIn(ReflectUtils.fnToFieldName(fn), values);
     }
 
-    public DynamicSql<T> andNotIn(String property, Iterable values) {
+    public DynamicSql<T> andNotIn(String property, Iterable<?> values) {
         this.getDeclarations().add(Declaration.buildDeclaration(AND, property, NOT_IN, values));
         return this;
     }
 
-    public DynamicSql<T> andNotIn(Fn<T, Object> fn, Iterable values) {
+    public DynamicSql<T> andNotIn(Fn<T, Object> fn, Iterable<?> values) {
         return this.andNotIn(ReflectUtils.fnToFieldName(fn), values);
     }
 
-    public DynamicSql<T> orNotIn(String property, Iterable values) {
+    public DynamicSql<T> orNotIn(String property, Iterable<?> values) {
         this.getDeclarations().add(Declaration.buildDeclaration(OR, property, NOT_IN, values));
         return this;
     }
 
-    public DynamicSql<T> orNotIn(Fn<T, Object> fn, Iterable values) {
+    public DynamicSql<T> orNotIn(Fn<T, Object> fn, Iterable<?> values) {
         return this.andNotIn(ReflectUtils.fnToFieldName(fn), values);
     }
 
