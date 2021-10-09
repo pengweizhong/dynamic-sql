@@ -371,6 +371,14 @@ public class DynamicSql<T> {
         return this;
     }
 
+    /**
+     * 获取表中指定属性最小的那条记录。<br>
+     * 请注意：调用该方法时，不支持传入 where 参数
+     *
+     * @param fn 实体类字段名
+     * @return 查询结果
+     */
+    @Deprecated
     public DynamicSql<T> orMin(Fn<T, Object> fn) {
         return this.orMin(ReflectUtils.fnToFieldName(fn));
     }
