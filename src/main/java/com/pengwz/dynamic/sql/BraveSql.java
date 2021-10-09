@@ -127,8 +127,8 @@ public class BraveSql<T> {
      *
      * @param ddlSql SQL语句
      */
-    public void executeSql(String executeSql) {
-        new CustomizeSQL<T>(currentClass, executeSql).executeSql();
+    public static void executeSql(String executeSql) {
+        new CustomizeSQL<>(Void.class, executeSql).executeSql();
     }
 
     /**
@@ -139,8 +139,8 @@ public class BraveSql<T> {
      * @param executeSql      SQL语句
      * @param dataSourceClass 指定数据源
      */
-    public void executeSql(String executeSql, Class<? extends DataSourceConfig> dataSourceClass) {
-        new CustomizeSQL<T>(dataSourceClass, currentClass, executeSql).executeSql();
+    public static void executeSql(String executeSql, Class<? extends DataSourceConfig> dataSourceClass) {
+        new CustomizeSQL<>(dataSourceClass, Void.class, executeSql).executeSql();
     }
 
     /**
@@ -149,8 +149,8 @@ public class BraveSql<T> {
      * @param tableName 表名称
      * @return 如果存在返回{@code true}，否则{@code false}
      */
-    public boolean existTable(String tableName) {
-        return new CustomizeSQL<T>(currentClass, tableName).existTable();
+    public static boolean existTable(String tableName) {
+        return new CustomizeSQL<>(Void.class, tableName).existTable();
     }
 
     /**
@@ -160,8 +160,8 @@ public class BraveSql<T> {
      * @param dataSourceClass 指定数据源
      * @return 如果存在返回{@code true}，否则{@code false}
      */
-    public boolean existTable(String tableName, Class<? extends DataSourceConfig> dataSourceClass) {
-        return new CustomizeSQL<T>(dataSourceClass, currentClass, tableName).existTable();
+    public static boolean existTable(String tableName, Class<? extends DataSourceConfig> dataSourceClass) {
+        return new CustomizeSQL<>(dataSourceClass, Void.class, tableName).existTable();
     }
 
     /**

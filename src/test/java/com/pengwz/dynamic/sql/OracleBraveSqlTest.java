@@ -488,6 +488,14 @@ public class OracleBraveSqlTest {
 
     }
 
+    @Test
+    public void testExistTable() {
+        boolean att = BraveSql.build(Void.class).existTable("ATT", OracleDatabaseConfig.class);
+        System.out.println(att);
+        boolean att2 = BraveSql.existTable("att", OracleDatabaseConfig.class);
+        System.out.println(att2);
+
+    }
 
 }
 
