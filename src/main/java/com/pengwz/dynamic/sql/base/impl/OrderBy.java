@@ -11,9 +11,9 @@ public class OrderBy implements HandleFunction {
     private String sortMode;
 
     @Override
-    public String execute(String tableName, Declaration declaration) {
+    public String execute(String dataSource, String tableName, Declaration declaration) {
         declaration.setSortMode(sortMode);
-        return ParseSql.parseAggregateFunction(ORDER, tableName, declaration);
+        return ParseSql.parseAggregateFunction(ORDER, dataSource, tableName, declaration);
     }
 
     public OrderBy() {

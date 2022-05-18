@@ -6,6 +6,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
 import java.util.Objects;
 
 public class ExceptionUtils {
@@ -21,6 +22,10 @@ public class ExceptionUtils {
             throw new BraveException("意外的异常抛出", "异常不可为null");
         }
         log.error(throwable.getMessage(), throwable);
+
+        if (throwable instanceof SQLFeatureNotSupportedException) {
+            throw new BraveException("数据库/驱动不支持或版本过低，请检查");
+        }
         if (throwable instanceof SQLException) {
             String sqlState = ((SQLException) throwable).getSQLState();
             if (StringUtils.isBlank(sqlState)) {
@@ -50,6 +55,9 @@ public class ExceptionUtils {
             if (sqlState.startsWith("HY")) {
                 throw new BraveException("缺少必要的字段", sql, throwable.getMessage());
             }
+            if (sqlState.startsWith("99")) {
+                throw new BraveException(throwable.getMessage(), throwable);
+            }
             if (StringUtils.isBlank(sql)) {
                 throw new BraveException(throwable.getMessage(), throwable);
             } else {
@@ -57,13 +65,14 @@ public class ExceptionUtils {
             }
         }
         if (throwable instanceof ReflectiveOperationException) {
-            throw new BraveException("无法创建对象，可能不存在无参构造器", throwable.getMessage());
+            String message = StringUtils.isBlank(sql) ? "无法创建对象，可能不存在无参构造器" : "无法创建对象，可能不存在无参构造器。ERROR SQL：" + sql;
+            throw new BraveException(message, throwable);
         }
+
 
         if (throwable instanceof BraveException) {
             throw (BraveException) throwable;
         }
-
         //尚未匹配的异常，先行抛出
         throw new BraveException(throwable.getMessage(), throwable);
     }

@@ -1,10 +1,13 @@
 package com.pengwz.dynamic.sql;
 
+import com.pengwz.dynamic.anno.Table;
+import com.pengwz.dynamic.check.Check;
 import com.pengwz.dynamic.exception.BraveException;
 import com.pengwz.dynamic.sql.base.HandleFunction;
 import com.pengwz.dynamic.sql.base.impl.Count;
 import com.pengwz.dynamic.sql.base.impl.GroupBy;
 import com.pengwz.dynamic.sql.base.impl.OrderBy;
+import com.pengwz.dynamic.utils.ConverterUtils;
 import com.pengwz.dynamic.utils.StringUtils;
 
 import java.text.SimpleDateFormat;
@@ -18,8 +21,9 @@ import static com.pengwz.dynamic.constant.Constant.*;
 
 public class ParseSql {
 
-    public static String parse(Class<?> currentClass, String tableName, String dataSource, List<Declaration> declarationList, Map<String, List<String>> orderByMap) {
-        checkAndSave(currentClass, tableName, dataSource);
+    public static String parse(Class<?> currentClass, Table table, String dataSource, List<Declaration> declarationList, Map<String, List<String>> orderByMap) {
+        String tableName = Check.getTableName(table.value(), dataSource);
+        checkAndSave(currentClass, table, dataSource);
         StringBuilder whereSql = new StringBuilder();
         for (Declaration declaration : declarationList) {
             if (Objects.nonNull(declaration.getBrackets())) {
@@ -33,7 +37,7 @@ public class ParseSql {
                     continue;
                 }
                 if (handleFunction instanceof OrderBy) {
-                    handleFunction.execute(tableName, declaration);
+                    handleFunction.execute(dataSource, tableName, declaration);
                     String column = ContextApplication.getColumnByField(dataSource, tableName, declaration.getProperty());
                     whereSql.append(" order by " + column + " " + declaration.getSortMode());
                     continue;
@@ -46,12 +50,13 @@ public class ParseSql {
                     whereSql.append(SPACE + GROUP + SPACE + BY + SPACE + String.join(",", columns));
                     continue;
                 }
-                whereSql.append(declaration.getHandleFunction().execute(tableName, declaration)).append(SPACE);
+                whereSql.append(declaration.getHandleFunction().execute(dataSource, tableName, declaration)).append(SPACE);
             } else if (declaration.getCondition().equals(BETWEEN) || declaration.getCondition().equals(NOT_BETWEEN)) {
+                whereSql.append(declaration.getAndOr()).append(SPACE);
                 whereSql.append(ContextApplication.getColumnByField(dataSource, tableName, declaration.getProperty())).append(SPACE);
                 whereSql.append(declaration.getCondition()).append(SPACE);
                 whereSql.append(matchValue(declaration.getValue())).append(SPACE);
-                whereSql.append(declaration.getAndOr()).append(SPACE);
+                whereSql.append(AND).append(SPACE);
                 whereSql.append(matchValue(declaration.getValue2())).append(SPACE);
             } else {
                 whereSql.append(declaration.getAndOr()).append(SPACE);
@@ -102,6 +107,10 @@ public class ParseSql {
                     continue;
                 }
                 if ((checkStr).equals(LEFT_BRACKETS + AND) || (checkStr).equals(LEFT_BRACKETS + OR)) {
+                    String element = list.get(i - 1);
+                    if (!element.equals(AND) && !element.equals(OR) && !element.equals(WHERE)) {
+                        sb.append(list.get(i + 1)).append(SPACE);
+                    }
                     sb.append(list.get(i)).append(SPACE);
                     i++;
                     continue;
@@ -121,6 +130,7 @@ public class ParseSql {
 //        if (Objects.isNull(value)) {
 //           throw new BraveException("值不允许为null");
 //        }
+        value = ConverterUtils.convertValueJdbc(value);
         if (value instanceof String) {
             return "'" + value + "'";
         }
@@ -157,13 +167,14 @@ public class ParseSql {
         return value;
     }
 
-    public static String parseAggregateFunction(String aggregateFunctionName, String tableName, Declaration declaration) {
+    public static String parseAggregateFunction(String aggregateFunctionName, String dataSource, String tableName, Declaration declaration) {
         StringBuilder whereFunctionSql = new StringBuilder();
         whereFunctionSql.append(declaration.getAndOr());
         // id = (
-        whereFunctionSql.append(SPACE).append(declaration.getProperty()).append(SPACE).append(EQ).append(SPACE).append(LEFT_BRACKETS).append(SPACE);
+        String column = ContextApplication.getColumnByField(dataSource, tableName, declaration.getProperty());
+        whereFunctionSql.append(SPACE).append(column).append(SPACE).append(EQ).append(SPACE).append(LEFT_BRACKETS).append(SPACE);
         //select min(property)
-        whereFunctionSql.append(SELECT).append(SPACE).append(aggregateFunctionName).append(LEFT_BRACKETS).append(declaration.getProperty()).append(RIGHT_BRACKETS).append(SPACE);
+        whereFunctionSql.append(SELECT).append(SPACE).append(aggregateFunctionName).append(LEFT_BRACKETS).append(column).append(RIGHT_BRACKETS).append(SPACE);
         //from tableName )
         whereFunctionSql.append(FROM).append(SPACE).append(tableName).append(SPACE).append(RIGHT_BRACKETS);
         return whereFunctionSql.toString();

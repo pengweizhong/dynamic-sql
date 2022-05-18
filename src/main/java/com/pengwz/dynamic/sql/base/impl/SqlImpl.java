@@ -1,24 +1,36 @@
 package com.pengwz.dynamic.sql.base.impl;
 
+import com.pengwz.dynamic.anno.GeneratedValue;
+import com.pengwz.dynamic.anno.GenerationType;
+import com.pengwz.dynamic.check.Check;
 import com.pengwz.dynamic.config.DataSourceManagement;
 import com.pengwz.dynamic.constant.Constant;
 import com.pengwz.dynamic.exception.BraveException;
+import com.pengwz.dynamic.model.DataSourceInfo;
+import com.pengwz.dynamic.model.DbType;
 import com.pengwz.dynamic.model.TableInfo;
 import com.pengwz.dynamic.sql.ContextApplication;
 import com.pengwz.dynamic.sql.PageInfo;
 import com.pengwz.dynamic.sql.ParseSql;
 import com.pengwz.dynamic.sql.base.Sqls;
+import com.pengwz.dynamic.sql.base.enumerate.FunctionEnum;
 import com.pengwz.dynamic.utils.*;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import java.sql.*;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Objects;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Stream;
 
+import static com.pengwz.dynamic.anno.GenerationType.AUTO;
+import static com.pengwz.dynamic.anno.GenerationType.SEQUENCE;
 import static com.pengwz.dynamic.constant.Constant.*;
+import static java.sql.Statement.RETURN_GENERATED_KEYS;
 
 public class SqlImpl<T> implements Sqls<T> {
     private static final Log log = LogFactory.getLog(SqlImpl.class);
@@ -73,13 +85,39 @@ public class SqlImpl<T> implements Sqls<T> {
     }
 
     @Override
-    public Integer selectCount() {
-        String sql = SELECT + SPACE + "count(1)" + SPACE + FROM + SPACE + tableName;
+    public <R> R selectAggregateFunction(String property, FunctionEnum functionEnum, Class<R> returnType) {
+        String function = splicingFunction(property, functionEnum);
+        String sql = SELECT + SPACE + function + SPACE + FROM + SPACE + tableName;
         if (StringUtils.isNotEmpty(whereSql)) {
             sql += SPACE + WHERE + SPACE + whereSql;
         }
         sql = ParseSql.parseSql(sql);
-        return executeQueryCount(sql, true);
+        return executeQueryCount(sql, returnType, true);
+    }
+
+    private String splicingFunction(String property, FunctionEnum functionEnum) {
+        String column;
+        //这里，count时可能会传入1
+        if (property.equals("1")) {
+            column = "1";
+        } else {
+            column = ContextApplication.getColumnByField(dataSourceName, tableName, property);
+        }
+        switch (functionEnum) {
+            case AVG:
+                return "avg(" + column + ")";
+            case MAX:
+                return "max(" + column + ")";
+            case MIN:
+                return "min(" + column + ")";
+            case SUM:
+                return "sum(" + column + ")";
+            case COUNT:
+                return "count(" + column + ")";
+            default:
+                //不会走到这里，这么做是为了让sonarlint开心
+                return "";
+        }
     }
 
     @Override
@@ -92,45 +130,97 @@ public class SqlImpl<T> implements Sqls<T> {
     @Override
     public PageInfo<T> selectPageInfo() {
         String columnList = ContextApplication.formatAllColumToStr(dataSourceName, tableName);
-        String sqlCount = SELECT + SPACE + "count(1)" + SPACE + FROM + SPACE + tableName;
-        int totalSize = executeQueryCount(sqlCount, false);
+        String sqlCount = SELECT + SPACE + "count(1)" + SPACE + FROM + SPACE + tableName + (StringUtils.isEmpty(whereSql) ? SPACE : SPACE + WHERE + SPACE + whereSql.trim());
+        sqlCount = ParseSql.parseSql(sqlCount);
+        int totalSize = executeQueryCount(sqlCount, Integer.class, false);
         String sql = "select " + columnList + " from " + tableName + (StringUtils.isEmpty(whereSql) ? SPACE : SPACE + WHERE + SPACE + whereSql.trim());
         sql = ParseSql.parseSql(sql);
-        sql += " limit " + pageInfo.getOffset() + " , " + (pageInfo.getPageSize() == 0 ? totalSize : pageInfo.getPageSize());
-        List<T> list = executeQuery(sql, tableName);
+        sql += " limit " + pageInfo.getOffset() + " , " + pageInfo.getPageSize();
+        DataSourceInfo dataSourceInfo = ContextApplication.getDataSourceInfo(dataSourceName);
+        List<T> list;
+        if (dataSourceInfo.getDbType().equals(DbType.ORACLE)) {
+            list = executeQuery(limitConversionPageSql(sql), tableName);
+        } else {
+            list = executeQuery(sql, tableName);
+        }
         buildPageInfo(pageInfo, list, totalSize);
         return pageInfo;
     }
 
-    private Integer executeQueryCount(String sql, boolean isCloseConnection) {
+    private String limitConversionPageSql(String sql) {
+        if (Stream.of(sql.split(" ")).noneMatch(str -> str.equalsIgnoreCase("limit"))) {
+            return sql;
+        }
+        //将 limit 转为 rownum
+        //rownum 别名
+        String rowNumAlias = "ROW_NUMBER";
+        //一级表别名
+        String firstTableAlias = RandomStringUtils.randomAlphabetic(15).toUpperCase();
+        //二级表别名
+        String secondTableAlias = RandomStringUtils.randomAlphabetic(15).toUpperCase();
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append("SELECT * FROM (SELECT ROWNUM AS ").append(rowNumAlias).append(",").append(firstTableAlias).append(".* FROM (");
+        stringBuilder.append(cropLimitSql(sql));
+        stringBuilder.append(") ").append(firstTableAlias).append(") ").append(secondTableAlias).append(" WHERE ")
+                .append(secondTableAlias).append(".").append(rowNumAlias).append(" > ").append(pageInfo.getOffset())
+                .append(" AND ").append(secondTableAlias).append(".").append(rowNumAlias).append(" <=  ").append(pageInfo.getPageSize());
+
+        return stringBuilder.toString()/*.toUpperCase()*/;
+    }
+
+    private String cropLimitSql(String sql) {
+        List<String> sqlList = Arrays.asList(sql.split(" "));
+        AtomicInteger limitIndex = new AtomicInteger();
+        boolean hasLimit = sqlList.stream().anyMatch(str -> {
+            if (str.equalsIgnoreCase("limit")) {
+                return true;
+            }
+            limitIndex.addAndGet(1);
+            return false;
+        });
+        //不是limit的语句直接跳过
+        if (!hasLimit) {
+            return sql;
+        }
+        List<String> strings = sqlList.subList(0, limitIndex.get());
+        StringBuilder stringBuilder = new StringBuilder();
+        strings.forEach(sqlSplit -> stringBuilder.append(" ").append(sqlSplit));
+        return stringBuilder.toString()/*.toUpperCase()*/;
+    }
+
+    private <R> R executeQueryCount(String sql, Class<R> returnType, boolean isCloseConnection) {
         try {
+            printSql(sql);
             preparedStatement = connection.prepareStatement(sql);
             resultSet = preparedStatement.executeQuery();
-            printSql(preparedStatement);
             resultSet.next();
-            return resultSet.getInt(1);
+            return ConverterUtils.convertJdbc(resultSet, "1", returnType);
         } catch (Exception ex) {
+            //如果发生异常，则必须归还链接资源
+            if (!isCloseConnection)
+                isCloseConnection = true;
             ExceptionUtils.boxingAndThrowBraveException(ex, sql);
         } finally {
             if (isCloseConnection) {
                 DataSourceManagement.close(dataSourceName, resultSet, preparedStatement, connection);
             }
         }
-        return -1;
+        //不会走到这的  此处仅仅是为了编译器开心
+        return ConverterUtils.convert("-1", returnType);
     }
 
     @SuppressWarnings("unchecked")
     private List<T> executeQuery(String sql, String tableName) {
         List<TableInfo> tableInfos = ContextApplication.getTableInfos(dataSourceName, tableName);
         List<T> list = new ArrayList<>();
+        printSql(sql);
         try {
             preparedStatement = connection.prepareStatement(sql);
             resultSet = preparedStatement.executeQuery();
-            printSql(preparedStatement);
             while (resultSet.next()) {
                 T t = (T) currentClass.newInstance();
                 for (TableInfo tableInfo : tableInfos) {
-                    Object o = ConverterUtils.convertJdbc(resultSet, tableInfo.getColumn(), tableInfo.getField().getType());
+                    Object o = ConverterUtils.convertJdbc(resultSet, tableInfo);
                     ReflectUtils.setFieldValue(tableInfo.getField(), t, o);
                 }
                 list.add(t);
@@ -163,31 +253,31 @@ public class SqlImpl<T> implements Sqls<T> {
         T next = data.iterator().next();
         final StringBuilder prefix = new StringBuilder();
         final StringBuilder suffix = new StringBuilder();
-        prefix.append("insert into ").append(tableName).append(" ( ");/*.append(columnToStr).append(" ) values ");*/
+        prefix.append("insert into ").append(tableName).append(" ( ");
         List<Object> insertValues = new ArrayList<>();
         for (TableInfo tableInfo : tableInfos) {
             try {
-                Object invoke = ReflectUtils.getFieldValue(tableInfo.getField(), next);
-                if (Objects.isNull(invoke)) {
+                Object invoke = getTableFieldValue(tableInfo, next, true);
+                if (Objects.isNull(invoke) && !tableInfo.isPrimary()) {
                     continue;
                 }
                 prefix.append(SPACE).append(tableInfo.getColumn()).append(COMMA);
                 suffix.append("?, ");
                 insertValues.add(invoke);
             } catch (Exception ex) {
-                throw new BraveException(ex.getMessage(), ex);
+                ExceptionUtils.boxingAndThrowBraveException(ex);
             }
         }
         suffix.deleteCharAt(suffix.lastIndexOf(","));
         prefix.deleteCharAt(prefix.lastIndexOf(","));
         prefix.append(" ) values (").append(suffix).append(")");
         String sql = prefix.toString();
+        printSql(sql);
         try {
-            preparedStatement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+            preparedStatement = connection.prepareStatement(sql, RETURN_GENERATED_KEYS);
             for (int i = 1; i <= insertValues.size(); i++) {
-                preparedStatement.setObject(i, insertValues.get(i - 1));
+                preparedStatement.setObject(i, ConverterUtils.convertValueJdbc(insertValues.get(i - 1)));
             }
-            printSql(preparedStatement);
             preparedStatement.addBatch();
             return executeSqlAndReturnAffectedRows();
         } catch (Exception ex) {
@@ -202,14 +292,15 @@ public class SqlImpl<T> implements Sqls<T> {
     private Integer setValuesExecuteSql(String sql, List<TableInfo> tableInfos) {
         Iterator<T> iterator = data.iterator();
         try {
-            preparedStatement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+            preparedStatement = connection.prepareStatement(sql, RETURN_GENERATED_KEYS);
             while (iterator.hasNext()) {
                 T next = iterator.next();
                 for (int i = 1; i <= tableInfos.size(); i++) {
-                    Object fieldValue = ReflectUtils.getFieldValue(tableInfos.get(i - 1).getField(), next);
-                    preparedStatement.setObject(i, fieldValue);
+                    TableInfo tableInfo = tableInfos.get(i - 1);
+                    Object fieldValue = getTableFieldValue(tableInfo, next, true);
+                    preparedStatement.setObject(i, ConverterUtils.convertValueJdbc(fieldValue));
                 }
-                printSql(preparedStatement);
+                printSql(sql);
                 preparedStatement.addBatch();
             }
             return executeSqlAndReturnAffectedRows();
@@ -221,31 +312,128 @@ public class SqlImpl<T> implements Sqls<T> {
         return -1;
     }
 
+    /**
+     * 获取字段的值，若是主键则尝试生成主键的值，若是程序生成的主键，将生成的主键赋值给该主键字段
+     *
+     * @param tableInfo        主键 tableInfo
+     * @param next             当前查询的对象
+     * @param isGeneratedValue 主键值为null时，是否生成主键 true 生成，false不生成
+     * @return 主键值
+     */
+    private Object getTableFieldValue(TableInfo tableInfo, Object next, boolean isGeneratedValue) {
+        //先确定源字段是否有值
+        Object invoke = ReflectUtils.getFieldValue(tableInfo.getField(), next);
+        if (null != invoke) {
+            //判断写入前是否需要转json
+            if (tableInfo.getJsonMode() != null) {
+                return ConverterUtils.getGson(tableInfo.getJsonMode()).toJson(invoke);
+            }
+            return invoke;
+        }
+        //若该值为null，则看看是不是需要程序生成主键
+        GeneratedValue generatedValue = tableInfo.getGeneratedValue();
+        if (generatedValue == null) {
+            //啥也没有，直接返回null
+            return null;
+        }
+        Object value = generatedPrimaryValue(tableInfo, isGeneratedValue);
+        ReflectUtils.setFieldValue(tableInfo.getField(), next, value);
+        return value;
+    }
+
+    /**
+     * 生成主键值
+     *
+     * @param tableInfo        表信息
+     * @param isGeneratedValue 是否生成新的主键
+     * @return 主键值，若不生成主键，则返回 null
+     */
+    private Object generatedPrimaryValue(TableInfo tableInfo, boolean isGeneratedValue) {
+        if (!isGeneratedValue) {
+            return null;
+        }
+        GeneratedValue generatedValue = tableInfo.getGeneratedValue();
+        switch (generatedValue.strategy()) {
+            case AUTO:
+                //直接返回null，使用数据库机制自增主键
+                return null;
+            case UUID:
+            case UPPER_UUID:
+            case SIMPLE_UUID:
+            case UPPER_SIMPLE_UUID:
+                if (generatedValue.strategy().equals(GenerationType.UUID))
+                    return UUID.randomUUID().toString();
+                if (generatedValue.strategy().equals(GenerationType.UPPER_UUID))
+                    return UUID.randomUUID().toString().toUpperCase();
+                if (generatedValue.strategy().equals(GenerationType.SIMPLE_UUID))
+                    return UUID.randomUUID().toString().replace("-", "");
+                if (generatedValue.strategy().equals(GenerationType.UPPER_SIMPLE_UUID))
+                    return UUID.randomUUID().toString().replace("-", "").toUpperCase();
+                //不会走到这里
+                return null;
+            case SEQUENCE:
+                String sql = "SELECT " + generatedValue.sequenceName().trim() + ".NEXTVAL FROM DUAL";
+                printSql(sql);
+                PreparedStatement ps = null;
+                ResultSet rs = null;
+                try {
+                    ps = connection.prepareStatement(sql);//NOSONAR
+                    rs = ps.executeQuery();
+                    rs.next();
+                    return rs.getObject(1, tableInfo.getField().getType());
+                } catch (SQLException sqlException) {
+                    //此处关闭。。。。
+                    DataSourceManagement.close(dataSourceName, rs, ps, connection);
+                    ExceptionUtils.boxingAndThrowBraveException(sqlException, sql);
+                }
+                //不会走到这里
+                return null;
+            //不会走到default这里
+            default:
+                throw new IllegalStateException("Unexpected value: " + tableInfo.getGeneratedValue());
+        }
+    }
+
+
     private Integer executeSqlAndReturnAffectedRows() throws SQLException {
         int successCount = -1;
         int[] ints = preparedStatement.executeBatch();
         successCount = ints.length;
         TableInfo tableInfoPrimaryKey = ContextApplication.getTableInfoPrimaryKey(dataSourceName, tableName);
-        if (Objects.nonNull(tableInfoPrimaryKey)) {
-            if (tableInfoPrimaryKey.isGeneratedValue()) {
-                Iterator<T> resultIterator = data.iterator();
-                ResultSet generatedKeys = preparedStatement.getGeneratedKeys();
-                while (resultIterator.hasNext()) {
-                    T next = resultIterator.next();
-                    Object primaryKeyValue = ReflectUtils.getFieldValue(tableInfoPrimaryKey.getField(), next);
-                    if (Objects.isNull(primaryKeyValue)) {
-                        generatedKeys.next();
-                        Object object = generatedKeys.getObject(Statement.RETURN_GENERATED_KEYS, tableInfoPrimaryKey.getField().getType());
-                        ReflectUtils.setFieldValue(tableInfoPrimaryKey.getField(), next, object);
-                    }
-                }
+        //若没有设置主键，直接返回
+        if (tableInfoPrimaryKey == null || tableInfoPrimaryKey.getGeneratedValue() == null)
+            return successCount;
+        //不是自增的直接返回，因为在执行前已经获取到了
+        if (!tableInfoPrimaryKey.getGeneratedValue().strategy().equals(AUTO)) {
+            return successCount;
+        }
+        DataSourceInfo dataSourceInfo = ContextApplication.getDataSourceInfo(dataSourceName);
+        //若是oracle 且 执行的是序列，直接返回
+        if (dataSourceInfo.getDbType().equals(DbType.ORACLE) && tableInfoPrimaryKey.getGeneratedValue().strategy().equals(SEQUENCE))
+            return successCount;
+        //使用数据库机制的，接收返回值并且对返回对象赋值
+        Iterator<T> resultIterator = data.iterator();
+        ResultSet generatedKeys = preparedStatement.getGeneratedKeys();
+        while (resultIterator.hasNext()) {
+            T next = resultIterator.next();
+            generatedKeys.next();
+            Object object;
+            if (dataSourceInfo.getDbType().equals(DbType.ORACLE)) {
+                object = generatedKeys.getObject(Check.unSplicingName(tableInfoPrimaryKey.getColumn()), tableInfoPrimaryKey.getField().getType());
+            } else {
+                object = generatedKeys.getObject(RETURN_GENERATED_KEYS, tableInfoPrimaryKey.getField().getType());
             }
+            ReflectUtils.setFieldValue(tableInfoPrimaryKey.getField(), next, object);
         }
         return successCount;
     }
 
     @Override
     public Integer insertOrUpdate() {
+        DataSourceInfo dataSourceInfo = ContextApplication.getDataSourceInfo(dataSourceName);
+        if (dataSourceInfo.getDbType().equals(DbType.ORACLE)) {
+            throw new BraveException("oracle 尚未支持 insertOrUpdate");
+        }
         String columnToStr = ContextApplication.formatAllColumToStr(dataSourceName, tableName);
         List<TableInfo> tableInfos = ContextApplication.getTableInfos(dataSourceName, tableName);
         StringBuilder sql = new StringBuilder();
@@ -267,15 +455,7 @@ public class SqlImpl<T> implements Sqls<T> {
         StringBuilder sql = new StringBuilder();
         sql.append("update ").append(tableName).append(" set");
         for (T next : data) {
-            for (TableInfo tableInfo : tableInfos) {
-                try {
-                    Object invoke = ReflectUtils.getFieldValue(tableInfo.getField(), next);
-                    sql.append(SPACE).append(tableInfo.getColumn()).append(SPACE).append(EQ).append(SPACE);
-                    sql.append(ParseSql.matchValue(invoke)).append(COMMA);
-                } catch (Exception ex) {
-                    ExceptionUtils.boxingAndThrowBraveException(ex, sql.toString());
-                }
-            }
+            appendSetValueSql(tableInfos, sql, next);
         }
         return baseUpdate(sql);
     }
@@ -290,6 +470,25 @@ public class SqlImpl<T> implements Sqls<T> {
         }
         return baseUpdate(sql);
     }
+
+//    @Override
+//    public Integer updateBatch() {
+//        List<TableInfo> tableInfos = ContextApplication.getTableInfos(dataSourceName, tableName);
+//        StringBuilder sql = new StringBuilder();
+//        sql.append("update ").append(tableName).append(" set");
+//        for (T next : data) {
+//            for (TableInfo tableInfo : tableInfos) {
+//                try {
+//                    Object invoke = ReflectUtils.getFieldValue(tableInfo.getField(), next);
+//                    sql.append(SPACE).append(tableInfo.getColumn()).append(SPACE).append(EQ).append(SPACE);
+//                    sql.append(ParseSql.matchValue(invoke)).append(COMMA);
+//                } catch (Exception ex) {
+//                    ExceptionUtils.boxingAndThrowBraveException(ex, sql.toString());
+//                }
+//            }
+//        }
+//        return setValuesExecuteSql(sql.toString(), tableInfos);
+//    }
 
     private Integer baseUpdate(StringBuilder sql) {
         if (sql.toString().endsWith("set")) {
@@ -314,26 +513,61 @@ public class SqlImpl<T> implements Sqls<T> {
         if (Objects.isNull(tableInfoPrimaryKey)) {
             throw new BraveException(tableName + " 表未配置主键");
         }
-        T next = data.iterator().next();
         StringBuilder sql = new StringBuilder();
         sql.append("update ").append(tableName).append(" set");
-        Object primaryKeyValue;
-        try {
-            primaryKeyValue = ReflectUtils.getFieldValue(tableInfoPrimaryKey.getField(), next);
-            if (Objects.isNull(primaryKeyValue)) {
-                throw new BraveException(tableName + " 表的主键值不存在", "SQL：" + sql);
-            }
-        } catch (Exception e) {
-            throw new BraveException(tableName + " 表获取主键值失败，原因：" + e.getMessage(), e);
-        }
-        updateSqlCheckSetNullProperties(sql, tableInfos, next);
+        T next = data.iterator().next();
+        appendSetValueSql(tableInfos, sql, next);
+        return assertEndSet(tableInfoPrimaryKey, sql, next);
+    }
+
+    private Integer assertEndSet(TableInfo tableInfoPrimaryKey, StringBuilder sql, T next) {
         if (sql.toString().endsWith("set")) {
             return 0;
         }
         String sqlPrefix = sql.substring(0, sql.length() - 1);
+        Object primaryKeyValue = getPrimaryKeyValue(tableInfoPrimaryKey, next);
         sqlPrefix = sqlPrefix + SPACE + WHERE + SPACE + tableInfoPrimaryKey.getColumn() + SPACE + EQ + SPACE + ParseSql.matchValue(primaryKeyValue);
         String parseSql = ParseSql.parseSql(sqlPrefix);
         return executeUpdateSqlAndReturnAffectedRows(parseSql);
+    }
+
+    private void appendSetValueSql(List<TableInfo> tableInfos, StringBuilder sql, Object next) {
+        for (TableInfo tableInfo : tableInfos) {
+            try {
+                sql.append(SPACE).append(tableInfo.getColumn()).append(SPACE).append(EQ).append(SPACE);
+                Object invoke = getTableFieldValue(tableInfo, next, false);
+                sql.append(ParseSql.matchValue(invoke)).append(COMMA);
+            } catch (Exception ex) {
+                ExceptionUtils.boxingAndThrowBraveException(ex, sql.toString());
+            }
+        }
+    }
+
+    private Object getPrimaryKeyValue(TableInfo tableInfoPrimaryKey, Object next) {
+        Object primaryKeyValue;
+        try {
+            primaryKeyValue = ReflectUtils.getFieldValue(tableInfoPrimaryKey.getField(), next);
+            if (Objects.isNull(primaryKeyValue)) {
+                throw new BraveException(tableName + " 表的主键值不存在");
+            }
+        } catch (Exception e) {
+            throw new BraveException(tableName + " 表获取主键值失败，原因：" + e.getMessage(), e);
+        }
+        return primaryKeyValue;
+    }
+
+    @Override
+    public Integer updateActiveByPrimaryKey() {
+        List<TableInfo> tableInfos = ContextApplication.getTableInfos(dataSourceName, tableName);
+        TableInfo tableInfoPrimaryKey = ContextApplication.getTableInfoPrimaryKey(dataSourceName, tableName);
+        if (Objects.isNull(tableInfoPrimaryKey)) {
+            throw new BraveException(tableName + " 表未配置主键");
+        }
+        T next = data.iterator().next();
+        StringBuilder sql = new StringBuilder();
+        sql.append("update ").append(tableName).append(" set");
+        updateSqlCheckSetNullProperties(sql, tableInfos, next);
+        return assertEndSet(tableInfoPrimaryKey, sql, next);
     }
 
     @Override
@@ -364,10 +598,9 @@ public class SqlImpl<T> implements Sqls<T> {
 
     private Integer executeUpdateSqlAndReturnAffectedRows(String sql) {
         try {
+            printSql(sql);
             preparedStatement = connection.prepareStatement(sql);
-            int i = preparedStatement.executeUpdate();
-            printSql(preparedStatement);
-            return i;
+            return preparedStatement.executeUpdate();
         } catch (SQLException ex) {
             ExceptionUtils.boxingAndThrowBraveException(ex, sql);
         } finally {
@@ -379,7 +612,7 @@ public class SqlImpl<T> implements Sqls<T> {
     private void updateSqlCheckSetNullProperties(StringBuilder sql, List<TableInfo> tableInfos, T nextObject) {
         for (TableInfo tableInfo : tableInfos) {
             try {
-                Object invoke = ReflectUtils.getFieldValue(tableInfo.getField(), nextObject);
+                Object invoke = getTableFieldValue(tableInfo, nextObject, false);
                 if (Objects.isNull(invoke) && !updateNullProperties.contains(tableInfo.getField().getName())) {
                     continue;
                 }
@@ -391,19 +624,41 @@ public class SqlImpl<T> implements Sqls<T> {
         }
     }
 
-    private void printSql(PreparedStatement preparedStatement) {
-        if (log.isDebugEnabled()) {
-            String sqlToString = preparedStatement.toString();
-            log.debug(sqlToString.substring(sqlToString.indexOf(':') + 1));
-        }
-    }
+    //    private void printSql(PreparedStatement preparedStatement, String sql) throws SQLException {
+//        if (log.isDebugEnabled()) {
+//            log.debug(sql);
+//            switch (preparedStatement.getConnection().getMetaData().getDatabaseProductName().toUpperCase()) {
+//                case "ORACLE":
+//                    try {
+//                        String canonicalName = preparedStatement.getClass().getCanonicalName();
+//                        if (canonicalName.equals("com.alibaba.druid.pool.DruidPooledPreparedStatement")) {
+//                            DruidPooledPreparedStatement druidPooledPreparedStatement = (DruidPooledPreparedStatement) preparedStatement;
+//                            log.debug(druidPooledPreparedStatement.getSql());
+//                        } else {
+//                            log.debug("[" + canonicalName + "] is not support print sql.");
+//                        }
+//                    } catch (Exception e) {
+//                        e.printStackTrace();
+//                    }
+//                    break;
+//                case "MYSQL":
+//                    String temp = preparedStatement.toString();
+//                    log.debug(temp.substring(temp.indexOf(':') + 1));
+//                    break;
+//                default:
+//                    log.debug(preparedStatement.toString());
+//            }
+//        }
+//    }
 
     private void buildPageInfo(PageInfo<T> pageInfo, List<T> list, Integer totalSize) {
         pageInfo.setTotalSize(totalSize);
         pageInfo.setRealPageSize(list.size());
         pageInfo.setResultList(list);
-        if (pageInfo.getPageSize() != 0) {
+        if (pageInfo.getPageSize() > 0) {
             pageInfo.setTotalPages((totalSize + pageInfo.getPageSize() - 1) / pageInfo.getPageSize());
+        } else {
+            pageInfo.setTotalPages(0);
         }
     }
 

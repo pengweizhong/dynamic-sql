@@ -1,52 +1,32 @@
 package com.pengwz.dynamic.entity;
 
-import com.pengwz.dynamic.anno.*;
+import com.pengwz.dynamic.anno.Column;
+import com.pengwz.dynamic.anno.Table;
 import com.pengwz.dynamic.config.DatabaseConfig;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Table(value = "t_user", dataSourceClass = DatabaseConfig.class)
-public class UserEntity {
-    //      `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '主键',
-    @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
-    @Column("id")
-    private Long id;
-    //  `username` varchar(50) DEFAULT NULL COMMENT '用户名',
+public class UserChildEntity extends UserFatherEntity {
     @Column("account_no")
     private String accountNo;
     @Column("username")
     private String username;
-    //  `password` varchar(50) DEFAULT NULL COMMENT '密码',
     @Column("password")
     private String password;
-    //    `email` varchar(50) DEFAULT NULL COMMENT '邮箱',
     @Column("email")
     private String email;
-    // `desc` varchar(50) DEFAULT NULL COMMENT '邮箱',
-    @Column("desc")
+    @Column("`desc`")
     private String desc;
-    //    `birthday` datetime DEFAULT NULL COMMENT '生日',
     @Column("birthday")
     private LocalDate birthday;
-    //    `is_delete` tinyint(1)  DEFAULT NULL COMMENT '是否删除 true 已删除 false 未删除',
     @Column("is_delete")
     private Boolean isDelete;
-    //  `create_date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     @Column("create_date")
     private LocalDateTime createDate;
-    //  `update_date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '修改时间',
     @Column("update_date")
     private LocalDateTime updateDate;
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
 
     public String getAccountNo() {
         return accountNo;
@@ -122,9 +102,9 @@ public class UserEntity {
 
     @Override
     public String toString() {
-        return "UserEntity{" +
-                "id=" + id +
-                ", accountNo='" + accountNo + '\'' +
+        return "UserChildEntity{" +
+                "accountNo='" + accountNo + '\'' +
+                "id='" + getId() + '\'' +
                 ", username='" + username + '\'' +
                 ", password='" + password + '\'' +
                 ", email='" + email + '\'' +

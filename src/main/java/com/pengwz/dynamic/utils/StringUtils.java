@@ -6,7 +6,7 @@ import java.util.Objects;
 
 public class StringUtils {
     public static boolean isEmpty(String str) {
-        return Objects.isNull(str) || str.length() == 0;
+        return Objects.isNull(str) || str.trim().length() == 0;
     }
 
     public static boolean isNotEmpty(String str) {

@@ -9,6 +9,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import javax.sql.DataSource;
+import javax.sql.rowset.serial.SerialException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -21,7 +22,7 @@ public class ContextApplication {
     private static final Map<String, Map<String, List<TableInfo>>> dataBaseMap = new ConcurrentHashMap<>();
     private static final Map<String, DataSourceInfo> dataSourcesMap = new ConcurrentHashMap<>();
 
-    public static String getDefalutDataSource() {
+    public static String getDefalutDataSourceName() {
         for (DataSourceInfo sourceInfo : dataSourcesMap.values()) {
             if (sourceInfo.isDefault()) {
                 return sourceInfo.getClassPath();
@@ -39,6 +40,9 @@ public class ContextApplication {
     }
 
     public static DataSourceInfo getDataSourceInfo(String dataSourceName) {
+        if (null == dataSourceName) {
+            throw new BraveException("未指定数据源");
+        }
         return dataSourcesMap.get(dataSourceName);
     }
 
@@ -59,11 +63,12 @@ public class ContextApplication {
         }
         if (Objects.isNull(dataSourcesMap.get(dataSource.getClassPath()))) {
             if (dataSource.getDataSourceBeanName() != null) {
-                log.info("初始化数据源" + (dataSourcesMap.size() + 1) + "：" + (dataSource.getDataSourceBeanName()) + "，所属类：" + dataSource.getClassPath());
+                log.info("Get the data source name [" + (dataSourcesMap.size() + 1) + "-" + (dataSource.getDataSourceBeanName()) + "]，belong to the category [" + dataSource.getClassPath() + "]");
             } else if (dataSource.getClassBeanName() != null) {
-                log.info("初始化数据源" + (dataSourcesMap.size() + 1) + "：" + (dataSource.getClassBeanName()) + "，所属类：" + dataSource.getClassPath());
+                log.info("Get the data source name [" + (dataSourcesMap.size() + 1) + "-" + (dataSource.getClassBeanName()) + "]，belong to the category [" + dataSource.getClassPath() + "]");
             } else {
-                log.info("初始化数据源" + (dataSourcesMap.size() + 1) + "：" + (dataSource.getClassPath()));
+                log.info("Get the data source name [" + (dataSourcesMap.size() + 1) + "]，belong to the category [" + dataSource.getClassPath() + "]");
+
             }
             dataSourcesMap.put(dataSource.getClassPath(), dataSource);
         }

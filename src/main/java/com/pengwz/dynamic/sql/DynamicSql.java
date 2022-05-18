@@ -43,11 +43,21 @@ public class DynamicSql<T> {
         return new DynamicSql<>();
     }
 
+    /**
+     * 创建一个左括号，用于创建复杂的查询
+     *
+     * @return this
+     */
     public DynamicSql<T> startBrackets() {
         this.getDeclarations().add(Declaration.buildDeclaration(LEFT_BRACKETS));
         return this;
     }
 
+    /**
+     * 创建一个右括号，用于创建复杂的查询
+     *
+     * @return this
+     */
     public DynamicSql<T> endBrackets() {
         this.getDeclarations().add(Declaration.buildDeclaration(RIGHT_BRACKETS));
         return this;
@@ -55,12 +65,20 @@ public class DynamicSql<T> {
 
     /**
      * 当需要更新字符串为null时
-     * 该方法仅对 {@code updateActive(T data)} 语句生效
-     * 其实这个方法写在此类中是不合适的，后期考虑优化他
+     * 该方法仅对 {@code updateActive[xxx](T data)} 语句生效，因为只有该场景下才会用到该方法。
      */
-    public DynamicSql<T> setNullColumnByUpdate(Fn<T, Object> fn) {
+    public DynamicSql<T> setNullColumnByUpdateActive(Fn<T, Object> fn) {
         String fieldName = ReflectUtils.fnToFieldName(fn);
         this.updateNullProperties.add(fieldName);
+        return this;
+    }
+
+    /**
+     * 当需要更新字符串为null时
+     * 该方法仅对 {@code updateActive[xxx](T data)} 语句生效，因为只有该场景下才会用到该方法。
+     */
+    public DynamicSql<T> setNullColumnByUpdateActive(String property) {
+        this.updateNullProperties.add(property);
         return this;
     }
 
@@ -101,7 +119,7 @@ public class DynamicSql<T> {
     }
 
     public DynamicSql<T> andIsNull(String property) {
-        this.getDeclarations().add(Declaration.buildDeclaration(AND, property, "is null"));
+        this.getDeclarations().add(Declaration.buildDeclaration(AND, property, "is "));
         return this;
     }
 
@@ -110,7 +128,7 @@ public class DynamicSql<T> {
     }
 
     public DynamicSql<T> orIsNull(String property) {
-        this.getDeclarations().add(Declaration.buildDeclaration(OR, property, "is null"));
+        this.getDeclarations().add(Declaration.buildDeclaration(OR, property, "is "));
         return this;
     }
 
@@ -119,7 +137,7 @@ public class DynamicSql<T> {
     }
 
     public DynamicSql<T> andIsNotNull(String property) {
-        this.getDeclarations().add(Declaration.buildDeclaration(AND, property, "is not null"));
+        this.getDeclarations().add(Declaration.buildDeclaration(AND, property, "is not "));
         return this;
     }
 
@@ -128,7 +146,7 @@ public class DynamicSql<T> {
     }
 
     public DynamicSql<T> orIsNotNull(String property) {
-        this.getDeclarations().add(Declaration.buildDeclaration(OR, property, "is not null"));
+        this.getDeclarations().add(Declaration.buildDeclaration(OR, property, "is not "));
         return this;
     }
 
@@ -208,39 +226,39 @@ public class DynamicSql<T> {
         return this.orLessThanOrEqualTo(ReflectUtils.fnToFieldName(fn), value);
     }
 
-    public DynamicSql<T> andIn(String property, Iterable values) {
+    public DynamicSql<T> andIn(String property, Iterable<?> values) {
         this.getDeclarations().add(Declaration.buildDeclaration(AND, property, IN, values));
         return this;
     }
 
-    public DynamicSql<T> andIn(Fn<T, Object> fn, Iterable values) {
+    public DynamicSql<T> andIn(Fn<T, Object> fn, Iterable<?> values) {
         return this.andIn(ReflectUtils.fnToFieldName(fn), values);
     }
 
-    public DynamicSql<T> orIn(String property, Iterable values) {
+    public DynamicSql<T> orIn(String property, Iterable<?> values) {
         this.getDeclarations().add(Declaration.buildDeclaration(OR, property, IN, values));
         return this;
     }
 
-    public DynamicSql<T> orIn(Fn<T, Object> fn, Iterable values) {
+    public DynamicSql<T> orIn(Fn<T, Object> fn, Iterable<?> values) {
         return this.andIn(ReflectUtils.fnToFieldName(fn), values);
     }
 
-    public DynamicSql<T> andNotIn(String property, Iterable values) {
+    public DynamicSql<T> andNotIn(String property, Iterable<?> values) {
         this.getDeclarations().add(Declaration.buildDeclaration(AND, property, NOT_IN, values));
         return this;
     }
 
-    public DynamicSql<T> andNotIn(Fn<T, Object> fn, Iterable values) {
+    public DynamicSql<T> andNotIn(Fn<T, Object> fn, Iterable<?> values) {
         return this.andNotIn(ReflectUtils.fnToFieldName(fn), values);
     }
 
-    public DynamicSql<T> orNotIn(String property, Iterable values) {
+    public DynamicSql<T> orNotIn(String property, Iterable<?> values) {
         this.getDeclarations().add(Declaration.buildDeclaration(OR, property, NOT_IN, values));
         return this;
     }
 
-    public DynamicSql<T> orNotIn(Fn<T, Object> fn, Iterable values) {
+    public DynamicSql<T> orNotIn(Fn<T, Object> fn, Iterable<?> values) {
         return this.andNotIn(ReflectUtils.fnToFieldName(fn), values);
     }
 
@@ -316,42 +334,106 @@ public class DynamicSql<T> {
         return this.andNotLike(ReflectUtils.fnToFieldName(fn), value);
     }
 
+    /**
+     * 该方法不支持传入 where 条件
+     *
+     * @param property 字段名
+     * @return 查询结果
+     */
+    @Deprecated
     public DynamicSql<T> andMin(String property) {
         this.getDeclarations().add(Declaration.buildDeclaration(AND, property, new Min()));
         return this;
     }
 
+    /**
+     * 获取表中指定属性最小的那条记录。<br>
+     * 请注意：调用该方法时，不支持传入 where 参数
+     *
+     * @param fn 实体类字段
+     * @return 查询结果
+     */
+    @Deprecated
     public DynamicSql<T> andMin(Fn<T, Object> fn) {
         return this.andMin(ReflectUtils.fnToFieldName(fn));
     }
 
+    /**
+     * 获取表中指定属性最小的那条记录。<br>
+     * 请注意：调用该方法时，不支持传入 where 参数
+     *
+     * @param property 实体类字段名
+     * @return 查询结果
+     */
+    @Deprecated
     public DynamicSql<T> orMin(String property) {
         this.getDeclarations().add(Declaration.buildDeclaration(OR, property, new Min()));
         return this;
     }
 
+    /**
+     * 获取表中指定属性最小的那条记录。<br>
+     * 请注意：调用该方法时，不支持传入 where 参数
+     *
+     * @param fn 实体类字段名
+     * @return 查询结果
+     */
+    @Deprecated
     public DynamicSql<T> orMin(Fn<T, Object> fn) {
         return this.orMin(ReflectUtils.fnToFieldName(fn));
     }
 
+    /**
+     * 获取表中指定属性最大的那条记录。<br>
+     * 请注意：调用该方法时，不支持传入 where 参数
+     *
+     * @param property 实体类字段名
+     * @return 查询结果
+     */
+    @Deprecated
     public DynamicSql<T> andMax(String property) {
         this.getDeclarations().add(Declaration.buildDeclaration(AND, property, new Max()));
         return this;
     }
 
+    /**
+     * 获取表中指定属性最大的那条记录。<br>
+     * 请注意：调用该方法时，不支持传入 where 参数
+     *
+     * @param fn 实体类字段名
+     * @return 查询结果
+     */
+    @Deprecated
     public DynamicSql<T> andMax(Fn<T, Object> fn) {
         return this.andMax(ReflectUtils.fnToFieldName(fn));
     }
 
+    /**
+     * 获取表中指定属性最小的那条记录。<br>
+     * 请注意：调用该方法时，不支持传入 where 参数
+     *
+     * @param property 实体类字段名
+     * @return 查询结果
+     */
+    @Deprecated
     public DynamicSql<T> orMax(String property) {
         this.getDeclarations().add(Declaration.buildDeclaration(OR, property, new Max()));
         return this;
     }
 
+    /**
+     * 获取表中指定属性最小的那条记录。<br>
+     * 请注意：调用该方法时，不支持传入 where 参数
+     *
+     * @param fn 实体类字段名
+     * @return 查询结果
+     */
+    @Deprecated
     public DynamicSql<T> orMax(Fn<T, Object> fn) {
         return this.orMax(ReflectUtils.fnToFieldName(fn));
     }
 
+    @Deprecated
     public void groupBy(List<Fn<T, Object>> fn) {
         List<String> list = new ArrayList<>();
         for (Fn<T, Object> f : fn) {
@@ -361,30 +443,56 @@ public class DynamicSql<T> {
         this.getDeclarations().add(Declaration.buildDeclaration(GROUP, String.join(",", list), new GroupBy()));
     }
 
+    @Deprecated
     public void groupBy(Fn<T, Object> fn) {
         String s = ReflectUtils.fnToFieldName(fn);
         this.getDeclarations().add(Declaration.buildDeclaration(GROUP, s, new GroupBy()));
     }
 
+    @Deprecated
     public void groupBy(String... personalCode) {
         this.getDeclarations().add(Declaration.buildDeclaration(GROUP, String.join(",", personalCode), new GroupBy()));
     }
 
+    /**
+     * 根据实体类属性名（非表中列名）进行倒序排序，支持连续排序
+     *
+     * @param property 实体类属性名
+     * @return 排序后的数据
+     */
     public OrderByMode<T> orderByDesc(String property) {
         this.getDeclarations().add(Declaration.buildDeclaration(ORDER, property, new OrderBy("desc")));
         return orderByMode;
     }
 
+    /**
+     * 根据实体类属性名（非表中列名）进行倒序排序，支持连续排序
+     *
+     * @param fn 实体类属性名
+     * @return 排序后的数据
+     */
     public OrderByMode<T> orderByDesc(Fn<T, Object> fn) {
         this.getDeclarations().add(Declaration.buildDeclaration(ORDER, ReflectUtils.fnToFieldName(fn), new OrderBy("desc")));
         return orderByMode;
     }
 
+    /**
+     * 根据实体类属性名（非表中列名）进行正序排序，支持连续排序
+     *
+     * @param property 实体类属性名
+     * @return 排序后的数据
+     */
     public OrderByMode<T> orderByAsc(String property) {
         this.getDeclarations().add(Declaration.buildDeclaration(ORDER, property, new OrderBy("asc")));
         return orderByMode;
     }
 
+    /**
+     * 根据实体类属性名（非表中列名）进行正序排序，支持连续排序
+     *
+     * @param fn 实体类属性名
+     * @return 排序后的数据
+     */
     public OrderByMode<T> orderByAsc(Fn<T, Object> fn) {
         this.getDeclarations().add(Declaration.buildDeclaration(ORDER, ReflectUtils.fnToFieldName(fn), new OrderBy("asc")));
         return orderByMode;

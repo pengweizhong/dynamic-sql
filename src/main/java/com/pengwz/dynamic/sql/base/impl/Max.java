@@ -8,7 +8,7 @@ import static com.pengwz.dynamic.constant.Constant.MAX;
 
 public class Max implements HandleFunction {
     @Override
-    public String execute(String tableName, Declaration declaration) {
-        return ParseSql.parseAggregateFunction(MAX, tableName,declaration);
+    public String execute(String dataSource, String tableName, Declaration declaration) {
+        return ParseSql.parseAggregateFunction(MAX, dataSource,tableName, declaration);
     }
 }

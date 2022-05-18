@@ -3,13 +3,13 @@ package com.pengwz.dynamic.sql;
 import java.util.List;
 
 public class PageInfo<T> {
-    //当前页码,0或1都表示第一页
+    //当前页码,<=1 都表示第一页
     private Integer pageIndex;
-    //limit的偏移量，在真实分页时使用，用于纠正pageIndex，比如：limit [offset] , [pageSize]
+    //limit的偏移量，在真实分页时使用，用于纠正pageIndex，比如：limit [offset] , [pageSize],外部调用者无需关心此属性值。
     private Integer offset;
     //当前页展示条数
     private Integer pageSize;
-    //当前页实际条数
+    //当前页实际条数，等同于 resultList.size()
     private Integer realPageSize;
     //总页码
     private Integer totalPages;
