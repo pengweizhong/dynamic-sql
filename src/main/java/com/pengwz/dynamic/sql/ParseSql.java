@@ -156,6 +156,8 @@ public class ParseSql {
                 Object next = iterator.next();
                 if (next instanceof String) {
                     sb.append("'").append(next).append("'").append(COMMA);
+                } else if (next instanceof Enum) {
+                    sb.append("'").append(((Enum<?>) next).name()).append("'").append(COMMA);
                 } else {
                     sb.append(next).append(COMMA);
                 }
