@@ -7,3 +7,5 @@
 5 @RefreshScope JdkDynamicAopProxy获取真实数据源对象
 6 Error SQL: delete from `t_team_role_data_permission` where `role_id` = 23 and `permission_type` in (ALL,DEPT)
     批量查询枚举的问题
+
+7,后续代码重构的时候，需要将插入值和读取值以配置的形式暴露出来

@@ -206,7 +206,7 @@ public class SqlImpl<T> implements Sqls<T> {
             }
         }
         //不会走到这的  此处仅仅是为了编译器开心
-        return ConverterUtils.convert("-1", returnType);
+        return null;
     }
 
     @SuppressWarnings("unchecked")

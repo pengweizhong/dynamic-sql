@@ -1,6 +1,7 @@
 package com.pengwz.dynamic.utils.convert;
 
 import java.sql.Timestamp;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -9,9 +10,12 @@ import java.util.Date;
 import static com.pengwz.dynamic.constant.Constant.*;
 
 @SuppressWarnings("unchecked")
-public class LocalDateConverterAdapter implements ConverterAdapter {
+public class LocalDateConverterAdapter implements ConverterAdapter<LocalDate> {
     @Override
-    public <T> T converter(Object currentValue, Class<T> targetClass) {
+    public LocalDate converter(Object currentValue, Class<LocalDate> targetClass) {
+        if (currentValue instanceof Number) {
+            return Instant.ofEpochSecond(((Number) currentValue).longValue()).atZone(ZoneId.systemDefault()).toLocalDate();
+        }
         if (LocalDate.class.isAssignableFrom(targetClass)) {
             return transferString(currentValue);
         }

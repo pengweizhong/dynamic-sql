@@ -6,9 +6,7 @@ import org.apache.commons.logging.LogFactory;
 import java.sql.Timestamp;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
+import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.util.Date;
 
@@ -18,13 +16,16 @@ import static com.pengwz.dynamic.constant.Constant.*;
  * 转换的目标类型是 LocalDateTime
  */
 @SuppressWarnings("unchecked")
-public class LocalDateTimeConverterAdapter implements ConverterAdapter {
+public class LocalDateTimeConverterAdapter implements ConverterAdapter<LocalDateTime> {
 
     private static final Log log = LogFactory.getLog(LocalDateTimeConverterAdapter.class);
 
     @Override
-    public <T> T converter(Object currentValue, Class<T> targetClass) {
+    public LocalDateTime converter(Object currentValue, Class<LocalDateTime> targetClass) {
         try {
+            if (currentValue instanceof Number) {
+                return Instant.ofEpochSecond(((Number) currentValue).longValue()).atZone(ZoneId.systemDefault()).toLocalDateTime();
+            }
             if (Date.class.isAssignableFrom(targetClass)) {
                 return transferDate(currentValue);
             }

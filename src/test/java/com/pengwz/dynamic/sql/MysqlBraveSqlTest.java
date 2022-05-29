@@ -1,11 +1,16 @@
 package com.pengwz.dynamic.sql;
 
 
+import com.alibaba.druid.support.json.JSONParser;
+import com.google.gson.Gson;
 import com.pengwz.dynamic.config.DatabaseConfig;
 import com.pengwz.dynamic.entity.JobUserEntity;
 import com.pengwz.dynamic.entity.UserEntity;
 import com.pengwz.dynamic.entity.UserRoleEntity;
 import com.pengwz.dynamic.exception.BraveException;
+import com.pengwz.dynamic.utils.ConverterUtils;
+import com.pengwz.dynamic.utils.convert.ConverterAdapter;
+import com.pengwz.dynamic.utils.convert.LocalTimeConverterAdapter;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.RandomUtils;
 import org.apache.commons.logging.Log;
@@ -17,9 +22,7 @@ import org.junit.Test;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
+import java.time.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -295,7 +298,7 @@ public class MysqlBraveSqlTest {
     public void testSelect2() {
         List<JobUserEntity> select = BraveSql.build(JobUserEntity.class).select();
         System.out.println(select.size());
-        Assert.assertEquals(1, select.size());
+        Assert.assertTrue(select.size() > 1);
     }
 
 
@@ -442,6 +445,7 @@ public class MysqlBraveSqlTest {
 
     @Test
     public void testJsonReadAndWrite() {
+        ConverterUtils.putConverterAdapter(JobUserEntity.class, new JobUserEntityConverterAdapter());
         BraveSql.build(JobUserEntity.class).delete();
         final JobUserEntity jobUserEntity = new JobUserEntity();
         jobUserEntity.setPassword("13720002902");
@@ -467,6 +471,7 @@ public class MysqlBraveSqlTest {
             jobUserEntity.setTimes(LocalTime.now().minusHours(RandomUtils.nextInt(1, 10)));
             BraveSql.build(JobUserEntity.class).insertActive(jobUserEntity);
         }
+        ConverterUtils.putConverterAdapter(LocalTime.class, new LocalTimeConverterAdapter());
         final BigDecimal bigDecimal = BraveSql.build(JobUserEntity.class).selectMax(JobUserEntity::getId);
         log.info("selectMax(JobUserEntity::getId) = " + bigDecimal);
         final BigDecimal bigDecimal2 = BraveSql.build(JobUserEntity.class).selectMin(JobUserEntity::getId);
@@ -479,6 +484,36 @@ public class MysqlBraveSqlTest {
         log.info("selectAvg(JobUserEntity::getId) = " + aDouble);
         final LocalTime localTime2 = BraveSql.build(JobUserEntity.class).selectAvg(JobUserEntity::getTimes, LocalTime.class);
         log.info("selectAvg(JobUserEntity::getTimes) = " + localTime2);
+        final LocalDateTime LocalDateTime = BraveSql.build(JobUserEntity.class).selectAvg(JobUserEntity::getTimes, LocalDateTime.class);
+        log.info("selectAvg(JobUserEntity::getTimes) = " + LocalDateTime);
+        final LocalDate LocalDate = BraveSql.build(JobUserEntity.class).selectAvg(JobUserEntity::getTimes, LocalDate.class);
+        log.info("selectAvg(JobUserEntity::getTimes) = " + LocalDate);
+    }
+
+    public static class LocalTimeConverterAdapter implements ConverterAdapter<LocalTime> {
+
+        @Override
+        public LocalTime converter(Object currentValue, Class<LocalTime> targetClass) {
+            log.info("11111111111111111111111111111111111111111 == " + currentValue + " ,   " + targetClass);
+            if (currentValue instanceof Number) {
+                final LocalTime localTime = Instant.ofEpochSecond(((Number) currentValue).longValue()).atZone(ZoneId.systemDefault()).toLocalTime();
+                return localTime;
+            }
+            return null;
+        }
+    }
+
+    public static class JobUserEntityConverterAdapter implements ConverterAdapter<JobUserEntity> {
+
+        @Override
+        public JobUserEntity converter(Object currentValue, Class<JobUserEntity> targetClass) {
+            log.info("2222222222222222222222222222222222 == " + currentValue + " ,   " + targetClass);
+
+            final JobUserEntity jobUserEntity = new Gson().fromJson(currentValue.toString(), targetClass);
+            return jobUserEntity;
+            //            throw new BraveException("故意抛出的异常");
+//            return null;
+        }
     }
 
 }
