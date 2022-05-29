@@ -272,7 +272,29 @@ public class BraveSql<T> {
      * @return 平均值，若没有数据，返回 null
      */
     public BigDecimal selectAvg(String property) {
-        return mustShare().selectAggregateFunction(property.trim(), FunctionEnum.AVG, BigDecimal.class);
+        return this.selectAvg(property.trim(), BigDecimal.class);
+    }
+
+    /**
+     * 对指定字段求平均值，并适用指定的数据类型接收结果值
+     *
+     * @param fn          实体类字段名
+     * @param targetClass 结果类型
+     * @return 平均值，若没有数据，返回 null
+     */
+    public <R> R selectAvg(Fn<T, Object> fn, Class<R> targetClass) {
+        return this.selectAvg(ReflectUtils.fnToFieldName(fn), targetClass);
+    }
+
+    /**
+     * 对指定字段求平均值，并适用指定的数据类型接收结果值
+     *
+     * @param property    实体类字段名
+     * @param targetClass 结果类型
+     * @return 平均值，若没有数据，返回 null
+     */
+    public <R> R selectAvg(String property, Class<R> targetClass) {
+        return mustShare().selectAggregateFunction(property.trim(), FunctionEnum.AVG, targetClass);
     }
 
     /**
@@ -286,13 +308,36 @@ public class BraveSql<T> {
     }
 
     /**
-     * 对指定字段求最小值
+     * 对指定字段求最小值，并适用指定的数据类型接收结果值
      *
      * @param property 实体类字段名
      * @return 最小值，若没有数据，返回 null
      */
     public BigDecimal selectMin(String property) {
-        return mustShare().selectAggregateFunction(property.trim(), FunctionEnum.MIN, BigDecimal.class);
+        return this.selectMin(property.trim(), BigDecimal.class);
+    }
+
+    /**
+     * 对指定字段求最小值，并适用指定的数据类型接收结果值
+     *
+     * @param property    实体类字段名
+     * @param targetClass 结果类型
+     * @return 最小值，若没有数据，返回 null
+     */
+    public <R> R selectMin(Fn<T, Object> fn, Class<R> targetClass) {
+        return this.selectMin(ReflectUtils.fnToFieldName(fn), targetClass);
+    }
+
+
+    /**
+     * 对指定字段求最小值
+     *
+     * @param property    实体类字段名
+     * @param targetClass 结果类型
+     * @return 最小值，若没有数据，返回 null
+     */
+    public <R> R selectMin(String property, Class<R> targetClass) {
+        return mustShare().selectAggregateFunction(property.trim(), FunctionEnum.MIN, targetClass);
     }
 
     /**
@@ -302,7 +347,7 @@ public class BraveSql<T> {
      * @return 最大值，若没有数据，返回 null
      */
     public BigDecimal selectMax(Fn<T, Object> fn) {
-        return this.selectMax(ReflectUtils.fnToFieldName(fn));
+        return this.selectMax(ReflectUtils.fnToFieldName(fn), BigDecimal.class);
     }
 
     /**
@@ -312,7 +357,29 @@ public class BraveSql<T> {
      * @return 最大值，若没有数据，返回 null
      */
     public BigDecimal selectMax(String property) {
-        return mustShare().selectAggregateFunction(property.trim(), FunctionEnum.MAX, BigDecimal.class);
+        return this.selectMax(property, BigDecimal.class);
+    }
+
+    /**
+     * 对指定字段求最大值，并适用指定的数据类型接收结果值
+     *
+     * @param property    实体类字段名
+     * @param targetClass 结果类型
+     * @return 最大值，若没有数据，返回 null
+     */
+    public <R> R selectMax(Fn<T, Object> fn, Class<R> targetClass) {
+        return this.selectMax(ReflectUtils.fnToFieldName(fn), targetClass);
+    }
+
+    /**
+     * 对指定字段求最大值，并适用指定的数据类型接收结果值
+     *
+     * @param property    实体类字段名
+     * @param targetClass 结果类型
+     * @return 最大值，若没有数据，返回 null
+     */
+    public <R> R selectMax(String property, Class<R> targetClass) {
+        return mustShare().selectAggregateFunction(property.trim(), FunctionEnum.MAX, targetClass);
     }
 
     /**

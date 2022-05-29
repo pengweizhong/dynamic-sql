@@ -8,6 +8,8 @@ import com.pengwz.dynamic.config.DatabaseConfig;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import java.time.LocalTime;
+
 @Table(value = "test2.job_user_1", dataSourceClass = DatabaseConfig.class)
 public class JobUserEntity {
     private transient Log log = LogFactory.getLog(getClass());
@@ -19,6 +21,23 @@ public class JobUserEntity {
     private String role;
     @ColumnJson(value = "permission")
     private JobUserEntity permission;
+    private LocalTime times;
+
+    public Log getLog() {
+        return log;
+    }
+
+    public void setLog(Log log) {
+        this.log = log;
+    }
+
+    public LocalTime getTimes() {
+        return times;
+    }
+
+    public void setTimes(LocalTime times) {
+        this.times = times;
+    }
 
     public Integer getId() {
         return id;
@@ -67,7 +86,8 @@ public class JobUserEntity {
                 ", username='" + username + '\'' +
                 ", password='" + password + '\'' +
                 ", role='" + role + '\'' +
-                ", permission='" + permission + '\'' +
+                ", permission=" + permission +
+                ", times=" + times +
                 '}';
     }
 }

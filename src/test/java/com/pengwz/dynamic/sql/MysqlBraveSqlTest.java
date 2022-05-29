@@ -5,8 +5,8 @@ import com.pengwz.dynamic.config.DatabaseConfig;
 import com.pengwz.dynamic.entity.JobUserEntity;
 import com.pengwz.dynamic.entity.UserEntity;
 import com.pengwz.dynamic.entity.UserRoleEntity;
-import com.pengwz.dynamic.entity.oracle.TBCopyEntity;
 import com.pengwz.dynamic.exception.BraveException;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.RandomUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -28,15 +28,17 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.Assert.*;
 
-public class BraveSqlTest {
+public class MysqlBraveSqlTest {
+    private static final Log log = LogFactory.getLog(MysqlBraveSqlTest.class);
     private static final List<String> ROLE_NAME_LIST = Arrays.asList("游客", "管理员", "超级管理员", "普通成员", "VIP成员", "穷B VIP（活动送的那种）");
     private static final List<String> USER_NAME_LIST = Arrays.asList("jerry", "tom", "王昭君", "妲己", "貂蝉", "李白", "亚瑟", "项羽", "程咬金", "刘邦", "韩信", "虞美人", "雷神",
             "小可nai", "天下无敌", "天下第一", "我就呵呵哒", "哎，女人呀", "致青春", "我的同桌", "小小", "夏天的风", "可可爱爱的昵称", "保家卫国", "敢于冲锋", "我就是我，颜色不一样的烟火");
-    private static final Log log = LogFactory.getLog(BraveSqlTest.class);
     //单表插入数据量
     private static final int tableDataRows = 10_000;
     private static final String dropUserTable = "drop table if exists `t_user`;";
     private static final String dropUserRoleTable = "drop table if exists `t_user_role`;";
+    private static final String dropJobUser1Table = "drop table if exists test2.job_user_1;";
+
     private static final String createUserTable = "CREATE TABLE `t_user` (\n" +
             "  `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '主键',\n" +
             "  `account_no` varchar(100) DEFAULT NULL COMMENT '账号',\n" +
@@ -59,6 +61,15 @@ public class BraveSqlTest {
             "  `update_date` timestamp  NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '修改时间',\n" +
             "  PRIMARY KEY (`uid`)\n" +
             ") ENGINE=InnoDB COMMENT ='账号和角色表';";
+    private static final String createJobUser1Table = "CREATE TABLE `test2`.`job_user_1` (\n" +
+            "  `id` int NOT NULL AUTO_INCREMENT,\n" +
+            "  `username` varchar(100) DEFAULT NULL,\n" +
+            "  `password` varchar(100) DEFAULT NULL,\n" +
+            "  `role` varchar(100) DEFAULT NULL,\n" +
+            "  `permission` varchar(700) DEFAULT NULL,\n" +
+            "   `times` time DEFAULT NULL,\n" +
+            "  PRIMARY KEY (`id`)\n" +
+            ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci";
 
     /**
      * 每次 整体 测试前 建表、 插入数据
@@ -69,6 +80,8 @@ public class BraveSqlTest {
         BraveSql.build(Void.class).executeSql(createUserRoleTable, DatabaseConfig.class);
         BraveSql.build(Void.class).executeSql(dropUserTable, DatabaseConfig.class);
         BraveSql.build(Void.class).executeSql(createUserTable, DatabaseConfig.class);
+        BraveSql.build(Void.class).executeSql(dropJobUser1Table, DatabaseConfig.class);
+        BraveSql.build(Void.class).executeSql(createJobUser1Table, DatabaseConfig.class);
         //插入数据
         //插入 user表，
         List<UserEntity> userEntities = new ArrayList<>();
@@ -112,6 +125,8 @@ public class BraveSqlTest {
     public static void doAfterClass() {
         BraveSql.build(Void.class).executeSql(dropUserRoleTable, DatabaseConfig.class);
         BraveSql.build(Void.class).executeSql(dropUserTable, DatabaseConfig.class);
+        BraveSql.build(Void.class).executeSql(dropUserTable, DatabaseConfig.class);
+        BraveSql.build(Void.class).executeSql(dropJobUser1Table, DatabaseConfig.class);
     }
 
     /**
@@ -280,7 +295,7 @@ public class BraveSqlTest {
     public void testSelect2() {
         List<JobUserEntity> select = BraveSql.build(JobUserEntity.class).select();
         System.out.println(select.size());
-        Assert.assertEquals(0, select.size());
+        Assert.assertEquals(1, select.size());
     }
 
 
@@ -415,7 +430,6 @@ public class BraveSqlTest {
         jobUserEntity2.setPermission(jobUserEntity);
         Integer integer = BraveSql.build(JobUserEntity.class).insertActive(jobUserEntity2);
         System.out.println(integer);
-
     }
 
     @Test
@@ -424,6 +438,47 @@ public class BraveSqlTest {
         DynamicSql<JobUserEntity> dynamicSql = DynamicSql.createDynamicSql();
         dynamicSql.andLessThanOrEqualTo(JobUserEntity::getId, 0);
         System.out.println(BraveSql.build(dynamicSql, JobUserEntity.class).selectSum("id"));
+    }
+
+    @Test
+    public void testJsonReadAndWrite() {
+        BraveSql.build(JobUserEntity.class).delete();
+        final JobUserEntity jobUserEntity = new JobUserEntity();
+        jobUserEntity.setPassword("13720002902");
+        jobUserEntity.setUsername("pengwz");
+        jobUserEntity.setRole("admin");
+        jobUserEntity.setPermission(jobUserEntity);
+        jobUserEntity.setTimes(LocalTime.now());
+        BraveSql.build(JobUserEntity.class).insertActive(jobUserEntity);
+        final JobUserEntity selectSingle = BraveSql.build(JobUserEntity.class).select().get(0);
+        log.info(selectSingle);
+        assertNotNull(selectSingle);
+    }
+
+    @Test
+    public void testMaxAndMin() {
+        BraveSql.build(JobUserEntity.class).delete();
+        for (int i = 0; i < 10; i++) {
+            final JobUserEntity jobUserEntity = new JobUserEntity();
+            jobUserEntity.setPassword("13720002902");
+            jobUserEntity.setUsername("pengwz");
+            jobUserEntity.setRole("admin");
+            jobUserEntity.setPermission(jobUserEntity);
+            jobUserEntity.setTimes(LocalTime.now().minusHours(RandomUtils.nextInt(1, 10)));
+            BraveSql.build(JobUserEntity.class).insertActive(jobUserEntity);
+        }
+        final BigDecimal bigDecimal = BraveSql.build(JobUserEntity.class).selectMax(JobUserEntity::getId);
+        log.info("selectMax(JobUserEntity::getId) = " + bigDecimal);
+        final BigDecimal bigDecimal2 = BraveSql.build(JobUserEntity.class).selectMin(JobUserEntity::getId);
+        log.info("selectMin(JobUserEntity::getId) = " + bigDecimal2);
+        final LocalTime localTime = BraveSql.build(JobUserEntity.class).selectMax(JobUserEntity::getTimes, LocalTime.class);
+        log.info("selectMax(JobUserEntity::getTimes) = " + localTime);
+        final LocalTime localTime1 = BraveSql.build(JobUserEntity.class).selectMin(JobUserEntity::getTimes, LocalTime.class);
+        log.info("selectMin(JobUserEntity::getTimes) = " + localTime1);
+        final Double aDouble = BraveSql.build(JobUserEntity.class).selectAvg(JobUserEntity::getId, Double.class);
+        log.info("selectAvg(JobUserEntity::getId) = " + aDouble);
+        final LocalTime localTime2 = BraveSql.build(JobUserEntity.class).selectAvg(JobUserEntity::getTimes, LocalTime.class);
+        log.info("selectAvg(JobUserEntity::getTimes) = " + localTime2);
     }
 
 }

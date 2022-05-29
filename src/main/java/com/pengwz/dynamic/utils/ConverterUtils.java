@@ -24,7 +24,7 @@ import java.util.Objects;
 
 public class ConverterUtils {
 
-    private static final HashMap<Class<?>, ConverterAdapter> converterAdapterMap = new HashMap<>();
+    public static final HashMap<Class<?>, ConverterAdapter> converterAdapterMap = new HashMap<>();
 
     static {
         converterAdapterMap.put(LocalDateTime.class, new LocalDateTimeConverterAdapter());
@@ -43,6 +43,7 @@ public class ConverterUtils {
         if (Objects.isNull(value) || Objects.isNull(targetType)) {
             return null;
         }
+        targetType = (Class<T>) basicTypeRepackaging(targetType);
         Object convert;
         try {
             convert = ConvertUtils.convert(value, targetType);
@@ -55,11 +56,15 @@ public class ConverterUtils {
         }
         //如果apache的工具仍然不能满足需求，则进行补充
         ConverterAdapter converterAdapter = converterAdapterMap.get(targetType);
+        T result = null;
         if (Objects.nonNull(converterAdapter)) {
-            return converterAdapter.converter(value, targetType);
+            result = converterAdapter.converter(value, targetType);
         }
-        String err = "当前值：" + value + "，转换目标类型失败。" + value.getClass() + "不能转换为" + targetType + "类型，因为找不到该类型适配器或不受支持的转换";
-        throw new BraveException(err);
+        if (Objects.isNull(result)) {
+            String err = "当前值：" + value + "，转换目标类型失败。" + value.getClass() + "不能转换为" + targetType + "类型，因为找不到该类型适配器或不受支持的转换";
+            throw new BraveException(err);
+        }
+        return result;
     }
 
     @SuppressWarnings("unchecked")
@@ -184,4 +189,34 @@ public class ConverterUtils {
         throw new BraveException("Failed to convert property value [" + columnRec + "]; No enum constant ：" + canonicalEnumerateName);
     }
 
+    /**
+     * 基本类型转包装类型
+     */
+    public static Class<?> basicTypeRepackaging(Class<?> targetType) {
+        if (Objects.isNull(targetType)) {
+            return null;
+        }
+        if (targetType.isPrimitive()) {
+            switch (targetType.getName()) {
+                case "byte":
+                    return Byte.class;
+                case "short":
+                    return Short.class;
+                case "int":
+                    return Integer.class;
+                case "long":
+                    return Long.class;
+                case "char":
+                    return Character.class;
+                case "float":
+                    return Float.class;
+                case "double":
+                    return Double.class;
+                case "boolean":
+                    return Boolean.class;
+                default:
+            }
+        }
+        return targetType;
+    }
 }
