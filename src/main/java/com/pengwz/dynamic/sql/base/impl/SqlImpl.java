@@ -52,7 +52,7 @@ public class SqlImpl<T> implements Sqls<T> {
     public T selectByPrimaryKey(Object primaryKeyValue) {
         String columnList = ContextApplication.formatAllColumToStr(dataSourceName, tableName);
         String primaryKey = ContextApplication.getPrimaryKey(dataSourceName, tableName);
-        Object value = ParseSql.matchValue(primaryKeyValue);
+        Object value = ParseSql.matchValue(primaryKeyValue, dataSourceName);
         String sql = SELECT + SPACE + columnList + SPACE + FROM + SPACE + tableName + SPACE + WHERE + SPACE + primaryKey + SPACE + EQ + SPACE + "?";
         List<T> ts = executeQuery(sql, tableName, value);
         return ts.isEmpty() ? null : ts.get(0);
@@ -531,7 +531,7 @@ public class SqlImpl<T> implements Sqls<T> {
         }
         String sqlPrefix = sql.substring(0, sql.length() - 1);
         Object primaryKeyValue = getPrimaryKeyValue(tableInfoPrimaryKey, next);
-        sqlPrefix = sqlPrefix + SPACE + WHERE + SPACE + tableInfoPrimaryKey.getColumn() + SPACE + EQ + SPACE + ParseSql.matchValue(primaryKeyValue);
+        sqlPrefix = sqlPrefix + SPACE + WHERE + SPACE + tableInfoPrimaryKey.getColumn() + SPACE + EQ + SPACE + ParseSql.matchValue(primaryKeyValue, dataSourceName);
         String parseSql = ParseSql.parseSql(sqlPrefix);
         return executeUpdateSqlAndReturnAffectedRows(parseSql);
     }
@@ -541,7 +541,7 @@ public class SqlImpl<T> implements Sqls<T> {
             try {
                 sql.append(SPACE).append(tableInfo.getColumn()).append(SPACE).append(EQ).append(SPACE);
                 Object invoke = getTableFieldValue(tableInfo, next, false);
-                sql.append(ParseSql.matchValue(invoke)).append(COMMA);
+                sql.append(ParseSql.matchValue(invoke, dataSourceName)).append(COMMA);
             } catch (Exception ex) {
                 ExceptionUtils.boxingAndThrowBraveException(ex, sql.toString());
             }
@@ -597,7 +597,7 @@ public class SqlImpl<T> implements Sqls<T> {
             throw new BraveException(tableName + " 表未配置主键");
         }
         String sql = "delete from " + tableName + " where " + tableInfoPrimaryKey.getColumn() +
-                Constant.EQ + ParseSql.matchValue(primaryKeyValue);
+                Constant.EQ + ParseSql.matchValue(primaryKeyValue, dataSourceName);
         return executeUpdateSqlAndReturnAffectedRows(sql);
     }
 
@@ -622,7 +622,7 @@ public class SqlImpl<T> implements Sqls<T> {
                     continue;
                 }
                 sql.append(SPACE).append(tableInfo.getColumn()).append(SPACE).append(EQ).append(SPACE);
-                sql.append(ParseSql.matchValue(invoke)).append(COMMA);
+                sql.append(ParseSql.matchValue(invoke, dataSourceName)).append(COMMA);
             } catch (Exception ex) {
                 throw new BraveException(ex.getMessage(), ex);
             }

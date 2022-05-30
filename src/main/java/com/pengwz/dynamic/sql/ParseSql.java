@@ -3,6 +3,8 @@ package com.pengwz.dynamic.sql;
 import com.pengwz.dynamic.anno.Table;
 import com.pengwz.dynamic.check.Check;
 import com.pengwz.dynamic.exception.BraveException;
+import com.pengwz.dynamic.model.DataSourceInfo;
+import com.pengwz.dynamic.model.DbType;
 import com.pengwz.dynamic.sql.base.HandleFunction;
 import com.pengwz.dynamic.sql.base.impl.Count;
 import com.pengwz.dynamic.sql.base.impl.GroupBy;
@@ -55,14 +57,14 @@ public class ParseSql {
                 whereSql.append(declaration.getAndOr()).append(SPACE);
                 whereSql.append(ContextApplication.getColumnByField(dataSource, tableName, declaration.getProperty())).append(SPACE);
                 whereSql.append(declaration.getCondition()).append(SPACE);
-                whereSql.append(matchValue(declaration.getValue())).append(SPACE);
+                whereSql.append(matchValue(declaration.getValue(), dataSource)).append(SPACE);
                 whereSql.append(AND).append(SPACE);
-                whereSql.append(matchValue(declaration.getValue2())).append(SPACE);
+                whereSql.append(matchValue(declaration.getValue2(), dataSource)).append(SPACE);
             } else {
                 whereSql.append(declaration.getAndOr()).append(SPACE);
                 whereSql.append(ContextApplication.getColumnByField(dataSource, tableName, declaration.getProperty())).append(SPACE);
                 whereSql.append(declaration.getCondition()).append(SPACE);
-                whereSql.append(matchValue(declaration.getValue())).append(SPACE);
+                whereSql.append(matchValue(declaration.getValue(), dataSource)).append(SPACE);
             }
         }
         if (Objects.nonNull(orderByMap)) {
@@ -126,13 +128,12 @@ public class ParseSql {
         return sb.toString();
     }
 
-    public static Object matchValue(Object value) {
-//        if (Objects.isNull(value)) {
-//           throw new BraveException("值不允许为null");
-//        }
+    public static Object matchValue(Object value, String dataSourceName) {
+        final DataSourceInfo dataSourceInfo = ContextApplication.getDataSourceInfo(dataSourceName);
+        final DbType dbType = dataSourceInfo.getDbType();
         value = ConverterUtils.convertValueJdbc(value);
         if (value instanceof String) {
-            return "'" + value + "'";
+            return fixSQLInjection(dbType, (String) value);
         }
         if (value instanceof Number) {
             return value;
@@ -155,7 +156,8 @@ public class ParseSql {
             while (iterator.hasNext()) {
                 Object next = iterator.next();
                 if (next instanceof String) {
-                    sb.append("'").append(next).append("'").append(COMMA);
+                    return sb.append(fixSQLInjection(dbType, (String) value)).append(COMMA);
+//                    sb.append("'").append(next).append("'").append(COMMA);
                 } else if (next instanceof Enum) {
                     sb.append("'").append(((Enum<?>) next).name()).append("'").append(COMMA);
                 } else {
@@ -167,6 +169,10 @@ public class ParseSql {
             return LEFT_BRACKETS + substring + RIGHT_BRACKETS;
         }
         return value;
+    }
+
+    private static String fixSQLInjection(final DbType dbType, String value) {
+        return "'" + value.replace("'", "\\'") + "'";
     }
 
     public static String parseAggregateFunction(String aggregateFunctionName, String dataSource, String tableName, Declaration declaration) {

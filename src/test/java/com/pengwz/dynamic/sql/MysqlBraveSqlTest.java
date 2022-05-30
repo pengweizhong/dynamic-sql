@@ -6,6 +6,7 @@ import com.pengwz.dynamic.config.DatabaseConfig;
 import com.pengwz.dynamic.entity.JobUserEntity;
 import com.pengwz.dynamic.entity.UserEntity;
 import com.pengwz.dynamic.entity.UserRoleEntity;
+import com.pengwz.dynamic.entity.oracle.ActEvtLogEntity;
 import com.pengwz.dynamic.exception.BraveException;
 import com.pengwz.dynamic.utils.ConverterUtils;
 import com.pengwz.dynamic.utils.convert.ConverterAdapter;
@@ -543,7 +544,7 @@ public class MysqlBraveSqlTest {
         BraveSql.build(JobUserEntity.class).insertActive(jobUserEntity);
         /////////////////
         final DynamicSql<JobUserEntity> dynamicSql = DynamicSql.createDynamicSql();
-        dynamicSql.andEqualTo(JobUserEntity::getUsername, "' or 1=1");
+        dynamicSql.andEqualTo(JobUserEntity::getUsername, "' or ( 1=1) or '' = '");
         final JobUserEntity jobUserEntity1 = BraveSql.build(dynamicSql, JobUserEntity.class).selectSingle();
         System.out.println(jobUserEntity1);
         assertNull(jobUserEntity1);
@@ -551,23 +552,21 @@ public class MysqlBraveSqlTest {
 
     @Test
     public void testSQLInjection_selectSingle2() {
-        BraveSql.build(JobUserEntity.class).delete();
-        final JobUserEntity jobUserEntity = new JobUserEntity();
-        jobUserEntity.setTimes(LocalTime.now());
-        jobUserEntity.setUsername("pengwz");
-        jobUserEntity.setId(999);
-        final JobUserEntity jobUserEntity2 = new JobUserEntity();
-        jobUserEntity2.setId(12);
-        jobUserEntity2.setRole("admin");
-        jobUserEntity.setPermission(jobUserEntity2);
-        BraveSql.build(JobUserEntity.class).insertActive(jobUserEntity);
-        /////////////////
-        final DynamicSql<JobUserEntity> dynamicSql = DynamicSql.createDynamicSql();
-        dynamicSql.andEqualTo(JobUserEntity::getUsername, "pengwz");
-        dynamicSql.andEqualTo(JobUserEntity::getPermission, jobUserEntity2);
-        final JobUserEntity jobUserEntity1 = BraveSql.build(dynamicSql, JobUserEntity.class).selectSingle();
-        System.out.println(jobUserEntity1);
-        assertNotNull(jobUserEntity1);
+        BraveSql.build(ActEvtLogEntity.class).delete();
+
+        ActEvtLogEntity entity = new ActEvtLogEntity();
+        entity.setTaskId("任务");
+        entity.setLogNr(1);
+        entity.setTimeStamp(LocalDateTime.now());
+        BraveSql.build(ActEvtLogEntity.class).insertActive(entity);
+        final List<ActEvtLogEntity> select = BraveSql.build(ActEvtLogEntity.class).select();
+        System.out.println(select);
+
+        final DynamicSql<ActEvtLogEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.andEqualTo(ActEvtLogEntity::getTaskId, "任务1'");
+        final List<ActEvtLogEntity> select1 = BraveSql.build(dynamicSql, ActEvtLogEntity.class).select();
+        System.out.println("select1 = =" + select1);
+
     }
 
 }
