@@ -544,7 +544,8 @@ public class MysqlBraveSqlTest {
         BraveSql.build(JobUserEntity.class).insertActive(jobUserEntity);
         /////////////////
         final DynamicSql<JobUserEntity> dynamicSql = DynamicSql.createDynamicSql();
-        dynamicSql.andEqualTo(JobUserEntity::getUsername, "' or ( 1=1) or '' = '");
+//        dynamicSql.andEqualTo(JobUserEntity::getUsername, "' or ( 1=1) or '' = '");
+        dynamicSql.andEqualTo(JobUserEntity::getUsername, "\\");
         final JobUserEntity jobUserEntity1 = BraveSql.build(dynamicSql, JobUserEntity.class).selectSingle();
         System.out.println(jobUserEntity1);
         assertNull(jobUserEntity1);

@@ -172,7 +172,13 @@ public class ParseSql {
     }
 
     private static String fixSQLInjection(final DbType dbType, String value) {
-        return "'" + value.replace("'", "\\'") + "'";
+        if (value.contains("'")) {
+            value = value.replace("'", "\\'");
+        }
+        if (value.contains("\\")) {
+            value = value.replace("\\", "\\\\");
+        }
+        return "'" + value + "'";
     }
 
     public static String parseAggregateFunction(String aggregateFunctionName, String dataSource, String tableName, Declaration declaration) {
