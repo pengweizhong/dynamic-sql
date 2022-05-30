@@ -8,10 +8,12 @@ import com.pengwz.dynamic.config.DatabaseConfig;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import java.io.Serializable;
 import java.time.LocalTime;
 
 @Table(value = "test2.job_user_1", dataSourceClass = DatabaseConfig.class)
-public class JobUserEntity {
+public class JobUserEntity implements Serializable {
+
     private transient Log log = LogFactory.getLog(getClass());
     @Id
     @GeneratedValue
