@@ -53,8 +53,8 @@ public class SqlImpl<T> implements Sqls<T> {
         String columnList = ContextApplication.formatAllColumToStr(dataSourceName, tableName);
         String primaryKey = ContextApplication.getPrimaryKey(dataSourceName, tableName);
         Object value = ParseSql.matchValue(primaryKeyValue);
-        String sql = SELECT + SPACE + columnList + SPACE + FROM + SPACE + tableName + SPACE + WHERE + SPACE + primaryKey + SPACE + EQ + SPACE + value;
-        List<T> ts = executeQuery(sql, tableName);
+        String sql = SELECT + SPACE + columnList + SPACE + FROM + SPACE + tableName + SPACE + WHERE + SPACE + primaryKey + SPACE + EQ + SPACE + "?";
+        List<T> ts = executeQuery(sql, tableName, value);
         return ts.isEmpty() ? null : ts.get(0);
     }
 
@@ -210,12 +210,17 @@ public class SqlImpl<T> implements Sqls<T> {
     }
 
     @SuppressWarnings("unchecked")
-    private List<T> executeQuery(String sql, String tableName) {
+    private List<T> executeQuery(String sql, String tableName, Object... value) {
         List<TableInfo> tableInfos = ContextApplication.getTableInfos(dataSourceName, tableName);
         List<T> list = new ArrayList<>();
         printSql(sql);
         try {
             preparedStatement = connection.prepareStatement(sql);
+            if (value != null && value.length > 1) {
+                for (int i = 1; i <= value.length; i++) {
+                    preparedStatement.setObject(i, value);
+                }
+            }
             resultSet = preparedStatement.executeQuery();
             while (resultSet.next()) {
                 T t = (T) currentClass.newInstance();

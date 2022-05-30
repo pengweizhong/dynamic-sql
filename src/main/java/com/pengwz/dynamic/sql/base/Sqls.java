@@ -5,6 +5,7 @@ import com.pengwz.dynamic.sql.base.enumerate.FunctionEnum;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public interface Sqls<T> {
@@ -59,4 +60,21 @@ public interface Sqls<T> {
             log.debug(sql);
         }
     }
+
+    default void printParams(Object... params) {
+        if (log.isDebugEnabled() && params != null && params.length > 1) {
+            try {
+                final ArrayList<String> paramList = new ArrayList<>();
+                for (int i = 1; i <= params.length; i++) {
+                    paramList.add(i + ": " + params[i - 1]);
+                }
+                final String join = String.join("\n\r", paramList);
+                log.debug(join);
+            } catch (Exception ex) {
+                log.error("打印SQL参数时发生异常，请检查ToString()方法是否允许被正常输出");
+            }
+
+        }
+    }
+
 }
