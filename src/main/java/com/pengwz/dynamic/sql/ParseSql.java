@@ -172,11 +172,11 @@ public class ParseSql {
     }
 
     private static String fixSQLInjection(final DbType dbType, String value) {
-        if (value.contains("'")) {
-            value = value.replace("'", "\\'");
-        }
         if (value.contains("\\")) {
             value = value.replace("\\", "\\\\");
+        }
+        if (value.contains("'")) {
+            value = value.replace("'", "\\'");
         }
         return "'" + value + "'";
     }
