@@ -195,6 +195,10 @@ public class ConverterUtils {
         converterAdapterMap.put(columnClass, converterAdapter);
     }
 
+    public static Map<Class<?>, ConverterAdapter<?>> getConverterAdapterMap() {
+        return converterAdapterMap;
+    }
+
     private static <T> Object mappedEnum(ResultSet resultSet, Integer columnIndex, Class<T> targetType) throws SQLException {
         //2 判断是否是枚举
         Object enumerateValue = resultSet.getObject(columnIndex);
