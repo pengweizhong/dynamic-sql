@@ -37,32 +37,32 @@ public class ConverterUtils {
     }
 
     @SuppressWarnings("unchecked")
-    public static <T> T convertJdbc(ResultSet resultSet, TableInfo tableInfo) throws SQLException {
+    public static <T> T convertJdbc(Class<?> entityClass, ResultSet resultSet, TableInfo tableInfo) throws SQLException {
         if (Objects.isNull(resultSet)) {
             throw new BraveException("java.sql.ResultSet不可为null");
         }
-        return convertJdbc(resultSet, tableInfo.getColumn(), (Class<T>) tableInfo.getField().getType(), tableInfo.getJsonMode());
+        return convertJdbc(entityClass, resultSet, tableInfo.getColumn(), (Class<T>) tableInfo.getField().getType(), tableInfo.getJsonMode());
     }
 
-    public static <T> T convertJdbc(ResultSet resultSet, String columnName, Class<T> targetType) throws SQLException {
-        return convertJdbc(resultSet, columnName, targetType, null);
+    public static <T> T convertJdbc(Class<?> entityClass, ResultSet resultSet, String columnName, Class<T> targetType) throws SQLException {
+        return convertJdbc(entityClass, resultSet, columnName, targetType, null);
     }
 
     @SuppressWarnings("unchecked")
-    public static <T> T convertJdbc(ResultSet resultSet, Object columnRecord, Class<T> targetType, JsonMode jsonMode) throws SQLException {
+    public static <T> T convertJdbc(Class<?> entityClass, ResultSet resultSet, Object columnRecord, Class<T> targetType, JsonMode jsonMode) throws SQLException {
         if (Objects.isNull(resultSet)) {
             throw new BraveException("java.sql.ResultSet不可为null");
         }
         String columnName = String.valueOf(columnRecord);
         columnName = Check.unSplicingName(columnName);
         //用户配置的转换的优先级最高，先执行用户配置的
-        T converter = checkedUserConverterAdapter(resultSet, columnName, targetType);
+        T converter = checkedUserConverterAdapter(entityClass, resultSet, columnName, targetType);
         if (converter != null) {
             return converter;
         }
         //判断columnRecord是不是数字，取的是字段下表的话，直接获取
         if (NumberUtils.isNumeric(columnName)) {
-            return getColumnIndexValue(resultSet, Integer.valueOf(columnName), targetType, jsonMode);
+            return getColumnIndexValue(entityClass, resultSet, Integer.valueOf(columnName), targetType, jsonMode);
         }
         if (Object.class.equals(targetType)) {
             return (T) resultSet.getObject(columnName);
@@ -82,11 +82,11 @@ public class ConverterUtils {
             return resultSet.getObject(columnName, targetType);
         } catch (SQLException e) {
             // ignore exception,try again
-            return convert(resultSet.getObject(columnName), targetType);
+            return convert(entityClass, resultSet.getObject(columnName), targetType);
         }
     }
 
-    private static <T> T checkedUserConverterAdapter(ResultSet resultSet, String columnName, Class<T> targetType) throws SQLException {
+    private static <T> T checkedUserConverterAdapter(Class<?> entityClass, ResultSet resultSet, String columnName, Class<T> targetType) throws SQLException {
         final ConverterAdapter<T> converterAdapter = (ConverterAdapter<T>) converterAdapterMap.get(targetType);
         if (converterAdapter == null) {
             return null;
@@ -97,9 +97,9 @@ public class ConverterUtils {
                 && !(converterAdapter instanceof LocalTimeConverterAdapter)) {
             T converter;
             if (NumberUtils.isNumeric(columnName)) {
-                converter = converterAdapter.converter(resultSet.getObject(Integer.valueOf(columnName)), targetType);
+                converter = converterAdapter.converter(entityClass, targetType, resultSet.getObject(Integer.valueOf(columnName)));
             } else {
-                converter = converterAdapter.converter(resultSet.getObject(columnName), targetType);
+                converter = converterAdapter.converter(entityClass, targetType, resultSet.getObject(columnName));
             }
             return converter;
         }
@@ -107,7 +107,7 @@ public class ConverterUtils {
     }
 
     @SuppressWarnings("unchecked")
-    public static <T> T getColumnIndexValue(ResultSet resultSet, Integer columnIndex, Class<T> targetType, JsonMode jsonMode) throws SQLException {
+    public static <T> T getColumnIndexValue(Class<?> entityClass, ResultSet resultSet, Integer columnIndex, Class<T> targetType, JsonMode jsonMode) throws SQLException {
         if (Object.class.equals(targetType)) {
             return (T) resultSet.getObject(columnIndex);
         }
@@ -126,8 +126,13 @@ public class ConverterUtils {
             return resultSet.getObject(columnIndex, targetType);
         } catch (SQLException e) {
             // ignore exception,try again
-            return convert(resultSet.getObject(columnIndex), targetType);
+            return convert(entityClass, resultSet.getObject(columnIndex), targetType);
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <T> T convert(Object value, Class<T> targetType) {
+        return convert(Void.class, value, targetType);
     }
 
     /**
@@ -136,7 +141,7 @@ public class ConverterUtils {
      * @param value 不可为null
      */
     @SuppressWarnings("unchecked")
-    public static <T> T convert(Object value, Class<T> targetType) {
+    public static <T> T convert(Class<?> entityClass, Object value, Class<T> targetType) {
         if (Objects.isNull(value) || Objects.isNull(targetType)) {
             return null;
         }
@@ -155,7 +160,7 @@ public class ConverterUtils {
         ConverterAdapter<T> converterAdapter = (ConverterAdapter<T>) converterAdapterMap.get(targetType);
         T result = null;
         if (Objects.nonNull(converterAdapter)) {
-            result = converterAdapter.converter(value, targetType);
+            result = converterAdapter.converter(entityClass, targetType, value);
         }
         if (Objects.isNull(result)) {
             String err = "当前值：" + value + "，转换目标类型失败。" + value.getClass() + "不能转换为" + targetType + "类型，因为找不到该类型适配器或不受支持的转换";

@@ -94,7 +94,7 @@ public class CustomizeSQL<T> {
                     if (tableInfo == null) {
                         continue;
                     }
-                    Object object = ConverterUtils.convertJdbc(resultSet, tableInfo);
+                    Object object = ConverterUtils.convertJdbc(target, resultSet, tableInfo);
                     ReflectUtils.setFieldValue(field, obj, object);
                 }
                 selectResult.add(obj);
@@ -163,7 +163,7 @@ public class CustomizeSQL<T> {
             while (resultSet.next()) {
                 for (int i = 1; i <= columnCount; i++) {
                     String columnName = metaData.getColumnName(i);
-                    T obj = ConverterUtils.convertJdbc(resultSet, columnName, target);
+                    T obj = ConverterUtils.convertJdbc(target, resultSet, columnName, target);
                     resultList.add(obj);
                 }
             }
@@ -201,7 +201,7 @@ public class CustomizeSQL<T> {
                     if (tableInfo == null) {
                         continue;
                     }
-                    Object value = ConverterUtils.convertJdbc(resultSet, tableInfo);
+                    Object value = ConverterUtils.convertJdbc(target, resultSet, tableInfo);
                     ReflectUtils.setFieldValue(tableInfo.getField(), instance, value);
                 }
                 resultList.add(instance);

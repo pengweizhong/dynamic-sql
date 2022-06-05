@@ -13,6 +13,7 @@ public class PreparedSql {
     private final Class<?> currentClass;
     private String sql;
     private final List<Object> params;
+    private final List<List<Object>> batchParams = new ArrayList<>();
 
     public PreparedSql(Class<?> currentClass, List<Object> params) {
         this.currentClass = currentClass;
@@ -21,6 +22,16 @@ public class PreparedSql {
 
     public void addParameter(Object param) {
         this.params.add(param);
+    }
+
+    public void addParameter(int index, Object param) {
+        this.params.add(index, param);
+    }
+
+    public List<Object> startBatchParameter() {
+        final ArrayList<Object> batch = new ArrayList<>();
+        batchParams.add(batch);
+        return batch;
     }
 
     public List<Object> getPreparedParameters() {
@@ -52,6 +63,39 @@ public class PreparedSql {
         return fixParams;
     }
 
+    public List<List<Object>> getBatchPreparedParameters() {
+        List<List<Object>> fixParams = new ArrayList<>();
+        if (!batchParams.isEmpty()) {
+            for (List<Object> batchParam : batchParams) {
+                List<Object> fixParam = new ArrayList<>();
+                for (Object param : batchParam) {
+                    if (param instanceof Iterable) {
+                        Iterator iterator = ((Iterable) param).iterator();
+                        if (!iterator.hasNext()) {
+                            throw new BraveException("SQL入参集合不可以为空");
+                        }
+                        while (iterator.hasNext()) {
+                            final Object next = iterator.next();
+                            if (next instanceof Enum) {
+                                fixParam.add(((Enum<?>) next).name());
+                            } else {
+                                fixParam.add(next);
+                            }
+                        }
+                    } else {
+                        if (param instanceof Enum) {
+                            fixParam.add(((Enum<?>) param).name());
+                        } else {
+                            fixParam.add(param);
+                        }
+                    }
+                }
+                fixParams.add(fixParam);
+            }
+        }
+        return fixParams;
+    }
+
     public void printSqlAndParams(String sql) {
         if (log.isDebugEnabled()) {
             try {
@@ -69,5 +113,24 @@ public class PreparedSql {
 
         }
     }
+
+    public void printSqlAndBatchParams(String sql) {
+        if (log.isDebugEnabled()) {
+            try {
+                for (List<Object> params : batchParams) {
+                    final ArrayList<String> paramList = new ArrayList<>();
+                    for (int i1 = 1; i1 <= params.size(); i1++) {
+                        paramList.add(/*i + " - " +*/ params.get(i1 - 1) + "");
+                    }
+                    final String join = String.join(", ", paramList);
+                    log.debug("Preparing: " + sql + "\n\r" + "Parameters: " + join);
+                }
+            } catch (Exception ex) {
+                log.error(sql);
+                log.error("打印SQL参数时发生异常，请检查ToString()方法是否允许被正常输出");
+            }
+        }
+    }
+
 }
 

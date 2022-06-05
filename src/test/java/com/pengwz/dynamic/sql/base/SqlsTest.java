@@ -6,21 +6,16 @@ import com.pengwz.dynamic.config.TestDatabaseConfig;
 import com.pengwz.dynamic.exception.BraveException;
 import com.pengwz.dynamic.sql.BraveSql;
 import com.pengwz.dynamic.sql.DynamicSql;
+import com.pengwz.dynamic.sql.PageInfo;
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 
 /**
  * mysql 测试用例
@@ -97,7 +92,7 @@ public class SqlsTest {
     /**
      * step3 单元测试后，删除数据
      */
-//    @After
+    @After
     public void doAfter() {
         BraveSql.executeSql(truncateTableUser, TestDatabaseConfig.class);
     }
@@ -323,16 +318,77 @@ public class SqlsTest {
         log.info("selectCount :{}", integer);
     }
 
+    /**
+     * 聚合函数，根据条件查询平均数
+     */
     @Test
-    public void selectAll() {
+    public void selectAggregateFunction3() {
+        final DynamicSql<MysqlUserEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.andBetween(MysqlUserEntity::getId, 1, 100);
+        final Double aDouble = BraveSql.build(dynamicSql, MysqlUserEntity.class).selectAvg(MysqlUserEntity::getId, Double.class);
+        Assert.assertTrue(aDouble > 40);
+        log.info("selectAvg :{}", aDouble);
+    }
+
+    /**
+     * 聚合函数，根据条件查询平均数(浮点数转整数)
+     */
+    @Test
+    public void selectAggregateFunction4() {
+        final DynamicSql<MysqlUserEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.andBetween(MysqlUserEntity::getId, 1, 100);
+        final Number number = BraveSql.build(dynamicSql, MysqlUserEntity.class).selectAvg(MysqlUserEntity::getId, Integer.class);
+        Assert.assertTrue(number.doubleValue() > 40);
+        log.info("selectAvg :{}", number);
+    }
+
+    /**
+     * 聚合函数，根据条件查询最大值
+     */
+    @Test
+    public void selectAggregateFunction5() {
+        final DynamicSql<MysqlUserEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.andBetween(MysqlUserEntity::getId, 1, 100);
+        final Integer integer = BraveSql.build(dynamicSql, MysqlUserEntity.class).selectMax(MysqlUserEntity::getId, Integer.class);
+        Assert.assertEquals(100, (int) integer);
+        log.info("selectMax :{}", integer);
     }
 
     @Test
+    public void selectAll() {
+        final List<MysqlUserEntity> entities = BraveSql.build(MysqlUserEntity.class).select();
+        Assert.assertEquals(entities.size(), 1000);
+        log.info("entities.size() :{}", entities.size());
+    }
+
+    @Test(expected = BraveException.class)
     public void selectPageInfo() {
+        final PageInfo<MysqlUserEntity> pageInfo = BraveSql.build(MysqlUserEntity.class).selectPageInfo(-1, -1);
+    }
+
+    @Test
+    public void selectPageInfo2() {
+        final PageInfo<MysqlUserEntity> pageInfo = BraveSql.build(MysqlUserEntity.class).selectPageInfo(-1, 0);
+        Assert.assertTrue(pageInfo.getResultList().isEmpty());
+        log.info("pageInfo: {}", pageInfo);
+    }
+
+    @Test
+    public void selectPageInfo3() {
+        final DynamicSql<MysqlUserEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.andLessThanOrEqualTo(MysqlUserEntity::getId, 456);
+        final PageInfo<MysqlUserEntity> pageInfo = BraveSql.build(dynamicSql, MysqlUserEntity.class).selectPageInfo(0, 1);
+        final List<MysqlUserEntity> resultList = pageInfo.getResultList();
+        Assert.assertTrue(resultList.size() == 1);
+        Assert.assertTrue(pageInfo.getTotalSize() == 456);
+        log.info("pageInfo: {}", pageInfo);
     }
 
     @Test
     public void batchInsert() {
+        final MysqlUserEntity build = MysqlUserEntity.builder().gender(GenderEnum.女).build();
+        final Integer integer = BraveSql.build(MysqlUserEntity.class).batchInsert(Collections.singleton(build));
+        Assert.assertEquals(integer.intValue(), 1);
     }
 
     /**
@@ -362,32 +418,118 @@ public class SqlsTest {
         BraveSql.build(MysqlUserEntity2.class).insertActive(MysqlUserEntity2.builder().build());
     }
 
+    /**
+     * 测试更新
+     */
     @Test
     public void insertOrUpdate() {
+        final MysqlUserEntity build = MysqlUserEntity.builder().build();
+        build.setAccountNo("update");
+        build.setId(1);
+        build.setGender(GenderEnum.男);
+        final Integer integer = BraveSql.build(MysqlUserEntity.class).insertOrUpdate(build);
+        Assert.assertEquals(integer.intValue(), 1);
+    }
+
+    /**
+     * 测试新增
+     */
+    @Test
+    public void insertOrUpdate2() {
+        final MysqlUserEntity build = MysqlUserEntity.builder().build();
+        build.setAccountNo("insert");
+        build.setId(1001);
+        build.setGender(GenderEnum.男);
+        final Integer integer = BraveSql.build(MysqlUserEntity.class).insertOrUpdate(build);
+        Assert.assertEquals(integer.intValue(), 1);
     }
 
     @Test
     public void update() {
+        final DynamicSql<MysqlUserEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.andEqualTo(MysqlUserEntity::getId, 1);
+        dynamicSql.andEqualTo(MysqlUserEntity::getAccountNo, "账号：0");
+        final MysqlUserEntity build = MysqlUserEntity.builder().id(1).accountNo("accountNo").build();
+        BraveSql.build(dynamicSql, MysqlUserEntity.class).update(build);
     }
 
     @Test
     public void updateActive() {
+        final DynamicSql<MysqlUserEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.andEqualTo(MysqlUserEntity::getAccountNo, "账号：0");
+        dynamicSql.andEqualTo(MysqlUserEntity::getId, 1);
+        final MysqlUserEntity build = MysqlUserEntity.builder().id(1).accountNo("accountNo_updateActive").build();
+        BraveSql.build(dynamicSql, MysqlUserEntity.class).updateActive(build);
+        final MysqlUserEntity mysqlUserEntity = BraveSql.build(dynamicSql, MysqlUserEntity.class).selectSingle();
+        Assert.assertNull(mysqlUserEntity);
     }
 
+    /**
+     * 测试包含主键的更新
+     */
     @Test
     public void updateByPrimaryKey() {
+        final MysqlUserEntity build = MysqlUserEntity.builder().id(1).accountNo("updateByPrimaryKey").build();
+        BraveSql.build(MysqlUserEntity.class).updateByPrimaryKey(build);
+    }
+
+    /**
+     * 测试不包含主键的更新
+     */
+    @Test(expected = BraveException.class)
+    public void updateByPrimaryKey2() {
+        final MysqlUserEntity build = MysqlUserEntity.builder().accountNo("updateByPrimaryKey").build();
+        BraveSql.build(MysqlUserEntity.class).updateByPrimaryKey(build);
     }
 
     @Test
     public void updateActiveByPrimaryKey() {
+        final MysqlUserEntity build = MysqlUserEntity.builder().id(1).accountNo("updateActiveByPrimaryKey").build();
+        final Integer integer = BraveSql.build(MysqlUserEntity.class).updateActiveByPrimaryKey(build);
+        Assert.assertEquals(integer.intValue(), 1);
     }
 
+    @Test(expected = BraveException.class)
+    public void updateActiveByPrimaryKey2() {
+        final MysqlUserEntity build = MysqlUserEntity.builder().accountNo("updateActiveByPrimaryKey").build();
+        final Integer integer = BraveSql.build(MysqlUserEntity.class).updateActiveByPrimaryKey(build);
+    }
+
+    /**
+     * 测试删除全表数据
+     */
     @Test
     public void delete() {
+        BraveSql.build(MysqlUserEntity.class).delete();
     }
+
+    /**
+     * 测试删除ID等于1的数据
+     */
+    @Test
+    public void delete2() {
+        final DynamicSql<MysqlUserEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.andEqualTo(MysqlUserEntity::getId, 1);
+        final Integer delete = BraveSql.build(dynamicSql, MysqlUserEntity.class).delete();
+        Assert.assertEquals(delete.intValue(), 1);
+    }
+
+    /**
+     * 测试删除ID小于700的数据
+     */
+    @Test
+    public void delete3() {
+        final DynamicSql<MysqlUserEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.andLessThan(MysqlUserEntity::getId, 700);
+        final Integer delete = BraveSql.build(dynamicSql, MysqlUserEntity.class).delete();
+        Assert.assertEquals(delete.intValue(), 699);
+    }
+
 
     @Test
     public void deleteByPrimaryKey() {
+        final Integer delete = BraveSql.build(MysqlUserEntity.class).deleteByPrimaryKey(1);
+        Assert.assertEquals(delete.intValue(), 1);
     }
 
     @Test

@@ -138,7 +138,9 @@ public class SqlImpl<T> implements Sqls<T> {
         int totalSize = executeQueryCount(sqlCount, Integer.class, false);
         String sql = "select " + columnList + " from " + tableName + (StringUtils.isEmpty(whereSql) ? SPACE : SPACE + WHERE + SPACE + whereSql.trim());
         sql = ParseSql.parseSql(sql);
-        sql += " limit " + pageInfo.getOffset() + " , " + pageInfo.getPageSize();
+        preparedSql.addParameter(pageInfo.getOffset());
+        preparedSql.addParameter(pageInfo.getPageSize());
+        sql += " limit " + PLACEHOLDER + " , " + PLACEHOLDER;
         DataSourceInfo dataSourceInfo = ContextApplication.getDataSourceInfo(dataSourceName);
         List<T> list;
         if (dataSourceInfo.getDbType().equals(DbType.ORACLE)) {
@@ -193,10 +195,10 @@ public class SqlImpl<T> implements Sqls<T> {
 
     private <R> R executeQueryCount(String sql, Class<R> returnType, boolean isCloseConnection) {
         try {
-            setPreparedStatementParam(sql);
+            setPreparedStatementParam(sql, false);
             resultSet = preparedStatement.executeQuery();
             resultSet.next();
-            return ConverterUtils.convertJdbc(resultSet, "1", returnType);
+            return ConverterUtils.convertJdbc(currentClass, resultSet, "1", returnType);
         } catch (Exception ex) {
             //如果发生异常，则必须归还链接资源
             if (!isCloseConnection)
@@ -211,9 +213,28 @@ public class SqlImpl<T> implements Sqls<T> {
         return null;
     }
 
-    private void setPreparedStatementParam(String sql) throws SQLException {
-        preparedSql.printSqlAndParams(sql);
-        preparedStatement = connection.prepareStatement(sql);
+    private void setPreparedStatementParam(String sql, boolean isBatch, int... generatedKeys) throws SQLException {
+        if (isBatch) {
+            preparedSql.printSqlAndBatchParams(sql);
+        } else {
+            preparedSql.printSqlAndParams(sql);
+        }
+        if (generatedKeys.length > 0) {
+            preparedStatement = connection.prepareStatement(sql, generatedKeys[0]);
+        } else {
+            preparedStatement = connection.prepareStatement(sql);
+        }
+        //是否为批量的SQL语句
+        if (isBatch) {
+            final List<List<Object>> batchPreparedParameters = preparedSql.getBatchPreparedParameters();
+            for (List<Object> preparedParameters : batchPreparedParameters) {
+                for (int i = 1; i <= preparedParameters.size(); i++) {
+                    preparedStatement.setObject(i, preparedParameters.get(i - 1));
+                }
+                preparedStatement.addBatch();
+            }
+            return;
+        }
         final List<Object> preparedParameters = preparedSql.getPreparedParameters();
         for (int i = 1; i <= preparedParameters.size(); i++) {
             preparedStatement.setObject(i, preparedParameters.get(i - 1));
@@ -225,12 +246,12 @@ public class SqlImpl<T> implements Sqls<T> {
         List<TableInfo> tableInfos = ContextApplication.getTableInfos(dataSourceName, tableName);
         List<T> list = new ArrayList<>();
         try {
-            setPreparedStatementParam(sql);
+            setPreparedStatementParam(sql, false);
             resultSet = preparedStatement.executeQuery();
             while (resultSet.next()) {
                 T t = (T) currentClass.newInstance();
                 for (TableInfo tableInfo : tableInfos) {
-                    Object o = ConverterUtils.convertJdbc(resultSet, tableInfo);
+                    Object o = ConverterUtils.convertJdbc(currentClass, resultSet, tableInfo);
                     ReflectUtils.setFieldValue(tableInfo.getField(), t, o);
                 }
                 list.add(t);
@@ -250,7 +271,7 @@ public class SqlImpl<T> implements Sqls<T> {
         final StringBuilder sql = new StringBuilder();
         sql.append("insert into ").append(tableName).append(" ( ").append(columnToStr).append(" ) values ");
         sql.append("( ");
-        tableInfos.forEach(tableInfo -> sql.append(" ? ,"));
+        tableInfos.forEach(tableInfo -> sql.append(" " + PLACEHOLDER + " ,"));
         sql.deleteCharAt(sql.lastIndexOf(","));
         sql.append("),");
         String prepareSql = sql.deleteCharAt(sql.lastIndexOf(",")).toString();
@@ -264,7 +285,7 @@ public class SqlImpl<T> implements Sqls<T> {
         final StringBuilder prefix = new StringBuilder();
         final StringBuilder suffix = new StringBuilder();
         prefix.append("insert into ").append(tableName).append(" ( ");
-        List<Object> insertValues = new ArrayList<>();
+        final List<Object> parameter = preparedSql.startBatchParameter();
         for (TableInfo tableInfo : tableInfos) {
             try {
                 Object invoke = getTableFieldValue(tableInfo, next, true);
@@ -272,8 +293,8 @@ public class SqlImpl<T> implements Sqls<T> {
                     continue;
                 }
                 prefix.append(SPACE).append(tableInfo.getColumn()).append(COMMA);
-                suffix.append("?, ");
-                insertValues.add(invoke);
+                suffix.append(PLACEHOLDER + ", ");
+                parameter.add(invoke);
             } catch (Exception ex) {
                 ExceptionUtils.boxingAndThrowBraveException(ex);
             }
@@ -285,13 +306,8 @@ public class SqlImpl<T> implements Sqls<T> {
         prefix.deleteCharAt(prefix.lastIndexOf(","));
         prefix.append(" ) values (").append(suffix).append(")");
         String sql = prefix.toString();
-        printSql(sql);
         try {
-            preparedStatement = connection.prepareStatement(sql, RETURN_GENERATED_KEYS);
-            for (int i = 1; i <= insertValues.size(); i++) {
-                preparedStatement.setObject(i, ConverterUtils.convertValueJdbc(insertValues.get(i - 1)));
-            }
-            preparedStatement.addBatch();
+            setPreparedStatementParam(sql, true, RETURN_GENERATED_KEYS);
             return executeSqlAndReturnAffectedRows();
         } catch (Exception ex) {
             ExceptionUtils.boxingAndThrowBraveException(ex, sql);
@@ -305,17 +321,16 @@ public class SqlImpl<T> implements Sqls<T> {
     private Integer setValuesExecuteSql(String sql, List<TableInfo> tableInfos) {
         Iterator<T> iterator = data.iterator();
         try {
-            preparedStatement = connection.prepareStatement(sql, RETURN_GENERATED_KEYS);
             while (iterator.hasNext()) {
                 T next = iterator.next();
+                final List<Object> parameters = preparedSql.startBatchParameter();
                 for (int i = 1; i <= tableInfos.size(); i++) {
                     TableInfo tableInfo = tableInfos.get(i - 1);
                     Object fieldValue = getTableFieldValue(tableInfo, next, true);
-                    preparedStatement.setObject(i, ConverterUtils.convertValueJdbc(fieldValue));
+                    parameters.add(ConverterUtils.convertValueJdbc(fieldValue));
                 }
-                printSql(sql);
-                preparedStatement.addBatch();
             }
+            setPreparedStatementParam(sql, true, RETURN_GENERATED_KEYS);
             return executeSqlAndReturnAffectedRows();
         } catch (Exception ex) {
             ExceptionUtils.boxingAndThrowBraveException(ex, sql);
@@ -453,7 +468,7 @@ public class SqlImpl<T> implements Sqls<T> {
         sql.append("insert into ").append(tableName).append(" ( ").append(columnToStr).append(" ) values ( ");
         List<String> duplicateKeys = new ArrayList<>();
         tableInfos.forEach(tableInfo -> {
-            sql.append(" ? ,");
+            sql.append(" " + PLACEHOLDER + " ,");
             duplicateKeys.add(tableInfo.getColumn() + " = values(" + tableInfo.getColumn() + ")");
         });
         String prepareSql = sql.substring(0, sql.length() - 1) + ")";
@@ -545,11 +560,13 @@ public class SqlImpl<T> implements Sqls<T> {
     }
 
     private void appendSetValueSql(List<TableInfo> tableInfos, StringBuilder sql, Object next) {
+        int whereBeforeParamIndex = 0;
         for (TableInfo tableInfo : tableInfos) {
             try {
                 sql.append(SPACE).append(tableInfo.getColumn()).append(SPACE).append(EQ).append(SPACE);
                 Object invoke = getTableFieldValue(tableInfo, next, false);
-                sql.append(ParseSql.matchValue(invoke)).append(COMMA);
+                preparedSql.addParameter(whereBeforeParamIndex++, ParseSql.matchFixValue(invoke, dataSourceName, tableName, tableInfo.getField().getName()));
+                sql.append(PLACEHOLDER).append(COMMA);
             } catch (Exception ex) {
                 ExceptionUtils.boxingAndThrowBraveException(ex, sql.toString());
             }
@@ -605,14 +622,15 @@ public class SqlImpl<T> implements Sqls<T> {
             throw new BraveException(tableName + " 表未配置主键");
         }
         String sql = "delete from " + tableName + " where " + tableInfoPrimaryKey.getColumn() +
-                Constant.EQ + ParseSql.matchValue(primaryKeyValue);
+                Constant.EQ + SPACE + PLACEHOLDER;
+        final Object value = ParseSql.matchFixValue(primaryKeyValue, dataSourceName, tableName, tableInfoPrimaryKey.getField().getName());
+        preparedSql.addParameter(value);
         return executeUpdateSqlAndReturnAffectedRows(sql);
     }
 
     private Integer executeUpdateSqlAndReturnAffectedRows(String sql) {
         try {
-            printSql(sql);
-            preparedStatement = connection.prepareStatement(sql);
+            setPreparedStatementParam(sql, false);
             return preparedStatement.executeUpdate();
         } catch (SQLException ex) {
             ExceptionUtils.boxingAndThrowBraveException(ex, sql);
@@ -623,6 +641,7 @@ public class SqlImpl<T> implements Sqls<T> {
     }
 
     private void updateSqlCheckSetNullProperties(StringBuilder sql, List<TableInfo> tableInfos, T nextObject) {
+        int whereBeforeParamIndex = 0;
         for (TableInfo tableInfo : tableInfos) {
             try {
                 Object invoke = getTableFieldValue(tableInfo, nextObject, false);
@@ -630,7 +649,8 @@ public class SqlImpl<T> implements Sqls<T> {
                     continue;
                 }
                 sql.append(SPACE).append(tableInfo.getColumn()).append(SPACE).append(EQ).append(SPACE);
-                sql.append(ParseSql.matchValue(invoke)).append(COMMA);
+                preparedSql.addParameter(whereBeforeParamIndex++, ParseSql.matchFixValue(invoke, dataSourceName, tableName, tableInfo.getField().getName()));
+                sql.append(PLACEHOLDER).append(COMMA);
             } catch (Exception ex) {
                 throw new BraveException(ex.getMessage(), ex);
             }

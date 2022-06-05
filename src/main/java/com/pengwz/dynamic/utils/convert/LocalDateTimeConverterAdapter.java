@@ -21,16 +21,16 @@ public class LocalDateTimeConverterAdapter implements ConverterAdapter<LocalDate
     private static final Log log = LogFactory.getLog(LocalDateTimeConverterAdapter.class);
 
     @Override
-    public LocalDateTime converter(Object currentValue, Class<LocalDateTime> targetClass) {
+    public LocalDateTime converter(Class<?> entityClass, Class<LocalDateTime> fieldClass, Object columnValue) {
         try {
-            if (currentValue instanceof Number) {
-                return Instant.ofEpochSecond(((Number) currentValue).longValue()).atZone(ZoneId.systemDefault()).toLocalDateTime();
+            if (columnValue instanceof Number) {
+                return Instant.ofEpochSecond(((Number) columnValue).longValue()).atZone(ZoneId.systemDefault()).toLocalDateTime();
             }
-            if (Date.class.isAssignableFrom(targetClass)) {
-                return transferDate(currentValue);
+            if (Date.class.isAssignableFrom(fieldClass)) {
+                return transferDate(columnValue);
             }
-            if (LocalDateTime.class.isAssignableFrom(targetClass)) {
-                return transferLocalDateTime(currentValue);
+            if (LocalDateTime.class.isAssignableFrom(fieldClass)) {
+                return transferLocalDateTime(columnValue);
             }
         } catch (ParseException parseException) {
             log.warn("不受支持的转换。" + parseException.getMessage());
@@ -66,4 +66,5 @@ public class LocalDateTimeConverterAdapter implements ConverterAdapter<LocalDate
         LocalDate localDate = (LocalDate) currentValue;
         return (T) LocalDateTime.of(localDate, LocalTime.MIN);
     }
+
 }

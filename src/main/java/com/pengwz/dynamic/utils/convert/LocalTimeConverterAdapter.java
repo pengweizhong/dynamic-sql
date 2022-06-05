@@ -22,16 +22,16 @@ public class LocalTimeConverterAdapter implements ConverterAdapter<LocalTime> {
     private static final Log log = LogFactory.getLog(LocalTimeConverterAdapter.class);
 
     @Override
-    public LocalTime converter(Object currentValue, Class<LocalTime> targetClass) {
+    public LocalTime converter(Class<?> entityClass, Class<LocalTime> fieldClass, Object columnValue) {
         try {
-            if (Timestamp.class.isAssignableFrom(currentValue.getClass())) {
-                LocalDateTime localDateTime = ((Timestamp) currentValue).toLocalDateTime();
+            if (Timestamp.class.isAssignableFrom(columnValue.getClass())) {
+                LocalDateTime localDateTime = ((Timestamp) columnValue).toLocalDateTime();
                 return localDateTime.toLocalTime();
             }
-            if (currentValue instanceof Number) {
-                return Instant.ofEpochSecond(((Number) currentValue).longValue()).atZone(ZoneId.systemDefault()).toLocalTime();
+            if (columnValue instanceof Number) {
+                return Instant.ofEpochSecond(((Number) columnValue).longValue()).atZone(ZoneId.systemDefault()).toLocalTime();
             }
-            String valueStr = String.valueOf(currentValue);
+            String valueStr = String.valueOf(columnValue);
             if (REGULAR_HH_MM_SS.matcher(valueStr).matches()) {
                 return LocalTime.parse(valueStr, HH_MM_SS);
             }

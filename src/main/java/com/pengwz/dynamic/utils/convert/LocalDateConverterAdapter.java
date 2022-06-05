@@ -5,19 +5,18 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.util.Date;
 
 import static com.pengwz.dynamic.constant.Constant.*;
 
 @SuppressWarnings("unchecked")
 public class LocalDateConverterAdapter implements ConverterAdapter<LocalDate> {
     @Override
-    public LocalDate converter(Object currentValue, Class<LocalDate> targetClass) {
-        if (currentValue instanceof Number) {
-            return Instant.ofEpochSecond(((Number) currentValue).longValue()).atZone(ZoneId.systemDefault()).toLocalDate();
+    public LocalDate converter(Class<?> entityClass, Class<LocalDate> fieldClass, Object columnValue) {
+        if (columnValue instanceof Number) {
+            return Instant.ofEpochSecond(((Number) columnValue).longValue()).atZone(ZoneId.systemDefault()).toLocalDate();
         }
-        if (LocalDate.class.isAssignableFrom(targetClass)) {
-            return transferString(currentValue);
+        if (LocalDate.class.isAssignableFrom(fieldClass)) {
+            return transferString(fieldClass);
         }
         return null;
     }
