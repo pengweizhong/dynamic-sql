@@ -12,6 +12,7 @@ public class SimpleTest {
 
     @Test
     public void test1() {
+        System.out.println(SimpleTest.class.getCanonicalName());
     }
 
     public class SqlsImpl2 implements Sqls {

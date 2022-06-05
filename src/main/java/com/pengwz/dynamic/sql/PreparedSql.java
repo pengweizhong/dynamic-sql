@@ -97,6 +97,7 @@ public class PreparedSql {
     }
 
     public void printSqlAndParams(String sql) {
+        this.setSql(sql);
         if (log.isDebugEnabled()) {
             try {
                 final ArrayList<String> paramList = new ArrayList<>();
@@ -115,6 +116,7 @@ public class PreparedSql {
     }
 
     public void printSqlAndBatchParams(String sql) {
+        this.setSql(sql);
         if (log.isDebugEnabled()) {
             try {
                 for (List<Object> params : batchParams) {
@@ -132,5 +134,24 @@ public class PreparedSql {
         }
     }
 
+    public Class<?> getCurrentClass() {
+        return currentClass;
+    }
+
+    public String getSql() {
+        return sql;
+    }
+
+    public void setSql(String sql) {
+        this.sql = sql;
+    }
+
+    public List<Object> getParams() {
+        return params;
+    }
+
+    public List<List<Object>> getBatchParams() {
+        return batchParams;
+    }
 }
 

@@ -4,9 +4,11 @@ import com.google.gson.Gson;
 import com.pengwz.dynamic.anno.*;
 import com.pengwz.dynamic.config.TestDatabaseConfig;
 import com.pengwz.dynamic.exception.BraveException;
+import com.pengwz.dynamic.interceptor.SQLInterceptor;
 import com.pengwz.dynamic.sql.BraveSql;
 import com.pengwz.dynamic.sql.DynamicSql;
 import com.pengwz.dynamic.sql.PageInfo;
+import com.pengwz.dynamic.utils.InterceptorHelper;
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.*;
@@ -16,6 +18,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * mysql 测试用例
@@ -361,6 +364,7 @@ public class SqlsTest {
         log.info("entities.size() :{}", entities.size());
     }
 
+
     @Test(expected = BraveException.class)
     public void selectPageInfo() {
         final PageInfo<MysqlUserEntity> pageInfo = BraveSql.build(MysqlUserEntity.class).selectPageInfo(-1, -1);
@@ -532,14 +536,104 @@ public class SqlsTest {
         Assert.assertEquals(delete.intValue(), 1);
     }
 
+    /**
+     * 测试SQL拦截器
+     */
     @Test
-    public void printSql() {
+    public void testSQLInterceptor() {
+        final List<MysqlUserEntity> entities = BraveSql.build(MysqlUserEntity.class).select();
+        Assert.assertEquals(entities.size(), 1000);
+        log.info("entities.size() :{}", entities.size());
+        final DynamicSql<MysqlUserEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.andGreaterThanOrEqualTo(MysqlUserEntity::getId, 900);
+        final List<MysqlUserEntity> select = BraveSql.build(dynamicSql, MysqlUserEntity.class).select();
+        log.info("select.size() :{}", select.size());
     }
 
+    /**
+     * 测试SQL拦截器,测试SQL不执行的情况
+     */
     @Test
-    public void printParams() {
+    public void testSQLInterceptor2() {
+//        InterceptorHelper.initSQLInterceptor(new FalseSQLInterceptor());
+        final DynamicSql<MysqlUserEntity> dynamicSql = DynamicSql.createDynamicSql();
+        //设置一个类型不匹配的错误
+        dynamicSql.andGreaterThanOrEqualTo(MysqlUserEntity::getId, null);
+        final List<MysqlUserEntity> select = BraveSql.build(dynamicSql, MysqlUserEntity.class).select();
+        log.info("select.size() :{}", select.size());
+        Assert.assertEquals(0, select.size());
     }
 
+    /**
+     * 测试SQL拦截器,测试SQL执行的情况
+     */
+    @Test
+    public void testSQLInterceptor3() {
+        InterceptorHelper.initSQLInterceptor(new CustomSQLInterceptor());
+        final DynamicSql<MysqlUserEntity> dynamicSql = DynamicSql.createDynamicSql();
+        //设置一个类型不匹配的错误
+        dynamicSql.andGreaterThanOrEqualTo(MysqlUserEntity::getId, 300);
+        final List<MysqlUserEntity> select = BraveSql.build(dynamicSql, MysqlUserEntity.class).select();
+        log.info("select.size() :{}", select.size());
+        Assert.assertEquals(701, select.size());
+    }
+
+    /**
+     * 测试SQL拦截器,测试SQL报错
+     */
+    @Test(expected = BraveException.class)
+    public void testSQLInterceptor4() {
+        InterceptorHelper.initSQLInterceptor(new CustomSQLInterceptor());
+        final AtomicInteger atomicInteger = BraveSql.build(MysqlUserEntity.class).selectAvg(MysqlUserEntity::getId, AtomicInteger.class);
+        System.out.println(atomicInteger);
+    }
+
+    /**
+     * 测试SQL拦截器,重复插入测试SQL报错
+     */
+    @Test(expected = BraveException.class)
+    public void testSQLInterceptor5() {
+        InterceptorHelper.initSQLInterceptor(new CustomSQLInterceptor());
+        final MysqlUserEntity build = MysqlUserEntity.builder().id(9999).accountNo("9999").build();
+        BraveSql.build(MysqlUserEntity.class).batchInsert(Arrays.asList(build, build, build));
+    }
+
+    public static class CustomSQLInterceptor implements SQLInterceptor {
+
+        @Override
+        public boolean doBefore(Class<?> entityClass, String sql, List<List<Object>> sqlParams) {
+            log.info("entityClass :{}" + entityClass);
+            log.info("sql :{}" + sql);
+            log.info("sqlParams :{}" + sqlParams);
+            log.info("true 开始执行SQL");
+            return true;
+        }
+
+        @Override
+        public void doAfter(Class<?> entityClass, BraveException braveException) {
+            if (braveException != null) {
+                throw braveException;
+            }
+            log.info("doAfter==================================================");
+        }
+    }
+
+//    public static class FalseSQLInterceptor implements SQLInterceptor {
+//
+//        @Override
+//        public boolean doBefore(Class<?> entityClass, String sql, List<List<Object>> sqlParams) {
+//            log.info("entityClass :{}" + entityClass);
+//            log.info("sql :{}" + sql);
+//            log.info("sqlParams :{}" + sqlParams);
+//            log.info("false,不会执行SQL");
+//            return false;
+//        }
+//
+//        @Override
+//        public void doAfter(Class<?> entityClass, BraveException braveException) {
+//
+//        }
+//    }
 
     /**
      * 初始化语句

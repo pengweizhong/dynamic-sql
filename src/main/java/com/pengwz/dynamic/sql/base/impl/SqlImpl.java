@@ -43,6 +43,7 @@ public class SqlImpl<T> implements Sqls<T> {
     private Iterable<T> data;
     private List<String> updateNullProperties;
     private PreparedSql preparedSql;
+    private InterceptorHelper interceptorHelper;
     private String tableName;
     private String dataSourceName;
     private String whereSql;
@@ -55,7 +56,6 @@ public class SqlImpl<T> implements Sqls<T> {
         String columnList = ContextApplication.formatAllColumToStr(dataSourceName, tableName);
         String primaryKey = ContextApplication.getPrimaryKey(dataSourceName, tableName);
         preparedSql.addParameter(primaryKeyValue);
-//        params.add(ParseSql.matchValue(primaryKeyValue));
         String sql = SELECT + SPACE + columnList + SPACE + FROM + SPACE + tableName + SPACE + WHERE + SPACE + primaryKey + SPACE + EQ + SPACE + "?";
         List<T> ts = executeQuery(sql, tableName);
         return ts.isEmpty() ? null : ts.get(0);
@@ -194,20 +194,24 @@ public class SqlImpl<T> implements Sqls<T> {
     }
 
     private <R> R executeQueryCount(String sql, Class<R> returnType, boolean isCloseConnection) {
+        Exception exception = null;
         try {
             setPreparedStatementParam(sql, false);
-            resultSet = preparedStatement.executeQuery();
-            resultSet.next();
-            return ConverterUtils.convertJdbc(currentClass, resultSet, "1", returnType);
+            if (interceptorHelper.transferBefore()) {
+                resultSet = preparedStatement.executeQuery();
+                resultSet.next();
+                return ConverterUtils.convertJdbc(currentClass, resultSet, "1", returnType);
+            }
         } catch (Exception ex) {
             //如果发生异常，则必须归还链接资源
             if (!isCloseConnection)
                 isCloseConnection = true;
-            ExceptionUtils.boxingAndThrowBraveException(ex, sql);
+            exception = ex;
         } finally {
             if (isCloseConnection) {
                 DataSourceManagement.close(dataSourceName, resultSet, preparedStatement, connection);
             }
+            interceptorHelper.transferAfter(exception, sql);
         }
         //不会走到这的  此处仅仅是为了编译器开心
         return null;
@@ -245,21 +249,26 @@ public class SqlImpl<T> implements Sqls<T> {
     private List<T> executeQuery(String sql, String tableName) {
         List<TableInfo> tableInfos = ContextApplication.getTableInfos(dataSourceName, tableName);
         List<T> list = new ArrayList<>();
+        Exception exception = null;
         try {
             setPreparedStatementParam(sql, false);
-            resultSet = preparedStatement.executeQuery();
-            while (resultSet.next()) {
-                T t = (T) currentClass.newInstance();
-                for (TableInfo tableInfo : tableInfos) {
-                    Object o = ConverterUtils.convertJdbc(currentClass, resultSet, tableInfo);
-                    ReflectUtils.setFieldValue(tableInfo.getField(), t, o);
+            if (interceptorHelper.transferBefore()) {
+                resultSet = preparedStatement.executeQuery();
+                while (resultSet.next()) {
+                    T t = (T) currentClass.newInstance();
+                    for (TableInfo tableInfo : tableInfos) {
+                        Object o = ConverterUtils.convertJdbc(currentClass, resultSet, tableInfo);
+                        ReflectUtils.setFieldValue(tableInfo.getField(), t, o);
+                    }
+                    list.add(t);
                 }
-                list.add(t);
             }
         } catch (Exception ex) {
-            ExceptionUtils.boxingAndThrowBraveException(ex, sql);
+            exception = ex;
+//            ExceptionUtils.boxingAndThrowBraveException(ex, sql);
         } finally {
             DataSourceManagement.close(dataSourceName, resultSet, preparedStatement, connection);
+            interceptorHelper.transferAfter(exception, sql);
         }
         return list;
     }
@@ -306,13 +315,15 @@ public class SqlImpl<T> implements Sqls<T> {
         prefix.deleteCharAt(prefix.lastIndexOf(","));
         prefix.append(" ) values (").append(suffix).append(")");
         String sql = prefix.toString();
+        Exception exception = null;
         try {
             setPreparedStatementParam(sql, true, RETURN_GENERATED_KEYS);
             return executeSqlAndReturnAffectedRows();
         } catch (Exception ex) {
-            ExceptionUtils.boxingAndThrowBraveException(ex, sql);
+            exception = ex;
         } finally {
             DataSourceManagement.close(dataSourceName, resultSet, preparedStatement, connection);
+            interceptorHelper.transferAfter(exception, sql);
         }
         return -1;
     }
@@ -320,6 +331,7 @@ public class SqlImpl<T> implements Sqls<T> {
 
     private Integer setValuesExecuteSql(String sql, List<TableInfo> tableInfos) {
         Iterator<T> iterator = data.iterator();
+        Exception exception = null;
         try {
             while (iterator.hasNext()) {
                 T next = iterator.next();
@@ -333,9 +345,10 @@ public class SqlImpl<T> implements Sqls<T> {
             setPreparedStatementParam(sql, true, RETURN_GENERATED_KEYS);
             return executeSqlAndReturnAffectedRows();
         } catch (Exception ex) {
-            ExceptionUtils.boxingAndThrowBraveException(ex, sql);
+            exception = ex;
         } finally {
             DataSourceManagement.close(dataSourceName, resultSet, preparedStatement, connection);
+            interceptorHelper.transferAfter(exception, sql);
         }
         return -1;
     }
@@ -425,6 +438,9 @@ public class SqlImpl<T> implements Sqls<T> {
 
     private Integer executeSqlAndReturnAffectedRows() throws SQLException {
         int successCount = -1;
+        if (!interceptorHelper.transferBefore()) {
+            return successCount;
+        }
         int[] ints = preparedStatement.executeBatch();
         successCount = ints.length;
         TableInfo tableInfoPrimaryKey = ContextApplication.getTableInfoPrimaryKey(dataSourceName, tableName);
@@ -499,24 +515,6 @@ public class SqlImpl<T> implements Sqls<T> {
         return baseUpdate(sql);
     }
 
-//    @Override
-//    public Integer updateBatch() {
-//        List<TableInfo> tableInfos = ContextApplication.getTableInfos(dataSourceName, tableName);
-//        StringBuilder sql = new StringBuilder();
-//        sql.append("update ").append(tableName).append(" set");
-//        for (T next : data) {
-//            for (TableInfo tableInfo : tableInfos) {
-//                try {
-//                    Object invoke = ReflectUtils.getFieldValue(tableInfo.getField(), next);
-//                    sql.append(SPACE).append(tableInfo.getColumn()).append(SPACE).append(EQ).append(SPACE);
-//                    sql.append(ParseSql.matchValue(invoke)).append(COMMA);
-//                } catch (Exception ex) {
-//                    ExceptionUtils.boxingAndThrowBraveException(ex, sql.toString());
-//                }
-//            }
-//        }
-//        return setValuesExecuteSql(sql.toString(), tableInfos);
-//    }
 
     private Integer baseUpdate(StringBuilder sql) {
         if (sql.toString().endsWith("set")) {
@@ -629,13 +627,17 @@ public class SqlImpl<T> implements Sqls<T> {
     }
 
     private Integer executeUpdateSqlAndReturnAffectedRows(String sql) {
+        Exception exception = null;
         try {
             setPreparedStatementParam(sql, false);
-            return preparedStatement.executeUpdate();
+            if (interceptorHelper.transferBefore()) {
+                return preparedStatement.executeUpdate();
+            }
         } catch (SQLException ex) {
-            ExceptionUtils.boxingAndThrowBraveException(ex, sql);
+            exception = ex;
         } finally {
             DataSourceManagement.close(dataSourceName, resultSet, preparedStatement, connection);
+            interceptorHelper.transferAfter(exception, sql);
         }
         return -1;
     }
@@ -657,32 +659,6 @@ public class SqlImpl<T> implements Sqls<T> {
         }
     }
 
-    //    private void printSql(PreparedStatement preparedStatement, String sql) throws SQLException {
-//        if (log.isDebugEnabled()) {
-//            log.debug(sql);
-//            switch (preparedStatement.getConnection().getMetaData().getDatabaseProductName().toUpperCase()) {
-//                case "ORACLE":
-//                    try {
-//                        String canonicalName = preparedStatement.getClass().getCanonicalName();
-//                        if (canonicalName.equals("com.alibaba.druid.pool.DruidPooledPreparedStatement")) {
-//                            DruidPooledPreparedStatement druidPooledPreparedStatement = (DruidPooledPreparedStatement) preparedStatement;
-//                            log.debug(druidPooledPreparedStatement.getSql());
-//                        } else {
-//                            log.debug("[" + canonicalName + "] is not support print sql.");
-//                        }
-//                    } catch (Exception e) {
-//                        e.printStackTrace();
-//                    }
-//                    break;
-//                case "MYSQL":
-//                    String temp = preparedStatement.toString();
-//                    log.debug(temp.substring(temp.indexOf(':') + 1));
-//                    break;
-//                default:
-//                    log.debug(preparedStatement.toString());
-//            }
-//        }
-//    }
 
     private void buildPageInfo(PageInfo<T> pageInfo, List<T> list, Integer totalSize) {
         pageInfo.setTotalSize(totalSize);
@@ -707,6 +683,7 @@ public class SqlImpl<T> implements Sqls<T> {
         this.data = data;
         this.updateNullProperties = updateNullProperties;
         this.preparedSql = new PreparedSql(currentClass, params);
+        this.interceptorHelper = new InterceptorHelper(preparedSql);
     }
 
     public void before() {
