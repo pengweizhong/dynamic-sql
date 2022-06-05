@@ -23,6 +23,9 @@ public class InterceptorHelper {
             sqlInterceptorReference.set(sqlInterceptor);
             return;
         }
+        if (sqlInterceptor.getClass().equals(savedSqlInterceptor.getClass())) {
+            return;
+        }
         throw new BraveException("不允许配置多个SQL拦截器；请最多保留一个拦截器，" +
                 "参考位置：" + savedSqlInterceptor.getClass().getCanonicalName() + "，" + sqlInterceptor.getClass().getCanonicalName());
     }
