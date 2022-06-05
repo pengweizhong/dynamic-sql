@@ -61,20 +61,22 @@ public interface Sqls<T> {
         }
     }
 
-    default void printParams(Object... params) {
-        if (log.isDebugEnabled() && params != null && params.length > 1) {
-            try {
-                final ArrayList<String> paramList = new ArrayList<>();
-                for (int i = 1; i <= params.length; i++) {
-                    paramList.add(i + ": " + params[i - 1]);
-                }
-                final String join = String.join("\n\r", paramList);
-                log.debug(join);
-            } catch (Exception ex) {
-                log.error("打印SQL参数时发生异常，请检查ToString()方法是否允许被正常输出");
-            }
-
-        }
-    }
+//    default void printSqlAndParams(String sql, List<Object> params) {
+//        if (log.isDebugEnabled()) {
+//            try {
+//                final ArrayList<String> paramList = new ArrayList<>();
+//                for (int i = 1; i <= params.size(); i++) {
+//                    //加 - 是否会引起误解？
+//                    paramList.add(/*i + " - " +*/ params.get(i - 1) + "");
+//                }
+//                final String join = String.join(", ", paramList);
+//                log.debug("Preparing: " + sql + "\n\r" + "Parameters: " + join);
+//            } catch (Exception ex) {
+//                log.error(sql);
+//                log.error("打印SQL参数时发生异常，请检查ToString()方法是否允许被正常输出");
+//            }
+//
+//        }
+//    }
 
 }

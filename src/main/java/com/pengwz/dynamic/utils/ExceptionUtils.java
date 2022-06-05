@@ -31,6 +31,9 @@ public class ExceptionUtils {
             if (StringUtils.isBlank(sqlState)) {
                 throw new BraveException(throwable.getMessage());
             }
+            if (sqlState.startsWith("22")) {
+                throw new BraveException("违反表字段类型限制", sql, throwable.getMessage());
+            }
             if (sqlState.startsWith("23")) {
                 throw new BraveException("违反表约束条件", sql, throwable.getMessage());
             }
@@ -43,20 +46,20 @@ public class ExceptionUtils {
             if (sqlState.startsWith("40")) {
                 throw new BraveException("事务回滚异常", sql, throwable.getMessage());
             }
-            if (sqlState.startsWith("22")) {
-                throw new BraveException("违反表字段类型限制", sql, throwable.getMessage());
+            if (sqlState.startsWith("42")) {
+                throw new BraveException("SQL执行错误，可能传入了类型不匹配的值", sql, throwable.getMessage());
             }
             if (sqlState.startsWith("58")) {
                 throw new BraveException("数据库异常", sql, throwable.getMessage());
+            }
+            if (sqlState.startsWith("99")) {
+                throw new BraveException(throwable.getMessage(), throwable);
             }
             if (sqlState.startsWith("S0")) {
                 throw new BraveException("实体类属性不在SQL查询返回的结果集内", sql, throwable.getMessage());
             }
             if (sqlState.startsWith("HY")) {
                 throw new BraveException("缺少必要的字段", sql, throwable.getMessage());
-            }
-            if (sqlState.startsWith("99")) {
-                throw new BraveException(throwable.getMessage(), throwable);
             }
             if (StringUtils.isBlank(sql)) {
                 throw new BraveException(throwable.getMessage(), throwable);
@@ -68,8 +71,6 @@ public class ExceptionUtils {
             String message = StringUtils.isBlank(sql) ? "无法创建对象，可能不存在无参构造器" : "无法创建对象，可能不存在无参构造器。ERROR SQL：" + sql;
             throw new BraveException(message, throwable);
         }
-
-
         if (throwable instanceof BraveException) {
             throw (BraveException) throwable;
         }

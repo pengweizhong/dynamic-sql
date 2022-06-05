@@ -3,8 +3,7 @@ package com.pengwz.dynamic.sql;
 import com.pengwz.dynamic.anno.Table;
 import com.pengwz.dynamic.check.Check;
 import com.pengwz.dynamic.exception.BraveException;
-import com.pengwz.dynamic.model.DataSourceInfo;
-import com.pengwz.dynamic.model.DbType;
+import com.pengwz.dynamic.model.TableInfo;
 import com.pengwz.dynamic.sql.base.HandleFunction;
 import com.pengwz.dynamic.sql.base.impl.Count;
 import com.pengwz.dynamic.sql.base.impl.GroupBy;
@@ -22,8 +21,8 @@ import static com.pengwz.dynamic.check.Check.checkAndSave;
 import static com.pengwz.dynamic.constant.Constant.*;
 
 public class ParseSql {
-
-    public static String parse(Class<?> currentClass, Table table, String dataSource, List<Declaration> declarationList, Map<String, List<String>> orderByMap) {
+    public static String parse(Class<?> currentClass, Table table, String dataSource, List<Declaration> declarationList,
+                               Map<String, List<String>> orderByMap, List<Object> params) {
         String tableName = Check.getTableName(table.value(), dataSource);
         checkAndSave(currentClass, table, dataSource);
         StringBuilder whereSql = new StringBuilder();
@@ -57,14 +56,17 @@ public class ParseSql {
                 whereSql.append(declaration.getAndOr()).append(SPACE);
                 whereSql.append(ContextApplication.getColumnByField(dataSource, tableName, declaration.getProperty())).append(SPACE);
                 whereSql.append(declaration.getCondition()).append(SPACE);
-                whereSql.append(matchValue(declaration.getValue(), dataSource)).append(SPACE);
+                params.add(matchFixValue(declaration.getValue(), dataSource, tableName, declaration.getProperty()));
+                splicePlaceholders(whereSql, declaration.getValue());
                 whereSql.append(AND).append(SPACE);
-                whereSql.append(matchValue(declaration.getValue2(), dataSource)).append(SPACE);
+                params.add(matchFixValue(declaration.getValue2(), dataSource, tableName, declaration.getProperty()));
+                splicePlaceholders(whereSql, declaration.getValue2());
             } else {
                 whereSql.append(declaration.getAndOr()).append(SPACE);
                 whereSql.append(ContextApplication.getColumnByField(dataSource, tableName, declaration.getProperty())).append(SPACE);
                 whereSql.append(declaration.getCondition()).append(SPACE);
-                whereSql.append(matchValue(declaration.getValue(), dataSource)).append(SPACE);
+                params.add(matchFixValue(declaration.getValue(), dataSource, tableName, declaration.getProperty()));
+                splicePlaceholders(whereSql, declaration.getValue());
             }
         }
         if (Objects.nonNull(orderByMap)) {
@@ -128,12 +130,38 @@ public class ParseSql {
         return sb.toString();
     }
 
-    public static Object matchValue(Object value, String dataSourceName) {
-        final DataSourceInfo dataSourceInfo = ContextApplication.getDataSourceInfo(dataSourceName);
-        final DbType dbType = dataSourceInfo.getDbType();
+    public static void splicePlaceholders(StringBuilder sb, Object value) {
+        if (value instanceof Iterable) {
+            Iterator iterator = ((Iterable) value).iterator();
+            if (!iterator.hasNext()) {
+                throw new BraveException("SQL参数集合不可以为空");
+            }
+            sb.append(LEFT_BRACKETS);
+            while (iterator.hasNext()) {
+                iterator.next();
+                sb.append(PLACEHOLDER).append(COMMA).append(SPACE);
+            }
+            final int index = sb.lastIndexOf(COMMA + SPACE);
+            sb.delete(index, sb.length());
+            sb.append(SPACE);
+            sb.append(RIGHT_BRACKETS);
+        } else {
+            sb.append(PLACEHOLDER).append(SPACE);
+        }
+    }
+
+    public static Object matchFixValue(Object value, String database, String tableName, String property) {
+        final TableInfo tableInfo = ContextApplication.getTableInfo(database, tableName, property);
+        if (tableInfo.getJsonMode() != null) {
+            return ConverterUtils.getGson(tableInfo.getJsonMode()).toJson(value);
+        }
+        return value;
+    }
+
+    public static Object matchValue(Object value) {
         value = ConverterUtils.convertValueJdbc(value);
         if (value instanceof String) {
-            return fixSQLInjection(dbType, (String) value);
+            return "'" + value + "'";
         }
         if (value instanceof Number) {
             return value;
@@ -156,8 +184,7 @@ public class ParseSql {
             while (iterator.hasNext()) {
                 Object next = iterator.next();
                 if (next instanceof String) {
-                    return sb.append(fixSQLInjection(dbType, (String) value)).append(COMMA);
-//                    sb.append("'").append(next).append("'").append(COMMA);
+                    sb.append("'").append(next).append("'").append(COMMA);
                 } else if (next instanceof Enum) {
                     sb.append("'").append(((Enum<?>) next).name()).append("'").append(COMMA);
                 } else {
@@ -171,15 +198,15 @@ public class ParseSql {
         return value;
     }
 
-    private static String fixSQLInjection(final DbType dbType, String value) {
-        if (value.contains("\\")) {
-            value = value.replace("\\", "\\\\");
-        }
-        if (value.contains("'")) {
-            value = value.replace("'", "\\'");
-        }
-        return "'" + value + "'";
-    }
+//    private static String fixSQLInjection(final DbType dbType, String value) {
+//        if (value.contains("\\")) {
+//            value = value.replace("\\", "\\\\");
+//        }
+//        if (value.contains("'")) {
+//            value = value.replace("'", "\\'");
+//        }
+//        return "'" + value + "'";
+//    }
 
     public static String parseAggregateFunction(String aggregateFunctionName, String dataSource, String tableName, Declaration declaration) {
         StringBuilder whereFunctionSql = new StringBuilder();

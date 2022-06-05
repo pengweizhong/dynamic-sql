@@ -1,13 +1,10 @@
 package com.pengwz.dynamic;
 
-import com.pengwz.dynamic.entity.JobUserEntity;
 import com.pengwz.dynamic.sql.PageInfo;
 import com.pengwz.dynamic.sql.base.Sqls;
 import com.pengwz.dynamic.sql.base.enumerate.FunctionEnum;
-import com.sun.org.apache.bcel.internal.classfile.SimpleElementValue;
 import org.junit.Test;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 public class SimpleTest {
@@ -15,13 +12,6 @@ public class SimpleTest {
 
     @Test
     public void test1() {
-        final SqlsImpl2 sqlsImpl2 = new SqlsImpl2();
-        sqlsImpl2.printParams(null);
-        System.out.println("=====================");
-        sqlsImpl2.printParams();
-        System.out.println("=====================");
-        sqlsImpl2.printParams(1, new JobUserEntity(), LocalDateTime.now(), null, "", "  ", new String());
-        System.out.println("=====================");
     }
 
     public class SqlsImpl2 implements Sqls {

@@ -9,7 +9,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import javax.sql.DataSource;
-import javax.sql.rowset.serial.SerialException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -118,6 +117,10 @@ public class ContextApplication {
             members.add(tableInfo.getColumn());
         });
         return members;
+    }
+
+    public static TableInfo getTableInfo(String dataSourceName, String tableName, String property) {
+        return getTableInfos(dataSourceName, tableName).stream().filter(tb -> tb.getField().getName().equals(property)).findFirst().get();
     }
 
     public static List<TableInfo> getTableInfos(Class<?> dataSourceClass, String tableName) {

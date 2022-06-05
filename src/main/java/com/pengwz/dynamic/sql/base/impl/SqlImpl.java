@@ -12,6 +12,7 @@ import com.pengwz.dynamic.model.TableInfo;
 import com.pengwz.dynamic.sql.ContextApplication;
 import com.pengwz.dynamic.sql.PageInfo;
 import com.pengwz.dynamic.sql.ParseSql;
+import com.pengwz.dynamic.sql.PreparedSql;
 import com.pengwz.dynamic.sql.base.Sqls;
 import com.pengwz.dynamic.sql.base.enumerate.FunctionEnum;
 import com.pengwz.dynamic.utils.*;
@@ -41,6 +42,7 @@ public class SqlImpl<T> implements Sqls<T> {
     //需要插入、更新的数据
     private Iterable<T> data;
     private List<String> updateNullProperties;
+    private PreparedSql preparedSql;
     private String tableName;
     private String dataSourceName;
     private String whereSql;
@@ -52,9 +54,10 @@ public class SqlImpl<T> implements Sqls<T> {
     public T selectByPrimaryKey(Object primaryKeyValue) {
         String columnList = ContextApplication.formatAllColumToStr(dataSourceName, tableName);
         String primaryKey = ContextApplication.getPrimaryKey(dataSourceName, tableName);
-        Object value = ParseSql.matchValue(primaryKeyValue, dataSourceName);
+        preparedSql.addParameter(primaryKeyValue);
+//        params.add(ParseSql.matchValue(primaryKeyValue));
         String sql = SELECT + SPACE + columnList + SPACE + FROM + SPACE + tableName + SPACE + WHERE + SPACE + primaryKey + SPACE + EQ + SPACE + "?";
-        List<T> ts = executeQuery(sql, tableName, value);
+        List<T> ts = executeQuery(sql, tableName);
         return ts.isEmpty() ? null : ts.get(0);
     }
 
@@ -190,8 +193,7 @@ public class SqlImpl<T> implements Sqls<T> {
 
     private <R> R executeQueryCount(String sql, Class<R> returnType, boolean isCloseConnection) {
         try {
-            printSql(sql);
-            preparedStatement = connection.prepareStatement(sql);
+            setPreparedStatementParam(sql);
             resultSet = preparedStatement.executeQuery();
             resultSet.next();
             return ConverterUtils.convertJdbc(resultSet, "1", returnType);
@@ -209,18 +211,21 @@ public class SqlImpl<T> implements Sqls<T> {
         return null;
     }
 
+    private void setPreparedStatementParam(String sql) throws SQLException {
+        preparedSql.printSqlAndParams(sql);
+        preparedStatement = connection.prepareStatement(sql);
+        final List<Object> preparedParameters = preparedSql.getPreparedParameters();
+        for (int i = 1; i <= preparedParameters.size(); i++) {
+            preparedStatement.setObject(i, preparedParameters.get(i - 1));
+        }
+    }
+
     @SuppressWarnings("unchecked")
-    private List<T> executeQuery(String sql, String tableName, Object... value) {
+    private List<T> executeQuery(String sql, String tableName) {
         List<TableInfo> tableInfos = ContextApplication.getTableInfos(dataSourceName, tableName);
         List<T> list = new ArrayList<>();
-        printSql(sql);
         try {
-            preparedStatement = connection.prepareStatement(sql);
-            if (value != null && value.length > 1) {
-                for (int i = 1; i <= value.length; i++) {
-                    preparedStatement.setObject(i, value);
-                }
-            }
+            setPreparedStatementParam(sql);
             resultSet = preparedStatement.executeQuery();
             while (resultSet.next()) {
                 T t = (T) currentClass.newInstance();
@@ -272,6 +277,9 @@ public class SqlImpl<T> implements Sqls<T> {
             } catch (Exception ex) {
                 ExceptionUtils.boxingAndThrowBraveException(ex);
             }
+        }
+        if (StringUtils.isEmpty(suffix.toString())) {
+            throw new BraveException("新增数据时，未发现可用属性值；请检查是否传入了空对象或未包含自增主键");
         }
         suffix.deleteCharAt(suffix.lastIndexOf(","));
         prefix.deleteCharAt(prefix.lastIndexOf(","));
@@ -531,7 +539,7 @@ public class SqlImpl<T> implements Sqls<T> {
         }
         String sqlPrefix = sql.substring(0, sql.length() - 1);
         Object primaryKeyValue = getPrimaryKeyValue(tableInfoPrimaryKey, next);
-        sqlPrefix = sqlPrefix + SPACE + WHERE + SPACE + tableInfoPrimaryKey.getColumn() + SPACE + EQ + SPACE + ParseSql.matchValue(primaryKeyValue, dataSourceName);
+        sqlPrefix = sqlPrefix + SPACE + WHERE + SPACE + tableInfoPrimaryKey.getColumn() + SPACE + EQ + SPACE + ParseSql.matchValue(primaryKeyValue);
         String parseSql = ParseSql.parseSql(sqlPrefix);
         return executeUpdateSqlAndReturnAffectedRows(parseSql);
     }
@@ -541,7 +549,7 @@ public class SqlImpl<T> implements Sqls<T> {
             try {
                 sql.append(SPACE).append(tableInfo.getColumn()).append(SPACE).append(EQ).append(SPACE);
                 Object invoke = getTableFieldValue(tableInfo, next, false);
-                sql.append(ParseSql.matchValue(invoke, dataSourceName)).append(COMMA);
+                sql.append(ParseSql.matchValue(invoke)).append(COMMA);
             } catch (Exception ex) {
                 ExceptionUtils.boxingAndThrowBraveException(ex, sql.toString());
             }
@@ -597,7 +605,7 @@ public class SqlImpl<T> implements Sqls<T> {
             throw new BraveException(tableName + " 表未配置主键");
         }
         String sql = "delete from " + tableName + " where " + tableInfoPrimaryKey.getColumn() +
-                Constant.EQ + ParseSql.matchValue(primaryKeyValue, dataSourceName);
+                Constant.EQ + ParseSql.matchValue(primaryKeyValue);
         return executeUpdateSqlAndReturnAffectedRows(sql);
     }
 
@@ -622,7 +630,7 @@ public class SqlImpl<T> implements Sqls<T> {
                     continue;
                 }
                 sql.append(SPACE).append(tableInfo.getColumn()).append(SPACE).append(EQ).append(SPACE);
-                sql.append(ParseSql.matchValue(invoke, dataSourceName)).append(COMMA);
+                sql.append(ParseSql.matchValue(invoke)).append(COMMA);
             } catch (Exception ex) {
                 throw new BraveException(ex.getMessage(), ex);
             }
@@ -669,7 +677,7 @@ public class SqlImpl<T> implements Sqls<T> {
 
     public void init
             (Class<?> currentClass, PageInfo<T> pageInfo, Iterable<T> data, List<String> updateNullProperties, String
-                    tableName, String dataSourceName, String whereSql) {
+                    tableName, String dataSourceName, String whereSql, List<Object> params) {
         //让编译器开心
         this.currentClass = currentClass;
         this.whereSql = whereSql;
@@ -678,6 +686,7 @@ public class SqlImpl<T> implements Sqls<T> {
         this.pageInfo = pageInfo;
         this.data = data;
         this.updateNullProperties = updateNullProperties;
+        this.preparedSql = new PreparedSql(currentClass, params);
     }
 
     public void before() {

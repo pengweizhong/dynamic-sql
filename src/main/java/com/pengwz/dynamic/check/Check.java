@@ -57,6 +57,9 @@ public class Check {
             if (field.getType().isPrimitive()) {
                 throw new BraveException("字段类型不可以是基本类型，因为基本类型在任何时候都不等于null，字段名：" + field.getName() + "，发生在表：" + tableName);
             }
+            if (field.getAnnotation(ColumnIgnore.class) != null) {
+                continue;
+            }
             TableInfo tableInfo = new TableInfo();
             Id id = field.getAnnotation(Id.class);
             if (Objects.nonNull(id)) {
