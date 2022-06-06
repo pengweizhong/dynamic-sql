@@ -44,13 +44,14 @@
     <distributionManagement>
         <snapshotRepository>
             <id>snapshots</id>
-            <url>http://192.168.1.156:8081/repository/maven-snapshots/</url>
+            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
         </snapshotRepository>
         <repository>
             <id>releases</id>
-            <url>http://192.168.1.156:8081/repository/maven-releases/</url>
+            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2</url>
         </repository>
     </distributionManagement>
+
 
     <dependencies>
         <dependency>
@@ -139,12 +140,7 @@
             <version>10.0.11</version>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <version>1.18.12</version>
-            <scope>test</scope>
-        </dependency>
+
 
     </dependencies>
 
@@ -199,17 +195,17 @@
                 </configuration>
             </plugin>
 
-            <!--          <plugin>
-                          <groupId>org.sonatype.plugins</groupId>
-                          <artifactId>nexus-staging-maven-plugin</artifactId>
-                          <version>1.6.8</version>
-                          <extensions>true</extensions>
-                          <configuration>
-                              <serverId>ossrh</serverId>
-                              <nexusUrl>https://oss.sonatype.org/</nexusUrl>
-                              <autoReleaseAfterClose>true</autoReleaseAfterClose>
-                          </configuration>
-                      </plugin>-->
+            <plugin>
+                <groupId>org.sonatype.plugins</groupId>
+                <artifactId>nexus-staging-maven-plugin</artifactId>
+                <version>1.6.8</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <serverId>ossrh</serverId>
+                    <nexusUrl>https://oss.sonatype.org/</nexusUrl>
+                    <autoReleaseAfterClose>true</autoReleaseAfterClose>
+                </configuration>
+            </plugin>
 
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -243,20 +239,20 @@
                 </executions>
             </plugin>
 
-            <!-- <plugin>
-                 <groupId>org.apache.maven.plugins</groupId>
-                 <artifactId>maven-gpg-plugin</artifactId>
-                 <version>1.6</version>
-                 <executions>
-                     <execution>
-                         <id>sign-artifacts</id>
-                         <phase>verify</phase>
-                         <goals>
-                             <goal>sign</goal>
-                         </goals>
-                     </execution>
-                 </executions>
-             </plugin>-->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-gpg-plugin</artifactId>
+                <version>1.6</version>
+                <executions>
+                    <execution>
+                        <id>sign-artifacts</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>sign</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
 
