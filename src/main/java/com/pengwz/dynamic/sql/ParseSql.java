@@ -65,7 +65,7 @@ public class ParseSql {
                 whereSql.append(declaration.getAndOr()).append(SPACE);
                 whereSql.append(ContextApplication.getColumnByField(dataSource, tableName, declaration.getProperty())).append(SPACE);
                 whereSql.append(declaration.getCondition()).append(SPACE);
-                whereSql.append(" null ");
+                whereSql.append("null").append(SPACE);
             } else {
                 whereSql.append(declaration.getAndOr()).append(SPACE);
                 whereSql.append(ContextApplication.getColumnByField(dataSource, tableName, declaration.getProperty())).append(SPACE);
