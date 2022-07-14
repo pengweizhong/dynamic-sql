@@ -61,6 +61,11 @@ public class ParseSql {
                 whereSql.append(AND).append(SPACE);
                 params.add(matchFixValue(declaration.getValue2(), dataSource, tableName, declaration.getProperty()));
                 splicePlaceholders(whereSql, declaration.getValue2());
+            } else if (declaration.getCondition().equals(IS) || declaration.getCondition().equals(IS_NOT)) {
+                whereSql.append(declaration.getAndOr()).append(SPACE);
+                whereSql.append(ContextApplication.getColumnByField(dataSource, tableName, declaration.getProperty())).append(SPACE);
+                whereSql.append(declaration.getCondition()).append(SPACE);
+                whereSql.append(" null ");
             } else {
                 whereSql.append(declaration.getAndOr()).append(SPACE);
                 whereSql.append(ContextApplication.getColumnByField(dataSource, tableName, declaration.getProperty())).append(SPACE);
