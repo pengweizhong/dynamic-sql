@@ -67,7 +67,7 @@ public class SqlsTest {
     @Before
     public void doBefore() {
         List<MysqlUserEntity> list = new ArrayList<>();
-        for (int i = 0; i < 1000; i++) {
+        for (int i = 1; i <= 1000; i++) {
             final HobbyEntity hobbyEntity = HobbyEntity.builder()
                     .sing(true)
                     .maxDouble(Double.MAX_VALUE)
@@ -90,6 +90,7 @@ public class SqlsTest {
                 mysqlUserEntity.setGender(null);
                 mysqlUserEntity.setDesc(null);
                 mysqlUserEntity.setAccountNo(null);
+                mysqlUserEntity.setDateOfBirth(LocalDate.now());
             }
             list.add(mysqlUserEntity);
         }
@@ -279,7 +280,7 @@ public class SqlsTest {
         final DynamicSql<MysqlUserEntity> dynamicSql = DynamicSql.createDynamicSql();
         dynamicSql.andLessThan(MysqlUserEntity::getDateOfBirth, LocalDate.now());
         final List<MysqlUserEntity> entities = BraveSql.build(dynamicSql, MysqlUserEntity.class).select();
-        Assert.assertEquals(entities.size(), 999);
+        Assert.assertEquals(entities.size(), 995);
         log.info("entities.size() :{}", entities.size());
     }
 
@@ -295,7 +296,7 @@ public class SqlsTest {
         dynamicSql.endBrackets();
         dynamicSql.andLike(MysqlUserEntity::getCreateDate, LocalDate.now() + "%");
         final List<MysqlUserEntity> entities = BraveSql.build(dynamicSql, MysqlUserEntity.class).select();
-        Assert.assertEquals(entities.size(), 999);
+        Assert.assertEquals(entities.size(), 995);
         log.info("entities.size() :{}", entities.size());
     }
 
@@ -311,7 +312,7 @@ public class SqlsTest {
         //执行的字符串json
         dynamicSql.andEqualTo(MysqlUserEntity::getDesc, hobbyEntity);
         final List<MysqlUserEntity> entities = BraveSql.build(dynamicSql, MysqlUserEntity.class).select();
-        Assert.assertEquals(entities.size(), 1000);
+        Assert.assertEquals(entities.size(), 995);
         log.info("entities.size() :{}", entities.size());
     }
 
