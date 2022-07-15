@@ -24,19 +24,19 @@
 	<dependency>
 	    <groupId>com.pengwz</groupId>
 	    <artifactId>dynamic-sql</artifactId>
-	    <version>2.1.3</version>
+	    <version>2.1.4</version>
 	</dependency>
 	
 	<-- springBoot项目，已集成dynamic-sql -->
 	<dependency>
 	    <groupId>com.pengwz</groupId>
 	    <artifactId>dynamic-sql-spring-boot-starter</artifactId>
-	    <version>2.1.3</version>
+	    <version>2.1.4</version>
 	</dependency>
 
 ```
 
-- **1.1.6之前的版本请勿使用**，因为之前的版本有很多bug，而且好多东西我还没想好就上传了，目前maven仓库好像不支持删除已经上传的jar的... ... 以后真的是应该先跑下case再上传比较好 [手动尴尬] ... ...
+- **如无特殊说明，请直接使用最新版本** ... ...
 
 --- 
 

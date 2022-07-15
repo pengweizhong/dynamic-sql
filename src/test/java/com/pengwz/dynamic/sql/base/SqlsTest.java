@@ -86,6 +86,11 @@ public class SqlsTest {
                     .timeOfBirth(LocalTime.now())
                     .isDeleted(Boolean.FALSE)
                     .build();
+            if (i % 200 == 0) {
+                mysqlUserEntity.setGender(null);
+                mysqlUserEntity.setDesc(null);
+                mysqlUserEntity.setAccountNo(null);
+            }
             list.add(mysqlUserEntity);
         }
         final Integer integer = BraveSql.build(MysqlUserEntity.class).batchInsert(list);
@@ -98,6 +103,17 @@ public class SqlsTest {
     @After
     public void doAfter() {
         BraveSql.executeSql(truncateTableUser, TestDatabaseConfig.class);
+    }
+
+    @Test
+    public void selectIsNull() {
+        final DynamicSql<MysqlUserEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.andIsNull(MysqlUserEntity::getDesc);
+        dynamicSql.andIsNull(MysqlUserEntity::getGender);
+        dynamicSql.andIsNull(MysqlUserEntity::getAccountNo);
+        dynamicSql.andBetween(MysqlUserEntity::getId, 1, 100000);
+        final List<MysqlUserEntity> select = BraveSql.build(dynamicSql, MysqlUserEntity.class).select();
+        select.forEach(System.out::println);
     }
 
     @Test
@@ -596,6 +612,25 @@ public class SqlsTest {
         InterceptorHelper.initSQLInterceptor(new CustomSQLInterceptor());
         final MysqlUserEntity build = MysqlUserEntity.builder().id(9999).accountNo("9999").build();
         BraveSql.build(MysqlUserEntity.class).batchInsert(Arrays.asList(build, build, build));
+    }
+
+    @Test
+    public void testTryCatch() {
+        execute(false);
+    }
+
+    private void execute(boolean b) {
+        try {
+            System.out.println(b);
+            throw new BraveException("123");
+        } catch (Exception exception) {
+            exception.printStackTrace();
+            if (!b) {
+                b = true;
+            }
+        } finally {
+            System.out.println(b);
+        }
     }
 
     public static class CustomSQLInterceptor implements SQLInterceptor {

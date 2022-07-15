@@ -29,6 +29,8 @@ public class Constant {
     public static final String OR = "or";
     public static final String IN = "in";
     public static final String NOT_IN = "not in";
+    public static final String IS = "is";
+    public static final String IS_NOT = "is not";
     public static final String BETWEEN = "between";
     public static final String NOT_BETWEEN = "not between";
     public static final String ORDER = "order";

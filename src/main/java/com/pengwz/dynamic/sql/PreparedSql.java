@@ -106,7 +106,8 @@ public class PreparedSql {
                     paramList.add(/*i + " - " +*/ params.get(i - 1) + "");
                 }
                 final String join = String.join(", ", paramList);
-                log.debug("Preparing: " + sql + "\n\r" + "Parameters: " + join);
+                log.debug("Preparing: " + sql);
+                log.debug("Parameters: " + join);
             } catch (Exception ex) {
                 log.error(sql);
                 log.error("打印SQL参数时发生异常，请检查ToString()方法是否允许被正常输出");
@@ -125,7 +126,8 @@ public class PreparedSql {
                         paramList.add(/*i + " - " +*/ params.get(i1 - 1) + "");
                     }
                     final String join = String.join(", ", paramList);
-                    log.debug("Preparing: " + sql + "\n\r" + "Parameters: " + join);
+                    log.debug("Preparing: " + sql);
+                    log.debug("Parameters: " + join);
                 }
             } catch (Exception ex) {
                 log.error(sql);

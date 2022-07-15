@@ -1,3 +1,10 @@
+
+# release/2.1.4 发行说明  
+
+- 修复了 `isNull`,`isNotNull`的查询问题
+- 优化了log日志输出
+
+
 # release/2.1.3 发行说明
 
 - 解决了SQL注入的问题（紧急！）
