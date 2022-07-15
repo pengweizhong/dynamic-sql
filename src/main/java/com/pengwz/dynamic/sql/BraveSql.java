@@ -127,7 +127,7 @@ public class BraveSql<T> {
      * 如果执行未发生异常，则代表SQL成功执行，若果执行失败，将抛出异常。<br>
      * 调用者无需关心返回值。
      *
-     * @param ddlSql SQL语句
+     * @param executeSql SQL语句
      */
     public static void executeSql(String executeSql) {
         new CustomizeSQL<>(Void.class, executeSql).executeSql();
@@ -300,7 +300,7 @@ public class BraveSql<T> {
     /**
      * 对指定字段求最小值
      *
-     * @param property 实体类字段名
+     * @param fn 实体类字段名，通常是Get方法
      * @return 最小值，若没有数据，返回 null
      */
     public BigDecimal selectMin(Fn<T, Object> fn) {
@@ -320,7 +320,7 @@ public class BraveSql<T> {
     /**
      * 对指定字段求最小值，并适用指定的数据类型接收结果值
      *
-     * @param property    实体类字段名
+     * @param fn          实体类字段名，通常是Get方法
      * @param targetClass 结果类型
      * @return 最小值，若没有数据，返回 null
      */
@@ -343,7 +343,7 @@ public class BraveSql<T> {
     /**
      * 对指定字段求最大值
      *
-     * @param property 实体类字段名
+     * @param fn 实体类字段名，通常是Get方法
      * @return 最大值，若没有数据，返回 null
      */
     public BigDecimal selectMax(Fn<T, Object> fn) {
@@ -363,7 +363,7 @@ public class BraveSql<T> {
     /**
      * 对指定字段求最大值，并适用指定的数据类型接收结果值
      *
-     * @param property    实体类字段名
+     * @param fn          实体类字段名，通常是Get方法
      * @param targetClass 结果类型
      * @return 最大值，若没有数据，返回 null
      */
@@ -607,7 +607,7 @@ public class BraveSql<T> {
     /**
      * 根据实体类属性名进行正序排序
      *
-     * @param feilds 实体类属性名，支持多个
+     * @param fns 实体类属性名，支持多个
      * @return SQL查询后的数据
      */
     @SafeVarargs
@@ -645,7 +645,7 @@ public class BraveSql<T> {
     /**
      * 根据实体类属性名进行倒序排序
      *
-     * @param feilds 实体类属性名，支持多个
+     * @param fns 实体类属性名，支持多个
      * @return SQL查询后的数据
      */
     @SafeVarargs
