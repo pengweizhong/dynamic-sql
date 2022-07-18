@@ -12,7 +12,7 @@ public interface SQLInterceptor {
      * sql 执行前触发此方法，可以根据业务自行判断该SQL是否执行
      *
      * @param entityClass SQL映射类，不会为空
-     * @param sql         SQL语句，不会为空
+     * @param sql         SQL语句，一般情况下，不会为null
      * @param sqlParams   预编译的SQL参数，若没有需要编译的集合，此项为空（非null）
      * @return true 执行SQL，false不执行
      */

@@ -73,6 +73,8 @@ public class InterceptorHelper {
         } catch (BraveException ex) {
             sqlInterceptor.doAfter(preparedSql.getCurrentClass(), ex);
         }
+        //防止用户吃掉异常，继续抛出
+        ExceptionUtils.boxingAndThrowBraveException(exception, sql);
     }
 
 }

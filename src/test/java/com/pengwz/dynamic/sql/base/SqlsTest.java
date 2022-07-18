@@ -620,6 +620,18 @@ public class SqlsTest {
         execute(false);
     }
 
+    /**
+     * 测试连接泄露
+     */
+    @Test
+    public void testConnection() {
+        for (int i = 0; i < 1000; i++) {
+            System.out.println("开始测试连接 " + i);
+            final Integer integer = BraveSql.build(MysqlUserEntity.class).updateActive(MysqlUserEntity.builder().build());
+            System.out.println(integer);
+        }
+    }
+
     private void execute(boolean b) {
         try {
             System.out.println(b);

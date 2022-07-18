@@ -13,7 +13,7 @@ public class DatabaseConfig implements DataSourceConfig {
         ds.setPassword("root");
         ds.setDriverClassName("com.mysql.cj.jdbc.Driver");
         ds.setInitialSize(5);
-        ds.setMaxActive(50);
+        ds.setMaxActive(10);
         ds.setMinIdle(5);
         ds.setValidationQuery("select 1");
         ds.setTestOnBorrow(true);

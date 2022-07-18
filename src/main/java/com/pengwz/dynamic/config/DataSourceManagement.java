@@ -5,9 +5,8 @@ import com.pengwz.dynamic.model.DataSourceInfo;
 import com.pengwz.dynamic.model.DbType;
 import com.pengwz.dynamic.sql.ContextApplication;
 import com.pengwz.dynamic.utils.ExceptionUtils;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.springframework.jdbc.datasource.DataSourceUtils;
+import org.springframework.jdbc.support.JdbcUtils;
 
 import javax.sql.DataSource;
 import java.lang.reflect.Method;
@@ -20,38 +19,18 @@ import java.util.stream.Collectors;
 
 public final class DataSourceManagement {
 
-    private static final Log log = LogFactory.getLog(DataSourceManagement.class);
-
     private DataSourceManagement() {
     }
 
 
     public static void close(String dataSourceName, ResultSet resultSet, PreparedStatement preparedStatement, Connection connection) {
         DataSourceInfo dataSourceInfo = ContextApplication.getDataSourceInfo(dataSourceName);
+        JdbcUtils.closeResultSet(resultSet);
+        JdbcUtils.closeStatement(preparedStatement);
         if (dataSourceInfo.getDataSourceBeanName() != null) {
             DataSourceUtils.releaseConnection(connection, dataSourceInfo.getDataSource());
         } else {
-            if (Objects.nonNull(resultSet)) {
-                try {
-                    resultSet.close();
-                } catch (SQLException e) {
-                    log.error(e.getMessage(), e);
-                }
-            }
-            if (Objects.nonNull(preparedStatement)) {
-                try {
-                    preparedStatement.close();
-                } catch (SQLException e) {
-                    log.error(e.getMessage(), e);
-                }
-            }
-            if (Objects.nonNull(connection)) {
-                try {
-                    connection.close();
-                } catch (SQLException e) {
-                    log.error(e.getMessage(), e);
-                }
-            }
+            JdbcUtils.closeConnection(connection);
         }
     }
 
