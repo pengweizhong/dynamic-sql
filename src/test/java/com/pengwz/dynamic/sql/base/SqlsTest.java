@@ -520,6 +520,15 @@ public class SqlsTest {
         final Integer integer = BraveSql.build(MysqlUserEntity.class).updateActiveByPrimaryKey(build);
     }
 
+    @Test
+    public void updateActiveByPrimaryKey3() {
+        final DynamicSql<MysqlUserEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.andEqualTo(MysqlUserEntity::getId, 1);
+        final MysqlUserEntity build = MysqlUserEntity.builder().id(1).accountNo("updateActiveByPrimaryKey").build();
+        final Integer integer = BraveSql.build(dynamicSql, MysqlUserEntity.class).updateActiveByPrimaryKey(build);
+        Assert.assertEquals(integer.intValue(), 1);
+    }
+
     /**
      * 测试删除全表数据
      */

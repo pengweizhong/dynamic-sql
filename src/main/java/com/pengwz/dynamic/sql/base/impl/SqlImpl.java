@@ -247,16 +247,21 @@ public class SqlImpl<T> implements Sqls<T> {
         if (isBatch) {
             final List<List<Object>> batchPreparedParameters = preparedSql.getBatchPreparedParameters();
             for (List<Object> preparedParameters : batchPreparedParameters) {
-                for (int i = 1; i <= preparedParameters.size(); i++) {
-                    preparedStatement.setObject(i, preparedParameters.get(i - 1));
-                }
+                setObject(preparedParameters);
                 preparedStatement.addBatch();
             }
             return;
         }
-        final List<Object> preparedParameters = preparedSql.getPreparedParameters();
-        for (int i = 1; i <= preparedParameters.size(); i++) {
-            preparedStatement.setObject(i, preparedParameters.get(i - 1));
+        setObject(preparedSql.getPreparedParameters());
+    }
+
+    private void setObject(final List<Object> preparedParameters) {
+        try {
+            for (int i = 1; i <= preparedParameters.size(); i++) {
+                preparedStatement.setObject(i, preparedParameters.get(i - 1));
+            }
+        } catch (SQLException e) {
+            throw new BraveException("请确认是否调用了正确的方法! ", e);
         }
     }
 
