@@ -3,6 +3,7 @@ package com.pengwz.dynamic.sql.base;
 import com.pengwz.dynamic.sql.BraveSql;
 import com.pengwz.dynamic.sql.DynamicSql;
 import com.pengwz.dynamic.sql.PageInfo;
+import com.pengwz.dynamic.sql.base.SqlsTest.HobbyEntity;
 import com.pengwz.dynamic.sql.base.SqlsTest.MysqlUserEntity;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.Test;
@@ -11,6 +12,7 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 
 /**
  * 主要测试连接泄露
@@ -219,9 +221,9 @@ public class ConnectionSqlTest {
 
     @Test
     public void insertActive3() {
-        for (int i = 0; i < loopNum; i++) {
+        for (int i = loopNum; i < loopNum * 2; i++) {
             try {
-                final Integer integer = BraveSql.build(MysqlUserEntity.class).insertActive(MysqlUserEntity.builder().accountNo(i + "").build());
+                final Integer integer = BraveSql.build(MysqlUserEntity.class).insertActive(MysqlUserEntity.builder().accountNo(i + "").hobby(new HobbyEntity()).build());
                 System.out.println(integer);
             } catch (Exception e) {
                 e.printStackTrace();
@@ -297,10 +299,115 @@ public class ConnectionSqlTest {
     }
 
     @Test
+    public void update() {
+        for (int i = 0; i < loopNum; i++) {
+            try {
+                final MysqlUserEntity build = MysqlUserEntity.builder().build();
+                final Integer integer = BraveSql.build(MysqlUserEntity.class).update(build);
+                System.out.println(build);
+                System.out.println(integer);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    @Test
+    public void update2() {
+        for (int i = 0; i < loopNum; i++) {
+            try {
+                final MysqlUserEntity build = MysqlUserEntity.builder().id(i + 1).build();
+                final Integer integer = BraveSql.build(MysqlUserEntity.class).update(build);
+                System.out.println(build);
+                System.out.println(integer);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    @Test
+    public void update3() {
+        for (int i = 0; i < loopNum; i++) {
+            try {
+                final DynamicSql<MysqlUserEntity> dynamicSql = DynamicSql.createDynamicSql();
+                dynamicSql.andEqualTo(MysqlUserEntity::getId, i + 1);
+                final MysqlUserEntity build = MysqlUserEntity.builder().id(i + 1).build();
+                final Integer integer = BraveSql.build(dynamicSql, MysqlUserEntity.class).update(build);
+                System.out.println(build);
+                System.out.println(integer);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    @Test
+    public void updateByPrimaryKey() {
+        for (int i = 0; i < loopNum; i++) {
+            try {
+                final MysqlUserEntity build = MysqlUserEntity.builder().id(i + 1).build();
+                final Integer integer = BraveSql.build(MysqlUserEntity.class).updateByPrimaryKey(build);
+                System.out.println(build);
+                System.out.println(integer);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    @Test
+    public void updateActiveByPrimaryKey() {
+        for (int i = 0; i < loopNum; i++) {
+            try {
+                final MysqlUserEntity build = MysqlUserEntity.builder().id(i + 1).build();
+                final Integer integer = BraveSql.build(MysqlUserEntity.class).updateActiveByPrimaryKey(build);
+                System.out.println(build);
+                System.out.println(integer);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    @Test
+    public void updateActiveByPrimaryKey2() {
+        for (int i = 0; i < loopNum; i++) {
+            try {
+                final MysqlUserEntity build = MysqlUserEntity.builder().id(null).build();
+                final Integer integer = BraveSql.build(MysqlUserEntity.class).updateActiveByPrimaryKey(build);
+                System.out.println(build);
+                System.out.println(integer);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    @Test
+    public void delete() {
+        for (int i = 0; i < loopNum; i++) {
+            try {
+                final DynamicSql<MysqlUserEntity> dynamicSql = DynamicSql.createDynamicSql();
+                dynamicSql.andGreaterThanOrEqualTo(MysqlUserEntity::getId, 50000);
+                final Integer integer = BraveSql.build(dynamicSql, MysqlUserEntity.class).delete();
+                System.out.println(integer);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    @Test
     public void test() {
-        final DynamicSql<MysqlUserEntity> dynamicSql = DynamicSql.createDynamicSql();
-        dynamicSql.andIsNull(MysqlUserEntity::getAccountNo);
-        final Integer integer = BraveSql.build(dynamicSql, MysqlUserEntity.class).delete();
-        System.out.println(integer);
+//        final DynamicSql<MysqlUserEntity> dynamicSql = DynamicSql.createDynamicSql();
+//        dynamicSql.andIsNull(MysqlUserEntity::getAccountNo);
+//        final Integer integer = BraveSql.build(dynamicSql, MysqlUserEntity.class).delete();
+//        System.out.println(integer);
+
+//        final List<MysqlUserEntity> select = BraveSql.build(MysqlUserEntity.class).select();
+//        System.out.println(select);
+
+        System.out.println(BraveSql.build(MysqlUserEntity.class).selectByPrimaryKey(514524));
     }
 }

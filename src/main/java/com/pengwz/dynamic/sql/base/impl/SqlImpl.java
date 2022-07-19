@@ -546,7 +546,7 @@ public class SqlImpl<T> implements Sqls<T> {
         String sqlPrefix = sql.substring(0, sql.length() - 1);
         if (StringUtils.isEmpty(whereSql)) {
             if (log.isDebugEnabled()) {
-                log.warn("update操作未发现where语句，该操作会更新全表数据");
+                log.debug("update操作未发现where语句，该操作会更新全表数据");
             }
         } else {
             sqlPrefix = sqlPrefix + SPACE + WHERE + SPACE + whereSql;
@@ -560,7 +560,8 @@ public class SqlImpl<T> implements Sqls<T> {
         List<TableInfo> tableInfos = ContextApplication.getTableInfos(dataSourceName, tableName);
         TableInfo tableInfoPrimaryKey = ContextApplication.getTableInfoPrimaryKey(dataSourceName, tableName);
         if (Objects.isNull(tableInfoPrimaryKey)) {
-            throw new BraveException(tableName + " 表未配置主键");
+            close(dataSourceName, resultSet, preparedStatement, connection);
+            interceptorHelper.transferAfter(new BraveException(tableName + " 表未配置主键"), null);
         }
         StringBuilder sql = new StringBuilder();
         sql.append("update ").append(tableName).append(" set");
@@ -590,7 +591,8 @@ public class SqlImpl<T> implements Sqls<T> {
                 preparedSql.addParameter(whereBeforeParamIndex++, ParseSql.matchFixValue(invoke, dataSourceName, tableName, tableInfo.getField().getName()));
                 sql.append(PLACEHOLDER).append(COMMA);
             } catch (Exception ex) {
-                ExceptionUtils.boxingAndThrowBraveException(ex, sql.toString());
+                close(dataSourceName, resultSet, preparedStatement, connection);
+                interceptorHelper.transferAfter(ex, sql.toString());
             }
         }
     }
@@ -603,7 +605,9 @@ public class SqlImpl<T> implements Sqls<T> {
                 throw new BraveException(tableName + " 表的主键值不存在");
             }
         } catch (Exception e) {
-            throw new BraveException(tableName + " 表获取主键值失败，原因：" + e.getMessage(), e);
+            close(dataSourceName, resultSet, preparedStatement, connection);
+            interceptorHelper.transferAfter(new BraveException(tableName + " 表获取主键值失败，原因：" + e.getMessage(), e), null);
+            return null;
         }
         return primaryKeyValue;
     }
@@ -613,7 +617,8 @@ public class SqlImpl<T> implements Sqls<T> {
         List<TableInfo> tableInfos = ContextApplication.getTableInfos(dataSourceName, tableName);
         TableInfo tableInfoPrimaryKey = ContextApplication.getTableInfoPrimaryKey(dataSourceName, tableName);
         if (Objects.isNull(tableInfoPrimaryKey)) {
-            throw new BraveException(tableName + " 表未配置主键");
+            close(dataSourceName, resultSet, preparedStatement, connection);
+            interceptorHelper.transferAfter(new BraveException(tableName + " 表未配置主键"), null);
         }
         T next = data.iterator().next();
         StringBuilder sql = new StringBuilder();
@@ -628,7 +633,7 @@ public class SqlImpl<T> implements Sqls<T> {
         sql.append("delete from ").append(tableName);
         if (StringUtils.isEmpty(whereSql)) {
             if (log.isDebugEnabled()) {
-                log.warn("delete操作未发现where语句，该操作会删除全表数据");
+                log.debug("delete操作未发现where语句，该操作会删除全表数据");
             }
         } else {
             sql.append(SPACE + WHERE + SPACE).append(whereSql);
@@ -641,7 +646,9 @@ public class SqlImpl<T> implements Sqls<T> {
     public Integer deleteByPrimaryKey(Object primaryKeyValue) {
         TableInfo tableInfoPrimaryKey = ContextApplication.getTableInfoPrimaryKey(dataSourceName, tableName);
         if (Objects.isNull(tableInfoPrimaryKey)) {
-            throw new BraveException(tableName + " 表未配置主键");
+            close(dataSourceName, resultSet, preparedStatement, connection);
+            interceptorHelper.transferAfter(new BraveException(tableName + " 表未配置主键"), null);
+            return 0;
         }
         String sql = "delete from " + tableName + " where " + tableInfoPrimaryKey.getColumn() +
                 Constant.EQ + SPACE + PLACEHOLDER;

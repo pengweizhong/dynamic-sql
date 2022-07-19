@@ -156,6 +156,9 @@ public class ParseSql {
     }
 
     public static Object matchFixValue(Object value, String database, String tableName, String property) {
+        if (value == null) {
+            return null;
+        }
         final TableInfo tableInfo = ContextApplication.getTableInfo(database, tableName, property);
         if (tableInfo.getJsonMode() != null) {
             return ConverterUtils.getGson(tableInfo.getJsonMode()).toJson(value);
