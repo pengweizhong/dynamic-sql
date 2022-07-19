@@ -1,9 +1,13 @@
+# release/2.1.5 发行说明
 
-# release/2.1.4 发行说明  
+- 修复了连接泄露
+- 优化了日志警告
+- 修复了Json空对象存入数据库变成字符串null的问题
+
+# release/2.1.4 发行说明
 
 - 修复了 `isNull`,`isNotNull`的查询问题
 - 优化了log日志输出
-
 
 # release/2.1.3 发行说明
 

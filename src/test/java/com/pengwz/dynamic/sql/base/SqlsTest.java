@@ -436,9 +436,11 @@ public class SqlsTest {
     /**
      * 测试插入空对象，实体类不包含主键
      */
-    @Test(expected = BraveException.class)
+    @Test
     public void insertActive3() {
-        BraveSql.build(MysqlUserEntity2.class).insertActive(MysqlUserEntity2.builder().build());
+        final Integer integer = BraveSql.build(MysqlUserEntity2.class).insertActive(MysqlUserEntity2.builder().build());
+        log.info("测试不包含主键的时候，插入空对象，期待返回0");
+        Assert.assertEquals(integer.intValue(), 0);
     }
 
     /**
@@ -699,7 +701,7 @@ public class SqlsTest {
          * 主键
          */
         @Id
-//        @GeneratedValue(strategy = AUTO)
+        @GeneratedValue(strategy = AUTO)
         private Integer id;
         /**
          * 测试忽略字段
