@@ -3,7 +3,7 @@ package com.pengwz.dynamic.sql;
 import java.util.List;
 
 public class PageInfo<T> {
-    //当前页码,<=1 都表示第一页
+    //当前页码,<=1 都将修正为第一页，换言之，如果pageIndex<=1,其值返回结果一定是1
     private Integer pageIndex;
     //limit的偏移量，在真实分页时使用，用于纠正pageIndex，比如：limit [offset] , [pageSize],外部调用者无需关心此属性值。
     private Integer offset;
@@ -18,7 +18,7 @@ public class PageInfo<T> {
     //结果集，没有数据为空集合
     private List<T> resultList;
 
-    PageInfo(Integer pageIndex, Integer pageSize) {
+    public PageInfo(Integer pageIndex, Integer pageSize) {
         this.pageIndex = pageIndex;
         this.pageSize = pageSize;
     }

@@ -182,9 +182,9 @@ public class BraveSql<T> {
      * @throws BraveException 若返回多条数据，则抛出此异常
      */
     public T selectSingle() {
-        if (dynamicSql.getDeclarations().isEmpty()) {
-            throw new BraveException("必须提供 where 条件语句");
-        }
+//        if (dynamicSql.getDeclarations().isEmpty()) {
+//            throw new BraveException("必须提供 where 条件语句");
+//        }
         return mustShare().selectSingle();
     }
 

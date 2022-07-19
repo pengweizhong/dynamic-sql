@@ -47,7 +47,7 @@ public class ExceptionUtils {
                 throw new BraveException("事务回滚异常", sql, throwable.getMessage());
             }
             if (sqlState.startsWith("42")) {
-                throw new BraveException("SQL执行错误，可能传入了类型不匹配的值", sql, throwable.getMessage());
+                throw new BraveException("SQL执行错误，可能传入了参数不相符的值", sql, throwable.getMessage());
             }
             if (sqlState.startsWith("58")) {
                 throw new BraveException("数据库异常", sql, throwable.getMessage());

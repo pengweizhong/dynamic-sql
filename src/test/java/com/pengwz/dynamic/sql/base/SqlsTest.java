@@ -20,6 +20,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static com.pengwz.dynamic.anno.GenerationType.AUTO;
+
 /**
  * mysql 测试用例
  */
@@ -697,7 +699,7 @@ public class SqlsTest {
          * 主键
          */
         @Id
-        @GeneratedValue
+//        @GeneratedValue(strategy = AUTO)
         private Integer id;
         /**
          * 测试忽略字段
