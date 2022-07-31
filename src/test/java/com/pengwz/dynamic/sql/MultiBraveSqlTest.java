@@ -192,7 +192,7 @@ public class MultiBraveSqlTest {
         System.out.println(select.toString());
 
         MultiBraveSql<SystemDTO> multiBraveSql = select.from(SystemRoleEntity.class)
-                .join(SystemRoleEntity.class).as("别名")
+                .join(SystemRoleUserEntity.class).as("别名")
                 .where(() -> {
                     DynamicSql<SystemDTO> dynamicSql = DynamicSql.createDynamicSql();
                     dynamicSql.andEqualTo(SystemDTO::getId, 1);

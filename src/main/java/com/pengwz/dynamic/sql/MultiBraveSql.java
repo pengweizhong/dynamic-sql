@@ -68,7 +68,7 @@ public class MultiBraveSql<R> {
             joinEntity = join;
         }
 
-        public JoinCondition<R> join(Class<R> join) {
+        public JoinCondition<R> join(Class<?> join) {
             return this;
         }
 
@@ -113,10 +113,10 @@ public class MultiBraveSql<R> {
     }
 
     public static class OnJoinMultiCondition {
-        private JoinCondition joinCondition;
+        private JoinCondition<?> joinCondition;
         private OnJoinCondition onJoinCondition;
 
-        protected OnJoinMultiCondition(JoinCondition joinCondition, OnJoinCondition onJoinCondition) {
+        protected OnJoinMultiCondition(JoinCondition<?> joinCondition, OnJoinCondition onJoinCondition) {
             this.joinCondition = joinCondition;
             this.onJoinCondition = onJoinCondition;
         }
@@ -125,8 +125,8 @@ public class MultiBraveSql<R> {
             return this;
         }
 
-        public JoinCondition end() {
-            return joinCondition;
+        public <R> JoinCondition<R> end() {
+            return (JoinCondition<R>) joinCondition;
         }
     }
 }

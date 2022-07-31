@@ -21,6 +21,7 @@ public class SystemDTO {
     /**
      * 角色名称
      */
+    @Column(value = "role_name", tableAlias = "aaa")
     private String roleName;
 
     /**
