@@ -2,53 +2,73 @@ package com.pengwz.dynamic.sql;
 
 import com.pengwz.dynamic.sql.base.Fn;
 
-public class MultiBraveSql {
-    private DynamicSql<?> dynamicSql;
+import java.util.Collections;
+import java.util.List;
+import java.util.function.Supplier;
 
-    private Class<?> currentClass;
+public class MultiBraveSql<R> {
 
-    protected MultiBraveSql(DynamicSql<?> dynamicSql, Class<?> currentClass) {
-        this.dynamicSql = dynamicSql;
-        this.currentClass = currentClass;
+    private Class<R> resultClass;
+
+    private MultiBraveSql(Class<R> resultClass) {
+        this.resultClass = resultClass;
     }
 
-    public static <T> MultiBraveSql builder(Class<T> currentClass) {
-        return new MultiBraveSql(DynamicSql.createDynamicSql(), currentClass);
-    }
-
-    public DynamicSql<?> getDynamicSql() {
-        return dynamicSql;
-    }
-
-    public Class<?> getCurrentClass() {
-        return currentClass;
+    protected static <R> MultiBraveSqlBuilder<R> builder(Class<?> tableClass, Class<R> resultClass) {
+        MultiBraveSql<R> multiBraveSql = new MultiBraveSql<>(resultClass);
+        return new MultiBraveSqlBuilder<>(multiBraveSql, tableClass);
     }
 
 
-    public MultiBraveSql alias(String alias) {
-        return this;
+    /**
+     * query dataBase source
+     */
+
+    public List<R> select() {
+        return Collections.emptyList();
     }
 
-    public <R> JoinCondition join(Class<R> join) {
-        return new JoinCondition(this, join);
+    public static class MultiBraveSqlBuilder<R> {
+        private MultiBraveSql<R> multiBraveSql;
+        private DynamicSql<?> dynamicSql;
+        private Class<?> tableClass;
+
+        protected MultiBraveSqlBuilder(MultiBraveSql<R> multiBraveSql, Class<?> tableClass) {
+            this.multiBraveSql = multiBraveSql;
+            this.tableClass = tableClass;
+        }
+
+        public MultiBraveSqlBuilder<R> where(DynamicSql<R> dynamicSql) {
+            return this;
+        }
+
+        public MultiBraveSqlBuilder<R> where(Supplier<DynamicSql<R>> dynamicSql) {
+            return this;
+        }
+
+
+        public JoinCondition<R> join(Class<?> join) {
+            return new JoinCondition<>(this, join);
+        }
+
+        public MultiBraveSql<R> build() {
+            return multiBraveSql;
+        }
     }
 
-    public <T> BraveSql<T> receiveResult(Class<T> resultClass) {
-        return null;
-    }
 
-    public static class JoinCondition {
+    public static class JoinCondition<R> {
 
         private Class<?> joinEntity;
 
-        private MultiBraveSql multiBraveSql;
+        private MultiBraveSqlBuilder<?> multiBraveSqlBuilder;
 
-        protected JoinCondition(MultiBraveSql multiBraveSql, Class<?> join) {
-            this.multiBraveSql = multiBraveSql;
+        protected JoinCondition(MultiBraveSqlBuilder<?> multiBraveSqlBuilder, Class<?> join) {
+            this.multiBraveSqlBuilder = multiBraveSqlBuilder;
             joinEntity = join;
         }
 
-        public <R> JoinCondition join(Class<R> join) {
+        public JoinCondition<R> join(Class<R> join) {
             return this;
         }
 
@@ -56,19 +76,23 @@ public class MultiBraveSql {
             return new OnJoinCondition(this);
         }
 
-        public JoinCondition alias(String alias) {
+        public JoinCondition<R> as(String alias) {
             return this;
         }
 
 
-        public MultiBraveSql build() {
+        public MultiBraveSql<R> build() {
             return null;
         }
 
-        public <T> JoinCondition where(DynamicSql<T> dynamicSql) {
+        public JoinCondition<R> where(DynamicSql<R> dynamicSql) {
             return this;
         }
 
+        public JoinCondition<R> where(Supplier<DynamicSql<R>> sqlSupplier) {
+            multiBraveSqlBuilder.dynamicSql = sqlSupplier.get();
+            return this;
+        }
 
     }
 

@@ -7,6 +7,8 @@ import com.pengwz.dynamic.entity.SystemRoleUserEntity;
 import com.pengwz.dynamic.entity.SystemUserEntity;
 import org.junit.Test;
 
+import java.util.List;
+
 public class MultiBraveSqlTest {
 
 
@@ -75,31 +77,51 @@ public class MultiBraveSqlTest {
                     .build());
         }
     }
+    /*
+
+     */
 
     /**
      * 对比SQL：
+     * <p>
+     * select
+     * a.*,
+     * b.*,
+     * c.*
+     * from
+     * t_system_user a
+     * join t_system_role_user b on
+     * a.id = b.user_id
+     * or a.id = 1
+     * join t_system_role c on
+     * b.role_id = c.id
+     * where
+     * a.id = 1
+     *//*
 
-     select
-     a.*,
-     b.*,
-     c.*
-     from
-     t_system_user a
-     join t_system_role_user b on
-     a.id = b.user_id
-     or a.id = 1
-     join t_system_role c on
-     b.role_id = c.id
-     where
-     a.id = 1
-
-     */
     @Test
     public void test() {
+//        final DynamicSql<SystemDTO> dynamicSql = DynamicSql.createDynamicSql();
+//        dynamicSql.andEqualTo(SystemDTO::getId, 1);
+//
+//        final BraveSql<SystemDTO> braveSql = MultiBraveSql.builder(SystemRoleEntity.class).alias("a")
+//                .join(SystemRoleUserEntity.class).alias("b")
+//                .on(SystemRoleEntity::getId).equalTo(SystemRoleUserEntity::getRoleId).andEqualTo(SystemRoleUserEntity::getCreateId, 123).end()
+//                .join(SystemUserEntity.class)
+//                .on(SystemUserEntity::getId).equalTo(SystemRoleUserEntity::getUserId).end()
+//                .where(dynamicSql).build()
+//                .receiveResult(SystemDTO.class);
+//
+//        final PageInfo<SystemDTO> pageInfo = braveSql.selectPageInfo(1, 2);
+//        System.out.println(pageInfo);
+    }
+
+    @Test
+    public void test2() {
         final DynamicSql<SystemDTO> dynamicSql = DynamicSql.createDynamicSql();
         dynamicSql.andEqualTo(SystemDTO::getId, 1);
 
-        final BraveSql<SystemDTO> braveSql = MultiBraveSql.builder(SystemRoleEntity.class).alias("a")
+        final BraveSql<SystemDTO> braveSql = BraveSql.multiBuilder(SystemRoleEntity.class).alias("a")
                 .join(SystemRoleUserEntity.class).alias("b")
                 .on(SystemRoleEntity::getId).equalTo(SystemRoleUserEntity::getRoleId).andEqualTo(SystemRoleUserEntity::getCreateId, 123).end()
                 .join(SystemUserEntity.class)
@@ -107,13 +129,79 @@ public class MultiBraveSqlTest {
                 .where(dynamicSql).build()
                 .receiveResult(SystemDTO.class);
 
+
         final PageInfo<SystemDTO> pageInfo = braveSql.selectPageInfo(1, 2);
-
         System.out.println(pageInfo);
-
     }
 
+    @Test
+    public void test3() {
+        final BraveSql<SystemDTO> braveSql = BraveSql.multiBuilder(SystemRoleEntity.class).alias("a")
+                .join(SystemRoleUserEntity.class).alias("b")
+                .on(SystemRoleEntity::getId).equalTo(SystemRoleUserEntity::getRoleId).andEqualTo(SystemRoleUserEntity::getCreateId, 123).end()
+                .join(SystemUserEntity.class)
+                .on(SystemUserEntity::getId).equalTo(SystemRoleUserEntity::getUserId).end()
+                .where(() -> {
+                    final DynamicSql<SystemDTO> dynamicSql = DynamicSql.createDynamicSql();
+                    dynamicSql.andEqualTo(SystemDTO::getId, 1);
+                    return dynamicSql;
+                }).build()
+                .receiveResult(SystemDTO.class);
+        final PageInfo<SystemDTO> pageInfo = braveSql.selectPageInfo(1, 2);
+        System.out.println(pageInfo);
+    }
+*/
+    @Test
+    public void test4() {
+        Select<SystemDTO> select = Select.builder(SystemDTO.class)
+                .column(SystemDTO::getRoleName).end()
+                .column(SystemDTO::getRoleDesc).end()
+                .columnAll().build();
+        MultiBraveSql<SystemDTO> multiBraveSql = select.from(SystemRoleEntity.class).build();
+        List<SystemDTO> list = multiBraveSql.select();
+        System.out.println(list);
+    }
 
+    @Test
+    public void test5() {
+        Select<SystemDTO> select = Select.builder(SystemDTO.class)
+                .column(SystemDTO::getRoleName).end()
+                .column(SystemDTO::getRoleDesc).end()
+                .columnAll().build();
+
+        MultiBraveSql<SystemDTO> multiBraveSql = select.from(SystemRoleEntity.class).where(() -> {
+            DynamicSql<SystemDTO> dynamicSql = DynamicSql.createDynamicSql();
+            dynamicSql.andEqualTo(SystemDTO::getId, 1);
+            return dynamicSql;
+        }).build();
+
+        List<SystemDTO> list = multiBraveSql.select();
+        System.out.println(list);
+    }
+
+    @Test
+    public void test6() {
+        Select<SystemDTO> select = Select.builder(SystemDTO.class)
+                .column(SystemDTO::getRoleName).end()
+                .column(SystemDTO::getRoleName).abs().end()
+                .column(SystemDTO::getRoleName).lower().end()
+                .column(SystemDTO::getRoleName).left(1).repeat(2).trim().end()
+                .customColumn("if(aaa > 2 ,1,2) ")
+                .columnAll().build();
+
+        System.out.println(select.toString());
+
+        MultiBraveSql<SystemDTO> multiBraveSql = select.from(SystemRoleEntity.class)
+                .join(SystemRoleEntity.class).as("别名")
+                .where(() -> {
+                    DynamicSql<SystemDTO> dynamicSql = DynamicSql.createDynamicSql();
+                    dynamicSql.andEqualTo(SystemDTO::getId, 1);
+                    return dynamicSql;
+                }).build();
+
+        List<SystemDTO> list = multiBraveSql.select();
+        System.out.println(list);
+    }
 }
 
 
