@@ -188,7 +188,7 @@ public class MultiBraveSqlTest {
     public void testSql() throws Exception {
         String databaseName = DatabaseConfig.class.getCanonicalName();
         DataSourceManagement.initDataSourceConfig(DatabaseConfig.class, null);
-        String sql = "select trim(replace (t.nick_name,?,?)) as nick_name  from t_system_user t";
+        String sql = "select trim(replace (t.nick_name,?,?)) as nick_name1,lpad(t.nick_name,?,?) nick_name2  from t_system_user t";
         Connection connection = DataSourceManagement.initConnection(databaseName);
         ResultSet resultSet = null;
         PreparedStatement preparedStatement = null;
@@ -196,14 +196,16 @@ public class MultiBraveSqlTest {
             final List<Object> preparedParameters = new ArrayList<>();
             preparedParameters.add("r");
             preparedParameters.add("x");
+            preparedParameters.add(20);
+            preparedParameters.add("*");
             preparedStatement = connection.prepareStatement(sql);
             for (int i = 1; i <= preparedParameters.size(); i++) {
                 preparedStatement.setObject(i, preparedParameters.get(i - 1));
             }
             resultSet = preparedStatement.executeQuery();
             while (resultSet.next()) {
-                Object object = resultSet.getObject(1);
-                System.out.println(object);
+                System.out.println(resultSet.getObject(1));
+                System.out.println(resultSet.getObject(2));
             }
         } finally {
             DataSourceManagement.close(databaseName, resultSet, preparedStatement, connection);
@@ -214,7 +216,6 @@ public class MultiBraveSqlTest {
     @Test
     public void test6() {
         Select<SystemDTO> select = Select.builder(SystemDTO.class)
-                .column(SystemDTO::getRoleName).left(1).repeat(2).trim().end()
                 .column(SystemDTO::getRoleName).left(1).repeat(2).trim().end()
                 .columnAll().build();
 

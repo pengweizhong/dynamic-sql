@@ -6,7 +6,6 @@ import com.pengwz.dynamic.utils.ReflectUtils;
 import com.pengwz.dynamic.utils.SelectHelper;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public class Select<R> {
@@ -102,26 +101,27 @@ public class Select<R> {
             return this;
         }
 
-//        /**
-//         * 自定义查询列，此项函数必须提供as别名
-//         * <p>
-//         * 比如：列名为abc   <br>
-//         * 那么可以进行如下操作：  <br>
-//         * <pre>
-//         *     {@code
-//         *           Select.builder(DTO.class).customColumn("if(abc>2,'true','false') as abc").build();
-//         *     }
-//         * </pre>
-//         * 当此处查询的列与{@link this#columnAll()}冲突时，此处优先级最高
-//         *
-//         * @param expr 自定义方法
-//         * @return 当前自定义字段对象
-//         */
-//        public SelectBuilder<R> customColumn(String expr) {
-//            final List<SelectParam> selectParams = getSelect().getSelectParams();
-//            selectParams.add(SelectParam.builder().fieldName(parseExprCaseColumn(expr)).customExpr(expr).build());
-//            return this;
-//        }
+        /**
+         * 自定义查询列，此项函数必须提供as别名
+         * <p>
+         * 比如：列名为abc   <br>
+         * 那么可以进行如下操作：  <br>
+         * <pre>
+         *     {@code
+         *           Select.builder(DTO.class).customColumn("if(abc>2,'true','false') as abc").build();
+         *     }
+         * </pre>
+         * 当此处查询的列与{@link this#columnAll()}冲突时，此处优先级最高
+         *
+         * @param expr   自定义方法
+         * @param params 预编译需要用到的参数，如果不需要参与预编译，此项为空即可
+         * @return 当前自定义字段对象
+         */
+        public SelectBuilder<R> customColumn(String expr, Object... params) {
+            final Map<String, SelectParam> selectParamMap = getSelect().getSelectParamMap();
+            SelectHelper.putSelectParam(selectParamMap, expr, null, params);
+            return this;
+        }
 
         public Select<R> build() {
             SelectHelper.assembleQueryStatement(select);
@@ -205,7 +205,7 @@ public class Select<R> {
          */
         public CustomColumn<R> left(int len) {
             final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
-            SelectHelper.putSelectParam(selectParamMap, fieldName, "left", new Integer[]{len});
+            SelectHelper.putSelectParam(selectParamMap, fieldName, "left", len);
             return this;
         }
 
