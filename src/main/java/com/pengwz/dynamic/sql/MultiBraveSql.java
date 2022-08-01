@@ -47,15 +47,49 @@ public class MultiBraveSql<R> {
         }
 
 
-        public JoinCondition<R> join(Class<?> join) {
-            return new JoinCondition<>(this, join);
+        public AsMultiBraveSqlBuilder<R> join(Class<?> join) {
+            return new AsMultiBraveSqlBuilder<>(this, join);
         }
 
         public MultiBraveSql<R> build() {
             return multiBraveSql;
         }
+
+        public static class AsMultiBraveSqlBuilder<R> {
+            private Class<?> join;
+            private MultiBraveSqlBuilder<R> multiBraveSqlBuilder;
+
+            private AsMultiBraveSqlBuilder(MultiBraveSqlBuilder<R> multiBraveSqlBuilder, Class<?> join) {
+                this.multiBraveSqlBuilder = multiBraveSqlBuilder;
+                this.join = join;
+            }
+
+            public JoinCondition<R> as(String alias) {
+                return new JoinCondition<>(multiBraveSqlBuilder, join);
+            }
+        }
+
     }
 
+
+    public static class As<R> {
+        private Class<R> resultClass;
+        private Class<?> tableClass;
+
+        protected As(Class<?> tableClass, Class<R> resultClass) {
+            this.resultClass = resultClass;
+            this.tableClass = tableClass;
+        }
+
+        protected MultiBraveSqlBuilder<R> multiBraveSqlBuilder() {
+            return MultiBraveSql.builder(tableClass, resultClass);
+        }
+
+        public MultiBraveSqlBuilder<R> as(String alias) {
+            return MultiBraveSql.builder(tableClass, resultClass);
+        }
+
+    }
 
     public static class JoinCondition<R> {
 
@@ -76,9 +110,9 @@ public class MultiBraveSql<R> {
             return new OnJoinCondition(this);
         }
 
-        public JoinCondition<R> as(String alias) {
-            return this;
-        }
+//        public JoinCondition<R> as(String alias) {
+//            return this;
+//        }
 
 
         public MultiBraveSql<R> build() {

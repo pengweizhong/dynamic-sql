@@ -157,7 +157,7 @@ public class MultiBraveSqlTest {
                 .column(SystemDTO::getRoleName).end()
                 .column(SystemDTO::getRoleDesc).end()
                 .columnAll().build();
-        MultiBraveSql<SystemDTO> multiBraveSql = select.from(SystemRoleEntity.class).build();
+        MultiBraveSql<SystemDTO> multiBraveSql = select.from(SystemRoleEntity.class).as("别名1").build();
         List<SystemDTO> list = multiBraveSql.select();
         System.out.println(list);
     }
@@ -169,7 +169,7 @@ public class MultiBraveSqlTest {
                 .column(SystemDTO::getRoleDesc).end()
                 .columnAll().build();
 
-        MultiBraveSql<SystemDTO> multiBraveSql = select.from(SystemRoleEntity.class).where(() -> {
+        MultiBraveSql<SystemDTO> multiBraveSql = select.from(SystemRoleEntity.class).as("别名1").where(() -> {
             DynamicSql<SystemDTO> dynamicSql = DynamicSql.createDynamicSql();
             dynamicSql.andEqualTo(SystemDTO::getId, 1);
             return dynamicSql;
@@ -182,25 +182,13 @@ public class MultiBraveSqlTest {
     @Test
     public void test6() {
         Select<SystemDTO> select = Select.builder(SystemDTO.class)
-                .column(SystemDTO::getRoleName).end()
-                .column(SystemDTO::getRoleName).abs().end()
-                .column(SystemDTO::getRoleName).lower().end()
                 .column(SystemDTO::getRoleName).left(1).repeat(2).trim().end()
-                .customColumn("if(aaa > 2 ,1,2) ")
+                .column(SystemDTO::getRoleName).left(1).repeat(2).trim().end()
                 .columnAll().build();
 
         System.out.println(select.toString());
 
-        MultiBraveSql<SystemDTO> multiBraveSql = select.from(SystemRoleEntity.class)
-                .join(SystemRoleUserEntity.class).as("别名")
-                .where(() -> {
-                    DynamicSql<SystemDTO> dynamicSql = DynamicSql.createDynamicSql();
-                    dynamicSql.andEqualTo(SystemDTO::getId, 1);
-                    return dynamicSql;
-                }).build();
 
-        List<SystemDTO> list = multiBraveSql.select();
-        System.out.println(list);
     }
 }
 

@@ -1,24 +1,64 @@
 package com.pengwz.dynamic.sql;
 
+import com.pengwz.dynamic.model.SelectParam;
 import com.pengwz.dynamic.sql.base.Fn;
+import com.pengwz.dynamic.utils.ReflectUtils;
+import com.pengwz.dynamic.utils.SelectHelper;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class Select<R> {
 
-    private Class<R> resultClass;
+    private final Class<R> resultClass;
 
     private String selectSql;
+
+    private boolean isSelectAll;
+
+    private final Map<String, SelectParam> selectParamMap = new HashMap<>();
 
     protected Select(Class<R> currentClass) {
         this.resultClass = currentClass;
     }
 
-    public static <R> SelectBuilder<R> builder(Class<R> currentClass) {
-        Select<R> select = new Select<>(currentClass);
+    /**
+     * 构建Select查询对象
+     *
+     * @param resultClass 当前查询的结果集
+     * @param <R>         任何实体类
+     * @return select构建者
+     */
+    public static <R> SelectBuilder<R> builder(Class<R> resultClass) {
+        Select<R> select = new Select<>(resultClass);
         return new SelectBuilder<>(select);
     }
 
-    public MultiBraveSql.MultiBraveSqlBuilder<R> from(Class<?> currentClass) {
-        return MultiBraveSql.builder(currentClass, resultClass);
+    /**
+     * 从哪个主表开始查询
+     *
+     * @param tableClass 表实体类
+     * @return 获得多表查询的支持对象
+     */
+    public MultiBraveSql.As<R> from(Class<?> tableClass) {
+        return new MultiBraveSql.As<>(tableClass, resultClass);
+    }
+
+    public Class<R> getResultClass() {
+        return resultClass;
+    }
+
+    public String getSelectSql() {
+        return selectSql;
+    }
+
+    public Map<String, SelectParam> getSelectParamMap() {
+        return selectParamMap;
+    }
+
+    public void setSelectSql(String selectSql) {
+        this.selectSql = selectSql;
     }
 
     @Override
@@ -42,39 +82,59 @@ public class Select<R> {
          *
          * @param fn 列名
          * @return 返回构建查询列的对象
+         * @see this#columnAll()
          */
         public CustomColumn<R> column(Fn<R, Object> fn) {
-            CustomColumn<R> customColumn = new CustomColumn<>(this);
-            return customColumn;
-        }
-
-
-        public SelectBuilder<R> columnAll() {
-            return this;
+            return new CustomColumn<>(this, ReflectUtils.fnToFieldName(fn));
         }
 
         /**
-         * 自定义查询列，此项函数必须提供as别名
+         * 查询所有列
          * <p>
-         * 比如：列名为abc   <br>
-         * 那么可以进行如下操作：  <br>
-         * <pre>
-         *     {@code
-         *           Select.builder(DTO.class).customColumn("if(abc>2,'true','false') as abc").build();
-         *     }
-         * </pre>
+         * 此方法始终会查询所有列，当它和{@link this#column(Fn)}一起使用时，{@link this#column(Fn)}方法返回的列优先级最高<br>
+         * {@link this#column(Fn)}将会覆盖相同属性的{@link this#column(Fn)}字段。
          *
-         * @param expr 自定义方法
-         * @return 当前自定义字段对象
+         * @return 返回构建查询列的对象
+         * @see this#column(Fn)
          */
-        public SelectBuilder<R> customColumn(String expr) {
+        public SelectBuilder<R> columnAll() {
+            getSelect().isSelectAll = true;
             return this;
         }
 
+//        /**
+//         * 自定义查询列，此项函数必须提供as别名
+//         * <p>
+//         * 比如：列名为abc   <br>
+//         * 那么可以进行如下操作：  <br>
+//         * <pre>
+//         *     {@code
+//         *           Select.builder(DTO.class).customColumn("if(abc>2,'true','false') as abc").build();
+//         *     }
+//         * </pre>
+//         * 当此处查询的列与{@link this#columnAll()}冲突时，此处优先级最高
+//         *
+//         * @param expr 自定义方法
+//         * @return 当前自定义字段对象
+//         */
+//        public SelectBuilder<R> customColumn(String expr) {
+//            final List<SelectParam> selectParams = getSelect().getSelectParams();
+//            selectParams.add(SelectParam.builder().fieldName(parseExprCaseColumn(expr)).customExpr(expr).build());
+//            return this;
+//        }
+
         public Select<R> build() {
+            SelectHelper.assembleQueryStatement(select);
             return select;
         }
 
+        public Select<R> getSelect() {
+            return select;
+        }
+
+//        private String parseExprCaseColumn(String expr) {
+//            return "abc";
+//        }
     }
 
     /**
@@ -83,12 +143,21 @@ public class Select<R> {
      * @param <R>
      */
     public static class CustomColumn<R> {
+
         private SelectBuilder<R> selectBuilder;
 
-        protected CustomColumn(SelectBuilder<R> selectBuilder) {
+        private String fieldName;
+
+        protected CustomColumn(SelectBuilder<R> selectBuilder, String fieldName) {
             this.selectBuilder = selectBuilder;
+            this.fieldName = fieldName;
         }
 
+        /**
+         * 结束当前对象的构建，并将select查询对象返回
+         *
+         * @return SelectBuilder
+         */
         public SelectBuilder<R> end() {
             return selectBuilder;
         }
@@ -135,6 +204,8 @@ public class Select<R> {
          * @return 当前自定义字段对象
          */
         public CustomColumn<R> left(int len) {
+            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
+            SelectHelper.putSelectParam(selectParamMap, fieldName, "left", new Integer[]{len});
             return this;
         }
 
@@ -166,6 +237,8 @@ public class Select<R> {
          * @return 当前自定义字段对象
          */
         public CustomColumn<R> trim() {
+            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
+            SelectHelper.putSelectParam(selectParamMap, fieldName, "trim");
             return this;
         }
 
@@ -194,6 +267,8 @@ public class Select<R> {
          * @return 当前自定义字段对象
          */
         public CustomColumn<R> repeat(int num) {
+            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
+            SelectHelper.putSelectParam(selectParamMap, fieldName, "repeat", num);
             return this;
         }
 
@@ -363,5 +438,54 @@ public class Select<R> {
             return this;
         }
 
+        /**
+         * 返回当前列的最大值
+         *
+         * @return 当前自定义字段对象
+         */
+        public CustomColumn<R> max() {
+            return this;
+        }
+
+        /**
+         * 返回当前列的最小值
+         *
+         * @return 当前自定义字段对象
+         */
+        public CustomColumn<R> min() {
+            return this;
+        }
+
+        /**
+         * 返回当前列的总数
+         *
+         * @return 当前自定义字段对象
+         */
+        public CustomColumn<R> count() {
+
+            return this;
+        }
+
+        /**
+         * 返回当前列的和
+         *
+         * @return 当前自定义字段对象
+         */
+        public CustomColumn<R> sum() {
+            return this;
+        }
+
+        /**
+         * 返回当前列的平均数
+         *
+         * @return 当前自定义字段对象
+         */
+        public CustomColumn<R> avg() {
+            return this;
+        }
+
+        public SelectBuilder<R> getSelectBuilder() {
+            return selectBuilder;
+        }
     }
 }
