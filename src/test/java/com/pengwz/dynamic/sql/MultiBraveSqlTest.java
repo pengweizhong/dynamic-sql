@@ -6,17 +6,11 @@ import com.pengwz.dynamic.dto.SystemDTO;
 import com.pengwz.dynamic.entity.SystemRoleEntity;
 import com.pengwz.dynamic.entity.SystemRoleUserEntity;
 import com.pengwz.dynamic.entity.SystemUserEntity;
-import com.pengwz.dynamic.exception.BraveException;
-import com.pengwz.dynamic.model.TableInfo;
-import com.pengwz.dynamic.utils.ConverterUtils;
-import com.pengwz.dynamic.utils.ReflectUtils;
 import org.junit.Test;
-import org.springframework.beans.BeanUtils;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -192,20 +186,27 @@ public class MultiBraveSqlTest {
 
     @Test
     public void testSql() throws Exception {
+        String databaseName = DatabaseConfig.class.getCanonicalName();
         DataSourceManagement.initDataSourceConfig(DatabaseConfig.class, null);
         String sql = "select trim(replace (t.nick_name,?,?)) as nick_name  from t_system_user t";
-        Connection connection = DataSourceManagement.initConnection(DatabaseConfig.class.getCanonicalName());
-        final List<Object> preparedParameters = new ArrayList<>();
-        preparedParameters.add("r");
-        preparedParameters.add("x");
-        PreparedStatement preparedStatement = connection.prepareStatement(sql);
-        for (int i = 1; i <= preparedParameters.size(); i++) {
-            preparedStatement.setObject(i, preparedParameters.get(i - 1));
-        }
-        ResultSet resultSet = preparedStatement.executeQuery();
-        while (resultSet.next()) {
-            Object object = resultSet.getObject(1);
-            System.out.println(object);
+        Connection connection = DataSourceManagement.initConnection(databaseName);
+        ResultSet resultSet = null;
+        PreparedStatement preparedStatement = null;
+        try {
+            final List<Object> preparedParameters = new ArrayList<>();
+            preparedParameters.add("r");
+            preparedParameters.add("x");
+            preparedStatement = connection.prepareStatement(sql);
+            for (int i = 1; i <= preparedParameters.size(); i++) {
+                preparedStatement.setObject(i, preparedParameters.get(i - 1));
+            }
+            resultSet = preparedStatement.executeQuery();
+            while (resultSet.next()) {
+                Object object = resultSet.getObject(1);
+                System.out.println(object);
+            }
+        } finally {
+            DataSourceManagement.close(databaseName, resultSet, preparedStatement, connection);
         }
     }
 
