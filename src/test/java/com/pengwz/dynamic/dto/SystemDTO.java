@@ -1,6 +1,7 @@
 package com.pengwz.dynamic.dto;
 
 import com.pengwz.dynamic.anno.Column;
+import com.pengwz.dynamic.anno.ColumnIgnore;
 import com.pengwz.dynamic.anno.ColumnJson;
 import com.pengwz.dynamic.anno.Table;
 import com.pengwz.dynamic.config.DataSourceConfig;

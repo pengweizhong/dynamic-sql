@@ -11,6 +11,8 @@ import com.pengwz.dynamic.sql.Select;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class SelectHelper {
     private SelectHelper() {
@@ -45,39 +47,72 @@ public class SelectHelper {
         selectBuilder.append("select ");
         final Map<String, SelectParam> selectParamMap = select.getSelectParamMap();
         final List<TableInfo> builderTableInfos = Check.getBuilderTableInfos(select.getResultClass(), false);
-        selectParamMap.forEach((fieldName, selectParam) -> {
+        final Set<String> queryColumns = select.getQueryColumns();
+        if (select.isSelectAll()) {
+            final List<String> collect = builderTableInfos.stream().map(tableInfo -> tableInfo.getField().getName()).collect(Collectors.toList());
+            queryColumns.addAll(collect);
+        }
+        for (String fieldName : queryColumns) {
             final TableInfo tableInfo = builderTableInfos.stream().filter(tInfo -> tInfo.getField().getName().equals(fieldName))
                     .findFirst().orElseThrow(() -> new BraveException("未被查询的字段：" + fieldName));
-            // column(SystemDTO::getRoleName).left(1).repeat(2).trim().end()
-            final List<SelectParam.Function> functions = selectParam.getFunctions();
-            final StringBuilder columnBuilder = new StringBuilder();
-            for (int i = functions.size() - 1; i >= 0; i--) {
-                final SelectParam.Function function = functions.get(i);
-                columnBuilder.append(function.getFunc());
-                columnBuilder.append("(");
-                if (i == 0) {
-                    setColumnName(tableInfo, columnBuilder);
-                }
+            if (StringUtils.isEmpty(tableInfo.getTableAlias())) {
+                throw new BraveException("多表查询时需要指定字段别名");
             }
-            columnBuilder.append(repeatString(")", functions.size()));
-            columnBuilder.append(" as ").append(tableInfo.getColumn());
-            columnBuilder.append(", ");
-            //插入占位符
-            for (int i = 0; i < functions.size(); i++) {
-                final SelectParam.Function function = functions.get(i);
-                if (function.getParam().length == 0) {
-                    continue;
-                }
-                //找到对应的位置
-                final int index = columnBuilder.indexOf(")") + i;
-                final int indexOf = columnBuilder.indexOf(")", index);
-                columnBuilder.insert(indexOf, repeatString(",?", function.getParam().length));
+            final SelectParam selectParam = selectParamMap.get(fieldName);
+            //为null表示为对字段进行特殊查询
+            if (selectParam == null) {
+                selectBuilder.append(assignmentRegular(tableInfo));
+                continue;
             }
-            System.out.println(columnBuilder);
-            selectBuilder.append(columnBuilder);
-        });
+            selectBuilder.append(assignmentFunction(tableInfo, selectParam));
+        }
         select.setSelectSql(selectBuilder.toString());
     }
+
+    /**
+     * 赋值带有函数的字段
+     */
+    private static StringBuilder assignmentFunction(final TableInfo tableInfo, final SelectParam selectParam) {
+        final StringBuilder columnBuilder = new StringBuilder();
+
+        final List<SelectParam.Function> functions = selectParam.getFunctions();
+        for (int i = functions.size() - 1; i >= 0; i--) {
+            final SelectParam.Function function = functions.get(i);
+            columnBuilder.append(function.getFunc());
+            columnBuilder.append("(");
+            if (i == 0) {
+                setColumnName(tableInfo, columnBuilder);
+            }
+        }
+        columnBuilder.append(repeatString(")", functions.size()));
+        columnBuilder.append(" as ");
+        columnBuilder.append(tableInfo.getTableAlias()).append(".").append(tableInfo.getColumn());
+        columnBuilder.append(", ");
+        //插入占位符
+        for (int i = 0; i < functions.size(); i++) {
+            final SelectParam.Function function = functions.get(i);
+            if (function.getParam().length == 0) {
+                continue;
+            }
+            //找到对应的位置
+            final int index = columnBuilder.indexOf(")") + i;
+            final int indexOf = columnBuilder.indexOf(")", index);
+            columnBuilder.insert(indexOf, repeatString(",?", function.getParam().length));
+        }
+        return columnBuilder;
+    }
+
+    /**
+     * 赋值普通字段
+     */
+    private static StringBuilder assignmentRegular(final TableInfo tableInfo) {
+        final StringBuilder columnBuilder = new StringBuilder();
+        columnBuilder.append(tableInfo.getTableAlias()).append(".");
+        columnBuilder.append(tableInfo.getColumn());
+        columnBuilder.append(", ");
+        return columnBuilder;
+    }
+
 
     private static void setColumnName(final TableInfo tableInfo, final StringBuilder columnBuilder) {
         final String tableAlias = tableInfo.getTableAlias();

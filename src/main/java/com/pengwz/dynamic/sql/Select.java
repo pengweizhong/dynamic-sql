@@ -5,10 +5,7 @@ import com.pengwz.dynamic.sql.base.Fn;
 import com.pengwz.dynamic.utils.ReflectUtils;
 import com.pengwz.dynamic.utils.SelectHelper;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class Select<R> {
 
@@ -22,7 +19,7 @@ public class Select<R> {
 
     private final Map<String, SelectParam> selectParamMap = new HashMap<>();
 
-    private final List<String> queryColumns = new ArrayList<>();
+    private final Set<String> queryColumns = new LinkedHashSet<>();
 
     protected Select(Class<R> currentClass) {
         this.resultClass = currentClass;
@@ -74,7 +71,7 @@ public class Select<R> {
         this.params = params;
     }
 
-    public List<String> getQueryColumns() {
+    public Set<String> getQueryColumns() {
         return queryColumns;
     }
 
@@ -192,6 +189,8 @@ public class Select<R> {
          * @return 当前自定义字段对象
          */
         public CustomColumn<R> abs() {
+            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
+            SelectHelper.putSelectParam(selectParamMap, fieldName, "abs");
             return this;
         }
 
@@ -203,6 +202,8 @@ public class Select<R> {
          * @return 当前自定义字段对象
          */
         public CustomColumn<R> lower() {
+            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
+            SelectHelper.putSelectParam(selectParamMap, fieldName, "lower");
             return this;
         }
 
@@ -214,6 +215,8 @@ public class Select<R> {
          * @return 当前自定义字段对象
          */
         public CustomColumn<R> upper() {
+            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
+            SelectHelper.putSelectParam(selectParamMap, fieldName, "upper");
             return this;
         }
 
@@ -233,28 +236,38 @@ public class Select<R> {
 
         /**
          * 为当前字段左侧填充指定长度的字符串
+         * <p>
+         * example select lpad(column,len,filling)
          *
          * @param len     填充的长度
          * @param filling 填充的内容
          * @return 当前自定义字段对象
          */
         public CustomColumn<R> lPad(int len, String filling) {
+            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
+            SelectHelper.putSelectParam(selectParamMap, fieldName, "lpad", len, filling);
             return this;
         }
 
         /**
          * 为当前字段右侧填充指定长度的字符串
+         * <p>
+         * example select rpad(column,len,filling)
          *
          * @param len     填充的长度
          * @param filling 填充的内容
          * @return 当前自定义字段对象
          */
         public CustomColumn<R> rPad(int len, String filling) {
+            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
+            SelectHelper.putSelectParam(selectParamMap, fieldName, "rpad", len, filling);
             return this;
         }
 
         /**
          * 去除当前字段两侧的空格
+         * <p>
+         * example select trim(column)
          *
          * @return 当前自定义字段对象
          */
@@ -266,24 +279,34 @@ public class Select<R> {
 
         /**
          * 去除当前字段左侧的空格
+         * <p>
+         * example select ltrim(column)
          *
          * @return 当前自定义字段对象
          */
         public CustomColumn<R> lTrim() {
+            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
+            SelectHelper.putSelectParam(selectParamMap, fieldName, "ltrim");
             return this;
         }
 
         /**
          * 去除当前字段右侧的空格
+         * <p>
+         * example select rtrim(column)
          *
          * @return 当前自定义字段对象
          */
         public CustomColumn<R> rTrim() {
+            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
+            SelectHelper.putSelectParam(selectParamMap, fieldName, "rtrim");
             return this;
         }
 
         /**
          * 为当前字段重复生成新的字符串
+         * <p>
+         * example select repeat(column,num)
          *
          * @param num 重复生成的次数
          * @return 当前自定义字段对象
@@ -296,213 +319,304 @@ public class Select<R> {
 
         /**
          * 给当前字段替换字符串
+         * <p>
+         * example select replace(column,oldStr,newStr)
          *
          * @param oldStr 旧值
          * @param newStr 新值
          * @return 当前自定义字段对象
          */
         public CustomColumn<R> replace(String oldStr, String newStr) {
+            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
+            SelectHelper.putSelectParam(selectParamMap, fieldName, "replace", oldStr, newStr);
             return this;
         }
 
         /**
          * 将当前字段从{@code startIndex}开始保留到{@code endIndex}为止
+         * <p>
+         * example select substring(column,startIndex,endIndex)
          *
          * @param startIndex 开始下标
          * @param endIndex   结束下标
          * @return 当前自定义字段对象
          */
         public CustomColumn<R> subString(int startIndex, int endIndex) {
+            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
+            SelectHelper.putSelectParam(selectParamMap, fieldName, "substring", startIndex, endIndex);
             return this;
         }
 
         /**
          * 将当前字段倒序输出
+         * <p>
+         * example select reverse(column)
          *
          * @return 当前自定义字段对象
          */
         public CustomColumn<R> reverse() {
+            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
+            SelectHelper.putSelectParam(selectParamMap, fieldName, "reverse");
             return this;
         }
 
         /**
          * 计算当前字段正弦函数
+         * <p>
+         * example select sin(column)
          *
          * @return 当前自定义字段对象
          */
         public CustomColumn<R> sin() {
+            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
+            SelectHelper.putSelectParam(selectParamMap, fieldName, "sin");
             return this;
         }
 
         /**
          * 计算当前字段反正弦函数
+         * <p>
+         * example select asin(column)
          *
          * @return 当前自定义字段对象
          */
         public CustomColumn<R> asin() {
+            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
+            SelectHelper.putSelectParam(selectParamMap, fieldName, "asin");
             return this;
         }
 
         /**
          * 计算当前字段余弦函数
+         * <p>
+         * example select cos(column)
          *
          * @return 当前自定义字段对象
          */
         public CustomColumn<R> cos() {
+            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
+            SelectHelper.putSelectParam(selectParamMap, fieldName, "cos");
             return this;
         }
 
         /**
          * 计算当前字段反余弦函数
+         * <p>
+         * example select acos(column)
          *
          * @return 当前自定义字段对象
          */
         public CustomColumn<R> acos() {
+            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
+            SelectHelper.putSelectParam(selectParamMap, fieldName, "acos");
             return this;
         }
 
         /**
          * 返回当前时间字段对应的英文名称，如:`Sunday`
+         * <p>
+         * example select dayname(column)
          *
          * @return 当前自定义字段对象
          */
         public CustomColumn<R> dayName() {
+            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
+            SelectHelper.putSelectParam(selectParamMap, fieldName, "dayname");
             return this;
         }
 
         /**
          * 返回当前字段对应的一周的索引位置，如周日表示1，周一表示2，以此类推
+         * <p>
+         * example select dayofweek(column)
          *
          * @return 当前自定义字段对象
          */
         public CustomColumn<R> dayOfWeek() {
+            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
+            SelectHelper.putSelectParam(selectParamMap, fieldName, "dayofweek");
             return this;
         }
 
         /**
          * 返回对应的工作日索引，0表示周一，1表示周二...6表示周日
+         * <p>
+         * example select weekday(column)
          *
          * @return 当前自定义字段对象
          */
         public CustomColumn<R> weekDay() {
+            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
+            SelectHelper.putSelectParam(selectParamMap, fieldName, "weekday");
             return this;
         }
 
         /**
          * 计算日期是一年中的第几周
+         * <p>
+         * example select week(column)
          *
          * @return 当前自定义字段对象
          */
         public CustomColumn<R> week() {
+            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
+            SelectHelper.putSelectParam(selectParamMap, fieldName, "week");
             return this;
         }
 
         /**
          * 计算当前字段是一年中的第几周
+         * <p>
+         * example select weekofyear(column)
          *
          * @return 当前自定义字段对象
          */
         public CustomColumn<R> weekOfYear() {
+            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
+            SelectHelper.putSelectParam(selectParamMap, fieldName, "weekofyear");
             return this;
         }
 
         /**
          * 返回一年中的第几天，范围从1到366
+         * <p>
+         * example select dayofyear(column)
          *
          * @return 当前自定义字段对象
          */
         public CustomColumn<R> dayOfYear() {
+            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
+            SelectHelper.putSelectParam(selectParamMap, fieldName, "dayofyear");
             return this;
         }
 
         /**
          * 返回一个月的第几天，范围从1到31
+         * <p>
+         * example select dayofmonth(column)
          *
          * @return 当前自定义字段对象
          */
         public CustomColumn<R> dayOfMonth() {
+            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
+            SelectHelper.putSelectParam(selectParamMap, fieldName, "dayofmonth");
             return this;
         }
 
         /**
          * 获取当前字段中的年
+         * <p>
+         * example select year(column)
          *
          * @return 当前自定义字段对象
          */
         public CustomColumn<R> year() {
+            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
+            SelectHelper.putSelectParam(selectParamMap, fieldName, "year");
             return this;
         }
 
         /**
          * 获取当前字段中的季度，返回1到4
+         * <p>
+         * example select quarter(column)
          *
          * @return 当前自定义字段对象
          */
         public CustomColumn<R> quarter() {
+            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
+            SelectHelper.putSelectParam(selectParamMap, fieldName, "quarter");
             return this;
         }
 
         /**
          * 获取当前字段中的分钟数
+         * <p>
+         * example select minute(column)
          *
          * @return 当前自定义字段对象
          */
         public CustomColumn<R> minute() {
+            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
+            SelectHelper.putSelectParam(selectParamMap, fieldName, "minute");
             return this;
         }
 
         /**
          * 获取当前字段中的秒数
+         * <p>
+         * example select second(column)
          *
          * @return 当前自定义字段对象
          */
         public CustomColumn<R> second() {
+            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
+            SelectHelper.putSelectParam(selectParamMap, fieldName, "second");
             return this;
         }
 
         /**
          * 返回当前列的最大值
+         * <p>
+         * example select max(column)
          *
          * @return 当前自定义字段对象
          */
         public CustomColumn<R> max() {
+            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
+            SelectHelper.putSelectParam(selectParamMap, fieldName, "max");
             return this;
         }
 
         /**
          * 返回当前列的最小值
+         * <p>
+         * example select min(column)
          *
          * @return 当前自定义字段对象
          */
         public CustomColumn<R> min() {
+            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
+            SelectHelper.putSelectParam(selectParamMap, fieldName, "min");
             return this;
         }
 
         /**
          * 返回当前列的总数
+         * <p>
+         * example select count(column)
          *
          * @return 当前自定义字段对象
          */
         public CustomColumn<R> count() {
-
+            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
+            SelectHelper.putSelectParam(selectParamMap, fieldName, "count");
             return this;
         }
 
         /**
          * 返回当前列的和
+         * <p>
+         * example select sum(column)
          *
          * @return 当前自定义字段对象
          */
         public CustomColumn<R> sum() {
+            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
+            SelectHelper.putSelectParam(selectParamMap, fieldName, "sum");
             return this;
         }
 
         /**
          * 返回当前列的平均数
+         * <p>
+         * example select avg(column)
          *
          * @return 当前自定义字段对象
          */
         public CustomColumn<R> avg() {
+            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
+            SelectHelper.putSelectParam(selectParamMap, fieldName, "avg");
             return this;
         }
 
