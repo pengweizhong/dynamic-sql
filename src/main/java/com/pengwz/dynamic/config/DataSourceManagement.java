@@ -5,6 +5,7 @@ import com.pengwz.dynamic.model.DataSourceInfo;
 import com.pengwz.dynamic.model.DbType;
 import com.pengwz.dynamic.sql.ContextApplication;
 import com.pengwz.dynamic.utils.ExceptionUtils;
+import com.pengwz.dynamic.utils.StringUtils;
 import org.springframework.jdbc.datasource.DataSourceUtils;
 import org.springframework.jdbc.support.JdbcUtils;
 
@@ -47,12 +48,19 @@ public final class DataSourceManagement {
         return null;
     }
 
+    public static String initDataSourceConfig(Class<?> dataSourceClass) {
+        return initDataSourceConfig(dataSourceClass, null);
+    }
+
     public static String initDataSourceConfig(Class<?> dataSourceClass, String tableName) {
         String dataSourceName;
         if (dataSourceClass.equals(DataSourceConfig.class)) {
             dataSourceName = ContextApplication.getDefalutDataSourceName();
             if (Objects.isNull(dataSourceName)) {
-                throw new BraveException("在不存在默认数据源的情况下，须显式指定数据源；非spring环境必须明确指定数据源；表名：" + tableName);
+                if (StringUtils.isNotEmpty(tableName)) {
+                    throw new BraveException("在不存在默认数据源的情况下，须显式指定数据源；非spring环境必须明确指定数据源；表名：" + tableName);
+                }
+                throw new BraveException("在不存在默认数据源的情况下，须显式指定数据源；非spring环境必须明确指定数据源；");
             }
         } else {
             dataSourceName = dataSourceClass.getName();
@@ -119,5 +127,5 @@ public final class DataSourceManagement {
         methods.addAll(Arrays.asList(declaredMethods));
         getAllMethod(dataSourceClass.getSuperclass(), methods);
     }
-
+    
 }

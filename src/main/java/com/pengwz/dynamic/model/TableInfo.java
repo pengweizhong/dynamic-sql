@@ -6,6 +6,10 @@ import com.pengwz.dynamic.anno.JsonMode;
 import java.lang.reflect.Field;
 
 public class TableInfo {
+    //所属数据源名称
+    private String dataSourceName;
+    //表名
+    private String tableName;
     //数据库字段名
     private String column;
     //是否为主键
@@ -16,6 +20,22 @@ public class TableInfo {
     private Field field;
     //json 序列化模式，若该值不为null，说明此字段是一个json对象
     private JsonMode jsonMode;
+
+    public String getDataSourceName() {
+        return dataSourceName;
+    }
+
+    public void setDataSourceName(String dataSourceName) {
+        this.dataSourceName = dataSourceName;
+    }
+
+    public String getTableName() {
+        return tableName;
+    }
+
+    public void setTableName(String tableName) {
+        this.tableName = tableName;
+    }
 
     public String getColumn() {
         return column;
@@ -60,7 +80,9 @@ public class TableInfo {
     @Override
     public String toString() {
         return "TableInfo{" +
-                "column='" + column + '\'' +
+                "dataSourceName='" + dataSourceName + '\'' +
+                ", tableName='" + tableName + '\'' +
+                ", column='" + column + '\'' +
                 ", isPrimary=" + isPrimary +
                 ", generatedValue=" + generatedValue +
                 ", field=" + field +

@@ -1,7 +1,5 @@
 package com.pengwz.dynamic.sql;
 
-import com.pengwz.dynamic.anno.Table;
-import com.pengwz.dynamic.check.Check;
 import com.pengwz.dynamic.exception.BraveException;
 import com.pengwz.dynamic.model.TableInfo;
 import com.pengwz.dynamic.sql.base.HandleFunction;
@@ -21,10 +19,9 @@ import static com.pengwz.dynamic.check.Check.checkAndSave;
 import static com.pengwz.dynamic.constant.Constant.*;
 
 public class ParseSql {
-    public static String parse(Class<?> currentClass, Table table, String dataSource, List<Declaration> declarationList,
+    public static String parse(Class<?> currentClass, List<Declaration> declarationList,
                                Map<String, List<String>> orderByMap, List<Object> params) {
-        String tableName = Check.getTableName(table.value(), dataSource);
-        checkAndSave(currentClass, table, dataSource);
+        checkAndSave(currentClass);
         StringBuilder whereSql = new StringBuilder();
         for (Declaration declaration : declarationList) {
             if (Objects.nonNull(declaration.getBrackets())) {
@@ -38,8 +35,8 @@ public class ParseSql {
                     continue;
                 }
                 if (handleFunction instanceof OrderBy) {
-                    handleFunction.execute(dataSource, tableName, declaration);
-                    String column = ContextApplication.getColumnByField(dataSource, tableName, declaration.getProperty());
+                    handleFunction.execute(currentClass, declaration);
+                    String column = ContextApplication.getColumnByField(currentClass, declaration.getProperty());
                     whereSql.append(" order by " + column + " " + declaration.getSortMode());
                     continue;
                 }
@@ -47,30 +44,30 @@ public class ParseSql {
                     String property = declaration.getProperty();
                     String[] split = property.split(",");
                     List<String> columns = new ArrayList<>();
-                    Arrays.asList(split).forEach(field -> columns.add(ContextApplication.getColumnByField(dataSource, tableName, field)));
+                    Arrays.asList(split).forEach(field -> columns.add(ContextApplication.getColumnByField(currentClass, field)));
                     whereSql.append(SPACE + GROUP + SPACE + BY + SPACE + String.join(",", columns));
                     continue;
                 }
-                whereSql.append(declaration.getHandleFunction().execute(dataSource, tableName, declaration)).append(SPACE);
+                whereSql.append(declaration.getHandleFunction().execute(currentClass, declaration)).append(SPACE);
             } else if (declaration.getCondition().equals(BETWEEN) || declaration.getCondition().equals(NOT_BETWEEN)) {
                 whereSql.append(declaration.getAndOr()).append(SPACE);
-                whereSql.append(ContextApplication.getColumnByField(dataSource, tableName, declaration.getProperty())).append(SPACE);
+                whereSql.append(ContextApplication.getColumnByField(currentClass, declaration.getProperty())).append(SPACE);
                 whereSql.append(declaration.getCondition()).append(SPACE);
-                params.add(matchFixValue(declaration.getValue(), dataSource, tableName, declaration.getProperty()));
+                params.add(matchFixValue(declaration.getValue(), currentClass, declaration.getProperty()));
                 splicePlaceholders(whereSql, declaration.getValue());
                 whereSql.append(AND).append(SPACE);
-                params.add(matchFixValue(declaration.getValue2(), dataSource, tableName, declaration.getProperty()));
+                params.add(matchFixValue(declaration.getValue2(), currentClass, declaration.getProperty()));
                 splicePlaceholders(whereSql, declaration.getValue2());
             } else if (declaration.getCondition().equals(IS) || declaration.getCondition().equals(IS_NOT)) {
                 whereSql.append(declaration.getAndOr()).append(SPACE);
-                whereSql.append(ContextApplication.getColumnByField(dataSource, tableName, declaration.getProperty())).append(SPACE);
+                whereSql.append(ContextApplication.getColumnByField(currentClass, declaration.getProperty())).append(SPACE);
                 whereSql.append(declaration.getCondition()).append(SPACE);
                 whereSql.append("null").append(SPACE);
             } else {
                 whereSql.append(declaration.getAndOr()).append(SPACE);
-                whereSql.append(ContextApplication.getColumnByField(dataSource, tableName, declaration.getProperty())).append(SPACE);
+                whereSql.append(ContextApplication.getColumnByField(currentClass, declaration.getProperty())).append(SPACE);
                 whereSql.append(declaration.getCondition()).append(SPACE);
-                params.add(matchFixValue(declaration.getValue(), dataSource, tableName, declaration.getProperty()));
+                params.add(matchFixValue(declaration.getValue(), currentClass, declaration.getProperty()));
                 splicePlaceholders(whereSql, declaration.getValue());
             }
         }
@@ -80,7 +77,7 @@ public class ParseSql {
                 whereSql.append(ORDER).append(SPACE).append(BY).append(SPACE);
                 List<String> list = orderByMap.get(key);
                 for (String field : list) {
-                    String columnByField = ContextApplication.getColumnByField(dataSource, tableName, field);
+                    String columnByField = ContextApplication.getColumnByField(currentClass, field);
                     whereSql.append(columnByField).append(COMMA).append(SPACE);
                 }
                 whereSql = new StringBuilder(whereSql.substring(0, whereSql.length() - 2));
@@ -155,11 +152,11 @@ public class ParseSql {
         }
     }
 
-    public static Object matchFixValue(Object value, String database, String tableName, String property) {
+    public static Object matchFixValue(Object value, Class<?> tableClass, String property) {
         if (value == null) {
             return null;
         }
-        final TableInfo tableInfo = ContextApplication.getTableInfo(database, tableName, property);
+        final TableInfo tableInfo = ContextApplication.getTableInfo(tableClass, property);
         if (tableInfo.getJsonMode() != null) {
             return ConverterUtils.getGson(tableInfo.getJsonMode()).toJson(value);
         }
@@ -216,16 +213,17 @@ public class ParseSql {
 //        return "'" + value + "'";
 //    }
 
-    public static String parseAggregateFunction(String aggregateFunctionName, String dataSource, String tableName, Declaration declaration) {
+    public static String parseAggregateFunction(String aggregateFunctionName, Class<?> tableClass, Declaration declaration) {
+        final TableInfo tableInfo = ContextApplication.getTableInfos(tableClass).get(0);
         StringBuilder whereFunctionSql = new StringBuilder();
         whereFunctionSql.append(declaration.getAndOr());
         // id = (
-        String column = ContextApplication.getColumnByField(dataSource, tableName, declaration.getProperty());
+        String column = ContextApplication.getColumnByField(tableClass, declaration.getProperty());
         whereFunctionSql.append(SPACE).append(column).append(SPACE).append(EQ).append(SPACE).append(LEFT_BRACKETS).append(SPACE);
         //select min(property)
         whereFunctionSql.append(SELECT).append(SPACE).append(aggregateFunctionName).append(LEFT_BRACKETS).append(column).append(RIGHT_BRACKETS).append(SPACE);
         //from tableName )
-        whereFunctionSql.append(FROM).append(SPACE).append(tableName).append(SPACE).append(RIGHT_BRACKETS);
+        whereFunctionSql.append(FROM).append(SPACE).append(tableInfo.getTableName()).append(SPACE).append(RIGHT_BRACKETS);
         return whereFunctionSql.toString();
     }
 

@@ -1,9 +1,7 @@
 package com.pengwz.dynamic.sql;
 
-import com.pengwz.dynamic.anno.Table;
 import com.pengwz.dynamic.check.Check;
 import com.pengwz.dynamic.config.DataSourceConfig;
-import com.pengwz.dynamic.config.DataSourceManagement;
 import com.pengwz.dynamic.exception.BraveException;
 import com.pengwz.dynamic.sql.base.CustomizeSQL;
 import com.pengwz.dynamic.sql.base.Fn;
@@ -12,10 +10,12 @@ import com.pengwz.dynamic.sql.base.enumerate.FunctionEnum;
 import com.pengwz.dynamic.sql.base.impl.SqlImpl;
 import com.pengwz.dynamic.utils.CollectionUtils;
 import com.pengwz.dynamic.utils.ReflectUtils;
-import com.pengwz.dynamic.utils.StringUtils;
 
 import java.math.BigDecimal;
 import java.util.*;
+import java.util.function.Supplier;
+
+import static com.pengwz.dynamic.config.DataSourceManagement.close;
 
 /**
  * 数据库交互对象
@@ -172,7 +172,7 @@ public class BraveSql<T> {
      * @return SQL查询后的结果集，若表中无数据，则返回空集合
      */
     public List<T> select() {
-        return mustShare().select();
+        return doExecute(() -> mustShare().select());
     }
 
     /**
@@ -182,10 +182,7 @@ public class BraveSql<T> {
      * @throws BraveException 若返回多条数据，则抛出此异常
      */
     public T selectSingle() {
-//        if (dynamicSql.getDeclarations().isEmpty()) {
-//            throw new BraveException("必须提供 where 条件语句");
-//        }
-        return mustShare().selectSingle();
+        return doExecute(() -> mustShare().selectSingle());
     }
 
     /**
@@ -199,7 +196,7 @@ public class BraveSql<T> {
         if (Objects.isNull(primaryValue)) {
             throw new BraveException("主键值不可为空");
         }
-        return mustShare().selectByPrimaryKey(primaryValue);
+        return doExecute(() -> mustShare().selectByPrimaryKey(primaryValue));
     }
 
     /**
@@ -232,7 +229,7 @@ public class BraveSql<T> {
      * @return 查询结果集总数量，若没有数据，则返回 0
      */
     public Integer selectCount(String property) {
-        return mustShare().selectAggregateFunction(property.trim(), FunctionEnum.COUNT, Integer.class);
+        return doExecute(() -> mustShare().selectAggregateFunction(property.trim(), FunctionEnum.COUNT, Integer.class));
     }
 
     /**
@@ -252,7 +249,7 @@ public class BraveSql<T> {
      * @return 和值，若没有数据，返回 null
      */
     public BigDecimal selectSum(String property) {
-        return mustShare().selectAggregateFunction(property.trim(), FunctionEnum.SUM, BigDecimal.class);
+        return doExecute(() -> mustShare().selectAggregateFunction(property.trim(), FunctionEnum.SUM, BigDecimal.class));
     }
 
     /**
@@ -294,7 +291,7 @@ public class BraveSql<T> {
      * @return 平均值，若没有数据，返回 null
      */
     public <R> R selectAvg(String property, Class<R> targetClass) {
-        return mustShare().selectAggregateFunction(property.trim(), FunctionEnum.AVG, targetClass);
+        return doExecute(() -> mustShare().selectAggregateFunction(property.trim(), FunctionEnum.AVG, targetClass));
     }
 
     /**
@@ -337,7 +334,7 @@ public class BraveSql<T> {
      * @return 最小值，若没有数据，返回 null
      */
     public <R> R selectMin(String property, Class<R> targetClass) {
-        return mustShare().selectAggregateFunction(property.trim(), FunctionEnum.MIN, targetClass);
+        return doExecute(() -> mustShare().selectAggregateFunction(property.trim(), FunctionEnum.MIN, targetClass));
     }
 
     /**
@@ -379,7 +376,7 @@ public class BraveSql<T> {
      * @return 最大值，若没有数据，返回 null
      */
     public <R> R selectMax(String property, Class<R> targetClass) {
-        return mustShare().selectAggregateFunction(property.trim(), FunctionEnum.MAX, targetClass);
+        return doExecute(() -> mustShare().selectAggregateFunction(property.trim(), FunctionEnum.MAX, targetClass));
     }
 
     /**
@@ -391,7 +388,7 @@ public class BraveSql<T> {
      */
     public PageInfo<T> selectPageInfo(int pageSize) {
         pageInfo = new PageInfo<>(0, pageSize);
-        return mustShare().selectPageInfo();
+        return doExecute(() -> mustShare().selectPageInfo());
     }
 
     /**
@@ -404,7 +401,7 @@ public class BraveSql<T> {
      */
     public PageInfo<T> selectPageInfo(int pageIndex, int pageSize) {
         pageInfo = new PageInfo<>(pageIndex, pageSize);
-        return mustShare().selectPageInfo();
+        return doExecute(() -> mustShare().selectPageInfo());
     }
 
     /**
@@ -432,7 +429,7 @@ public class BraveSql<T> {
             return 0;
         }
         this.data = Collections.singletonList(data);
-        return mustShare().insertActive();
+        return doExecute(() -> mustShare().insertActive());
     }
 
     /**
@@ -446,7 +443,7 @@ public class BraveSql<T> {
             return 0;
         }
         data = iterable;
-        return mustShare().batchInsert();
+        return doExecute(() -> mustShare().batchInsert());
     }
 
     /**
@@ -488,7 +485,7 @@ public class BraveSql<T> {
             throw new BraveException("必须提供待插入的数据");
         }
         this.data = iterable;
-        return mustShare().insertOrUpdate();
+        return doExecute(() -> mustShare().insertOrUpdate());
     }
 
 
@@ -503,7 +500,7 @@ public class BraveSql<T> {
             throw new BraveException("必须提供待更新的对象");
         }
         this.data = Collections.singletonList(data);
-        return mustShare().update();
+        return doExecute(() -> mustShare().update());
     }
 
     /**
@@ -517,22 +514,8 @@ public class BraveSql<T> {
             throw new BraveException("必须提供待更新的对象");
         }
         this.data = Collections.singletonList(data);
-        return mustShare().updateActive();
+        return doExecute(() -> mustShare().updateActive());
     }
-
-//    /**
-//     * 更新对象所有属性，如果类中属性为null，则使用数据库默认值（如果有）
-//     *
-//     * @param iterable 待更新的多个对象
-//     * @return 返回更新成功的数量
-//     */
-//    public Integer batchUpdate(Iterable<T> iterable) {
-//        if (Objects.isNull(iterable) || !iterable.iterator().hasNext()) {
-//            throw new BraveException("必须提供待插入的数据");
-//        }
-//        this.data = iterable;
-//        return mustShare().updateBatch();
-//    }
 
     /**
      * 根据主键更新全部数据
@@ -545,7 +528,7 @@ public class BraveSql<T> {
             throw new BraveException("必须提供待更新的主键值");
         }
         this.data = Collections.singletonList(data);
-        return mustShare().updateByPrimaryKey();
+        return doExecute(() -> mustShare().updateByPrimaryKey());
     }
 
     /**
@@ -559,7 +542,7 @@ public class BraveSql<T> {
             throw new BraveException("必须提供待更新的主键值");
         }
         this.data = Collections.singletonList(data);
-        return mustShare().updateActiveByPrimaryKey();
+        return doExecute(() -> mustShare().updateActiveByPrimaryKey());
     }
 
     /**
@@ -568,7 +551,7 @@ public class BraveSql<T> {
      * @return 删除的数据量
      */
     public Integer delete() {
-        return mustShare().delete();
+        return doExecute(() -> mustShare().delete());
     }
 
     /**
@@ -581,7 +564,7 @@ public class BraveSql<T> {
         if (Objects.isNull(key)) {
             throw new BraveException("必须提供待删除的主键值");
         }
-        return mustShare().deleteByPrimaryKey(key);
+        return doExecute(() -> mustShare().deleteByPrimaryKey(key));
     }
 
     /**
@@ -661,23 +644,13 @@ public class BraveSql<T> {
     }
 
     private Sqls<T> mustShare() {
-        // 解析where语句
-        Table table = currentClass.getAnnotation(Table.class);
-        if (Objects.isNull(table) || StringUtils.isEmpty(table.value())) {
-            throw new BraveException("当前实体类：" + currentClass + "未获取到表名");
-        }
-        String tableName = table.value().trim();
-        String defalutDataSource = DataSourceManagement.initDataSourceConfig(table.dataSourceClass(), tableName);
         Check.checkPageInfo(pageInfo);
         List<Object> params = new ArrayList<>();
-        String whereSql = ParseSql.parse(currentClass, table, defalutDataSource, dynamicSql.getDeclarations(), orderByMap, params);
+        String whereSql = ParseSql.parse(currentClass, dynamicSql.getDeclarations(), orderByMap, params);
         //调正where子句的sql顺序 ，将来把它单独抽出来  作为组件
-        //whereSql = ParseSql.fixWhereSql(whereSql);
+        whereSql = ParseSql.fixWhereSql(whereSql);
         SqlImpl<T> sqls = new SqlImpl<>();
-        sqls.init(currentClass, pageInfo, data, dynamicSql.getUpdateNullProperties(),
-                Check.getTableName(tableName, defalutDataSource), defalutDataSource, whereSql, params);
-        //优化他
-        sqls.before();
+        sqls.init(currentClass, pageInfo, data, dynamicSql.getUpdateNullProperties(), whereSql, params);
         return sqls;
     }
 
@@ -693,4 +666,22 @@ public class BraveSql<T> {
         orderByMap.put(ascOrDesc, strings);
     }
 
+    /**
+     * 执行SQL并关闭任务
+     *
+     * @param supplier 需要执行的SQL
+     * @param <R>      返回结果类型
+     * @return 返回SQL执行结果
+     */
+    private <R> R doExecute(Supplier<Object> supplier) {
+        Sqls<T> tSqls = null;
+        try {
+            tSqls = mustShare();
+            return (R) supplier.get();
+        } finally {
+            if (tSqls != null) {
+                close(tSqls.getDataSourceName(), tSqls.getResultSet(), tSqls.getPreparedStatement(), tSqls.getConnection());
+            }
+        }
+    }
 }

@@ -19,13 +19,6 @@ public @interface Table {
     String value() default "";
 
     /**
-     * 是否将该表实体缓存到程序缓存中。默认缓存。
-     *
-     * @return 是否缓存表实体
-     */
-    boolean isCache() default true;
-
-    /**
      * 表实体对应的数据源配置
      *
      * @return 表实体对应的数据源配置

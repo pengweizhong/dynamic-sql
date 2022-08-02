@@ -1,12 +1,14 @@
 package com.pengwz.dynamic.check;
 
 import com.pengwz.dynamic.anno.*;
+import com.pengwz.dynamic.config.DataSourceManagement;
 import com.pengwz.dynamic.exception.BraveException;
 import com.pengwz.dynamic.model.DataSourceInfo;
 import com.pengwz.dynamic.model.DbType;
 import com.pengwz.dynamic.model.TableInfo;
 import com.pengwz.dynamic.sql.ContextApplication;
 import com.pengwz.dynamic.sql.PageInfo;
+import com.pengwz.dynamic.utils.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -23,11 +25,22 @@ public class Check {
 
     private static final Log log = LogFactory.getLog(Check.class);
 
-    public static void checkAndSave(Class<?> currentClass, Table table, String dataSource) {
-        String tableName = table.value().trim();
-        if (table.isCache() && ContextApplication.existsTable(tableName, dataSource)) {
+    public static void checkAndSave(Class<?> currentClass) {
+        final List<TableInfo> cacheTableInfos = ContextApplication.getTableInfos(currentClass);
+        if (CollectionUtils.isNotEmpty(cacheTableInfos)) {
             return;
         }
+        final List<TableInfo> builderTableInfos = getBuilderTableInfos(currentClass);
+        ContextApplication.saveTableInfos(currentClass, builderTableInfos);
+    }
+
+    public static List<TableInfo> getBuilderTableInfos(Class<?> currentClass) {
+        Table table = currentClass.getAnnotation(Table.class);
+        if (Objects.isNull(table) || StringUtils.isEmpty(table.value())) {
+            throw new BraveException("当前实体类：" + currentClass + "未获取到表名");
+        }
+        String dataSource = DataSourceManagement.initDataSourceConfig(table.dataSourceClass());
+        String tableName = table.value().trim();
         List<Field> allFiledList = new ArrayList<>();
         recursionGetAllFields(currentClass, allFiledList);
         List<TableInfo> tableInfos = builderTableInfos(allFiledList, tableName, dataSource);
@@ -45,8 +58,9 @@ public class Check {
                 throw new BraveException("重复的列名：" + column + "，发生在表：" + tableName);
             }
         });
-        ContextApplication.saveTable(dataSource, getTableName(tableName, dataSource), tableInfos);
+        return tableInfos;
     }
+
 
     public static List<TableInfo> builderTableInfos(List<Field> allFiledList, String tableName, String dataSource) {
         List<TableInfo> tableInfos = new ArrayList<>();
@@ -91,6 +105,10 @@ public class Check {
             tableInfo.setColumn(getColumnName(field, tableName, dataSource));
 
             tableInfo.setJsonMode(getJsonMode(field));
+
+            tableInfo.setDataSourceName(dataSource);
+            DataSourceInfo dataSourceInfo = ContextApplication.getDataSourceInfo(dataSource);
+            tableInfo.setTableName(getTableName(tableName, dataSourceInfo.getDbType()));
 
             tableInfos.add(tableInfo);
         }
@@ -158,8 +176,7 @@ public class Check {
         return column;
     }
 
-    public static String getTableName(String tableName, String dataSource) {
-        DataSourceInfo dataSourceInfo = ContextApplication.getDataSourceInfo(dataSource);
+    public static String getTableName(String tableName, DbType dbType) {
         tableName = tableName.trim();
         if (tableName.contains(".")) {
             String[] splitTableName = tableName.split("\\.");
@@ -171,9 +188,9 @@ public class Check {
             if (StringUtils.isBlank(database) || StringUtils.isBlank(table)) {
                 throw new BraveException("错误的表名称：" + tableName);
             }
-            return splicingName(dataSourceInfo.getDbType(), database) + "." + splicingName(dataSourceInfo.getDbType(), table);
+            return splicingName(dbType, database) + "." + splicingName(dbType, table);
         }
-        return splicingName(dataSourceInfo.getDbType(), tableName);
+        return splicingName(dbType, tableName);
     }
 
     /**

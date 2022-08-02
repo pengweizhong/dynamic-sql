@@ -5,6 +5,9 @@ import com.pengwz.dynamic.sql.base.Sqls;
 import com.pengwz.dynamic.sql.base.enumerate.FunctionEnum;
 import org.junit.Test;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.util.List;
 
 public class SimpleTest {
@@ -29,11 +32,6 @@ public class SimpleTest {
 
         @Override
         public List select() {
-            return null;
-        }
-
-        @Override
-        public List selectAll() {
             return null;
         }
 
@@ -84,6 +82,26 @@ public class SimpleTest {
 
         @Override
         public Integer deleteByPrimaryKey(Object primaryKeyValue) {
+            return null;
+        }
+
+        @Override
+        public String getDataSourceName() {
+            return null;
+        }
+
+        @Override
+        public ResultSet getResultSet() {
+            return null;
+        }
+
+        @Override
+        public PreparedStatement getPreparedStatement() {
+            return null;
+        }
+
+        @Override
+        public Connection getConnection() {
             return null;
         }
 

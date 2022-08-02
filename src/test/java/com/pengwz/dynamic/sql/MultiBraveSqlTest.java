@@ -223,6 +223,12 @@ public class MultiBraveSqlTest {
 
 
     }
+
+    @Test
+    public void test7() {
+        final List<SystemUserEntity> select = BraveSql.build(SystemUserEntity.class).select();
+        System.out.println(select);
+    }
 }
 
 

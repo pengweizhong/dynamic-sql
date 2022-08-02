@@ -36,7 +36,7 @@ public class SelectHelper {
     }
 
     public static void assembleQueryStatement(Select<?> select) {
-
         select.setSelectSql("asdadasdasdasd");
+        System.out.println(select);
     }
 }

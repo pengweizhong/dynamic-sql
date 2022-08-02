@@ -11,7 +11,7 @@ import static com.pengwz.dynamic.constant.Constant.MIN;
  */
 public class Min implements HandleFunction {
     @Override
-    public String execute(String dataSource, String tableName, Declaration declaration) {
-        return ParseSql.parseAggregateFunction(MIN, dataSource,tableName, declaration);
+    public String execute(Class<?> tableClass, Declaration declaration) {
+        return ParseSql.parseAggregateFunction(MIN, tableClass, declaration);
     }
 }

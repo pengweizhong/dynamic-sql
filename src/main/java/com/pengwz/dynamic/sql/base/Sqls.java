@@ -5,6 +5,9 @@ import com.pengwz.dynamic.sql.base.enumerate.FunctionEnum;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.util.List;
 
 public interface Sqls<T> {
@@ -27,8 +30,6 @@ public interface Sqls<T> {
      */
     <R> R selectAggregateFunction(String property, FunctionEnum functionEnum, Class<R> returnType);
 
-    List<T> selectAll();
-
     PageInfo<T> selectPageInfo();
 
     Integer batchInsert();
@@ -41,8 +42,6 @@ public interface Sqls<T> {
 
     Integer updateActive();
 
-//    Integer updateBatch();
-
     Integer updateByPrimaryKey();
 
     Integer updateActiveByPrimaryKey();
@@ -50,6 +49,14 @@ public interface Sqls<T> {
     Integer delete();
 
     Integer deleteByPrimaryKey(Object primaryKeyValue);
+
+    String getDataSourceName();
+
+    ResultSet getResultSet();
+
+    PreparedStatement getPreparedStatement();
+
+    Connection getConnection();
 
     default void printSql(String sql) {
         if (log.isDebugEnabled()) {
