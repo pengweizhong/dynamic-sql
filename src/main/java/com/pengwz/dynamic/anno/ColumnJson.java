@@ -11,6 +11,13 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 @Retention(RUNTIME)
 public @interface ColumnJson {
     /**
+     * 所属表别名，它将还在多表join时使用
+     *
+     * @return 所属表别名
+     */
+    String tableAlias() default "";
+
+    /**
      * 表列名，和物理表字段名称一致
      */
     String value() default "";

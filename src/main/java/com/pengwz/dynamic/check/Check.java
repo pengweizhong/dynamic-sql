@@ -3,6 +3,7 @@ package com.pengwz.dynamic.check;
 import com.pengwz.dynamic.anno.*;
 import com.pengwz.dynamic.config.DataSourceManagement;
 import com.pengwz.dynamic.exception.BraveException;
+import com.pengwz.dynamic.model.ColumnInfo;
 import com.pengwz.dynamic.model.DataSourceInfo;
 import com.pengwz.dynamic.model.DbType;
 import com.pengwz.dynamic.model.TableInfo;
@@ -35,8 +36,12 @@ public class Check {
     }
 
     public static List<TableInfo> getBuilderTableInfos(Class<?> currentClass) {
+        return getBuilderTableInfos(currentClass, true);
+    }
+
+    public static List<TableInfo> getBuilderTableInfos(Class<?> currentClass, boolean isCheckTableName) {
         Table table = currentClass.getAnnotation(Table.class);
-        if (Objects.isNull(table) || StringUtils.isEmpty(table.value())) {
+        if (StringUtils.isEmpty(table.value()) && isCheckTableName) {
             throw new BraveException("当前实体类：" + currentClass + "未获取到表名");
         }
         String dataSource = DataSourceManagement.initDataSourceConfig(table.dataSourceClass());
@@ -101,15 +106,13 @@ public class Check {
                 tableInfo.setPrimary(false);
             }
             tableInfo.setField(field);
-
-            tableInfo.setColumn(getColumnName(field, tableName, dataSource));
-
-            tableInfo.setJsonMode(getJsonMode(field));
-
+            final ColumnInfo columnInfo = getFixColumnInfo(field, tableName, dataSource);
+            tableInfo.setColumn(columnInfo.getValue());
+            tableInfo.setJsonMode(columnInfo.getJsonMode());
+            tableInfo.setTableAlias(columnInfo.getTableAlias());
             tableInfo.setDataSourceName(dataSource);
             DataSourceInfo dataSourceInfo = ContextApplication.getDataSourceInfo(dataSource);
             tableInfo.setTableName(getTableName(tableName, dataSourceInfo.getDbType()));
-
             tableInfos.add(tableInfo);
         }
         return tableInfos;
@@ -136,44 +139,38 @@ public class Check {
         pageInfo.setOffset((pageInfo.getPageIndex() - 1) * pageInfo.getPageSize());
     }
 
-    private static JsonMode getJsonMode(Field field) {
-        ColumnJson columnJson = field.getAnnotation(ColumnJson.class);
-        if (columnJson == null) {
-            return null;
-        }
-        return columnJson.jsonMode();
-    }
-
-    public static String getColumnName(Field field, String tableName, String dataSource) {
-        String column = getColumnName(field, tableName);
+    public static ColumnInfo getFixColumnInfo(Field field, String tableName, String dataSource) {
+        final ColumnInfo columnInfo = getColumnInfo(field, tableName);
+        final String column = columnInfo.getValue();
         if (StringUtils.isNotBlank(dataSource)) {
             DataSourceInfo dataSourceInfo = ContextApplication.getDataSourceInfo(dataSource);
-            return splicingName(dataSourceInfo.getDbType(), column);
+            columnInfo.setValue(splicingName(dataSourceInfo.getDbType(), column));
         }
-        return column;
+        return columnInfo;
     }
 
-
-    public static String getColumnName(Field field, String tableName) {
+    public static ColumnInfo getColumnInfo(Field field, String tableName) {
         Column columnAnno = field.getAnnotation(Column.class);
-        String column;
+        final ColumnInfo columnInfo = new ColumnInfo();
         if (Objects.nonNull(columnAnno)) {
             if (StringUtils.isEmpty(columnAnno.value())) {
                 throw new BraveException("Column列名不可以为空，字段名：" + field.getName() + "，发生在表：" + tableName);
             }
-            column = columnAnno.value().replace(" ", "");
+            columnInfo.setValue(columnAnno.value().replace(" ", ""));
+            columnInfo.setTableAlias(columnAnno.tableAlias().replace(" ", ""));
         } else {
             ColumnJson columnJson = field.getAnnotation(ColumnJson.class);
             if (Objects.nonNull(columnJson)) {
                 if (StringUtils.isEmpty(columnJson.value())) {
                     throw new BraveException("ColumnJson列名不可以为空，字段名：" + field.getName() + "，发生在表：" + tableName);
                 }
-                column = columnJson.value().replace(" ", "");
+                columnInfo.setValue(columnJson.value().replace(" ", ""));
+                columnInfo.setTableAlias(columnJson.tableAlias().replace(" ", ""));
             } else {
-                column = com.pengwz.dynamic.utils.StringUtils.caseField(field.getName());
+                columnInfo.setValue(com.pengwz.dynamic.utils.StringUtils.caseField(field.getName()));
             }
         }
-        return column;
+        return columnInfo;
     }
 
     public static String getTableName(String tableName, DbType dbType) {

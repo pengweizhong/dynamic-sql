@@ -5,7 +5,9 @@ import com.pengwz.dynamic.sql.base.Fn;
 import com.pengwz.dynamic.utils.ReflectUtils;
 import com.pengwz.dynamic.utils.SelectHelper;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class Select<R> {
@@ -15,6 +17,8 @@ public class Select<R> {
     private String selectSql;
 
     private boolean isSelectAll;
+
+    private List<Object> params = new ArrayList<>();
 
     private final Map<String, SelectParam> selectParamMap = new HashMap<>();
 
@@ -60,12 +64,21 @@ public class Select<R> {
         this.selectSql = selectSql;
     }
 
+    public boolean isSelectAll() {
+        return isSelectAll;
+    }
+
+    public void setSelectAll(boolean selectAll) {
+        isSelectAll = selectAll;
+    }
+
+    public List<Object> getParams() {
+        return params;
+    }
+
     @Override
     public String toString() {
-        return "Select{" +
-                "resultClass=" + resultClass +
-                ", selectSql=" + selectSql +
-                '}';
+        return selectSql;
     }
 
     public static class SelectBuilder<R> {

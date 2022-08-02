@@ -217,6 +217,7 @@ public class MultiBraveSqlTest {
     public void test6() {
         Select<SystemDTO> select = Select.builder(SystemDTO.class)
                 .column(SystemDTO::getRoleName).left(1).repeat(2).trim().end()
+                .column(SystemDTO::getRoleDesc).left(1).repeat(2).trim().end()
                 .columnAll().build();
 
         System.out.println(select.toString());

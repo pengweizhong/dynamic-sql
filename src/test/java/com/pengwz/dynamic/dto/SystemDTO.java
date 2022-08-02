@@ -2,6 +2,7 @@ package com.pengwz.dynamic.dto;
 
 import com.pengwz.dynamic.anno.Column;
 import com.pengwz.dynamic.anno.Table;
+import com.pengwz.dynamic.config.DataSourceConfig;
 import com.pengwz.dynamic.config.DatabaseConfig;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -14,8 +15,9 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
+@Table(dataSourceClass = DatabaseConfig.class)
 public class SystemDTO {
-    @Column
+    @Column("id")
     private Integer id;
 
     /**

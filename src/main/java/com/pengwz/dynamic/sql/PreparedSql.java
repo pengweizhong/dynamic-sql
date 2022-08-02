@@ -1,6 +1,7 @@
 package com.pengwz.dynamic.sql;
 
 import com.pengwz.dynamic.exception.BraveException;
+import com.pengwz.dynamic.utils.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -107,7 +108,9 @@ public class PreparedSql {
                 }
                 final String join = String.join(", ", paramList);
                 log.debug("Preparing: " + sql);
-                log.debug("Parameters: " + join);
+                if (StringUtils.isNotEmpty(join)) {
+                    log.debug("Parameters: " + join);
+                }
             } catch (Exception ex) {
                 log.error(sql);
                 log.error("打印SQL参数时发生异常，请检查ToString()方法是否允许被正常输出");
@@ -127,7 +130,9 @@ public class PreparedSql {
                     }
                     final String join = String.join(", ", paramList);
                     log.debug("Preparing: " + sql);
-                    log.debug("Parameters: " + join);
+                    if (StringUtils.isNotEmpty(join)) {
+                        log.debug("Parameters: " + join);
+                    }
                 }
             } catch (Exception ex) {
                 log.error(sql);

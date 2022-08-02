@@ -1,6 +1,9 @@
 package com.pengwz.dynamic.utils;
 
+import com.pengwz.dynamic.check.Check;
+import com.pengwz.dynamic.exception.BraveException;
 import com.pengwz.dynamic.model.SelectParam;
+import com.pengwz.dynamic.model.TableInfo;
 import com.pengwz.dynamic.sql.Select;
 
 import java.util.ArrayList;
@@ -36,7 +39,53 @@ public class SelectHelper {
     }
 
     public static void assembleQueryStatement(Select<?> select) {
-        select.setSelectSql("asdadasdasdasd");
-        System.out.println(select);
+        StringBuilder selectBuilder = new StringBuilder();
+        selectBuilder.append("select ");
+        final Map<String, SelectParam> selectParamMap = select.getSelectParamMap();
+        final List<TableInfo> builderTableInfos = Check.getBuilderTableInfos(select.getResultClass(), false);
+        selectParamMap.forEach((fieldName, selectParam) -> {
+            final TableInfo tableInfo = builderTableInfos.stream().filter(tInfo -> tInfo.getField().getName().equals(fieldName))
+                    .findFirst().orElseThrow(() -> new BraveException("未被查询的字段：" + fieldName));
+            // column(SystemDTO::getRoleName).left(1).repeat(2).trim().end()
+            final List<SelectParam.Function> functions = selectParam.getFunctions();
+            final ArrayList<Integer> indices = new ArrayList<>();
+            for (int i = functions.size() - 1; i >= 0; i--) {
+                final SelectParam.Function function = functions.get(i);
+                selectBuilder.append(function.getFunc());
+                selectBuilder.append("(");
+                for (Object param : function.getParam()) {
+                    select.getParams().add(param);
+                    indices.add(selectBuilder.length());
+                }
+            }
+            selectBuilder.append(tableInfo.getColumn());
+            for (Integer index : indices) {
+//                selectBuilder.insert(index, ",?");
+            }
+            selectBuilder.append(repeatString(")", functions.size()));
+            selectBuilder.append(" ");
+        });
+        select.setSelectSql(selectBuilder.toString());
+    }
+
+    private static String generatePlaceholders(int repeat) {
+        if (repeat < 1) {
+            return "";
+        }
+        final ArrayList<String> placeholders = new ArrayList<>();
+        for (int i = 0; i < repeat; i++) {
+            placeholders.add(",?");
+        }
+        return String.join(",", placeholders);
+    }
+
+    private static String repeatString(String str, int repeat) {
+        if (repeat <= 1) {
+            return str;
+        }
+        for (int i = 0; i < repeat; i++) {
+            str += str;
+        }
+        return str;
     }
 }
