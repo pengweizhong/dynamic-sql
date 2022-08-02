@@ -25,9 +25,9 @@ public final class DataSourceManagement {
 
 
     public static void close(String dataSourceName, ResultSet resultSet, PreparedStatement preparedStatement, Connection connection) {
-        DataSourceInfo dataSourceInfo = ContextApplication.getDataSourceInfo(dataSourceName);
         JdbcUtils.closeResultSet(resultSet);
         JdbcUtils.closeStatement(preparedStatement);
+        DataSourceInfo dataSourceInfo = ContextApplication.getDataSourceInfo(dataSourceName);
         if (dataSourceInfo.getDataSourceBeanName() != null) {
             DataSourceUtils.releaseConnection(connection, dataSourceInfo.getDataSource());
         } else {
@@ -127,5 +127,5 @@ public final class DataSourceManagement {
         methods.addAll(Arrays.asList(declaredMethods));
         getAllMethod(dataSourceClass.getSuperclass(), methods);
     }
-    
+
 }

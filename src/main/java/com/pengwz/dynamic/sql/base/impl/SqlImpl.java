@@ -279,7 +279,6 @@ public class SqlImpl<T> implements Sqls<T> {
         } catch (Exception ex) {
             exception = ex;
         } finally {
-            close(dataSourceName, resultSet, preparedStatement, connection);
             interceptorHelper.transferAfter(exception, sql);
         }
         return list;

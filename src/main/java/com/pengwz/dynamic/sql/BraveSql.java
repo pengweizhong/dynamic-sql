@@ -35,6 +35,8 @@ public class BraveSql<T> {
 
     private Map<String, List<String>> orderByMap;
 
+    private Sqls<T> tSqls;
+
     protected BraveSql(DynamicSql dynamicSql, Class<T> currentClass) {
         this.dynamicSql = dynamicSql;
         this.currentClass = currentClass;
@@ -643,17 +645,6 @@ public class BraveSql<T> {
         return this;
     }
 
-    private Sqls<T> mustShare() {
-        Check.checkPageInfo(pageInfo);
-        List<Object> params = new ArrayList<>();
-        String whereSql = ParseSql.parse(currentClass, dynamicSql.getDeclarations(), orderByMap, params);
-        //调正where子句的sql顺序 ，将来把它单独抽出来  作为组件
-        whereSql = ParseSql.fixWhereSql(whereSql);
-        SqlImpl<T> sqls = new SqlImpl<>();
-        sqls.init(currentClass, pageInfo, data, dynamicSql.getUpdateNullProperties(), whereSql, params);
-        return sqls;
-    }
-
     private void fillingOrderByMap(String ascOrDesc, String feild) {
         if (Objects.isNull(orderByMap)) {
             this.orderByMap = new LinkedHashMap<>();
@@ -673,15 +664,26 @@ public class BraveSql<T> {
      * @param <R>      返回结果类型
      * @return 返回SQL执行结果
      */
-    private <R> R doExecute(Supplier<Object> supplier) {
-        Sqls<T> tSqls = null;
+    private <R> R doExecute(Supplier<Object> sqlsSupplier) {
         try {
-            tSqls = mustShare();
-            return (R) supplier.get();
+            return (R) sqlsSupplier.get();
         } finally {
             if (tSqls != null) {
                 close(tSqls.getDataSourceName(), tSqls.getResultSet(), tSqls.getPreparedStatement(), tSqls.getConnection());
             }
         }
     }
+
+    private Sqls<T> mustShare() {
+        Check.checkPageInfo(pageInfo);
+        List<Object> params = new ArrayList<>();
+        String whereSql = ParseSql.parse(currentClass, dynamicSql.getDeclarations(), orderByMap, params);
+        //调正where子句的sql顺序 ，将来把它单独抽出来  作为组件
+        whereSql = ParseSql.fixWhereSql(whereSql);
+        SqlImpl<T> sqls = new SqlImpl<>();
+        sqls.init(currentClass, pageInfo, data, dynamicSql.getUpdateNullProperties(), whereSql, params);
+        this.tSqls = sqls;
+        return sqls;
+    }
+
 }
