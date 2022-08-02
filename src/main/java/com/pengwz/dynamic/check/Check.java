@@ -154,17 +154,19 @@ public class Check {
         final ColumnInfo columnInfo = new ColumnInfo();
         if (Objects.nonNull(columnAnno)) {
             if (StringUtils.isEmpty(columnAnno.value())) {
-                throw new BraveException("Column列名不可以为空，字段名：" + field.getName() + "，发生在表：" + tableName);
+                columnInfo.setValue(com.pengwz.dynamic.utils.StringUtils.caseField(field.getName()));
+            } else {
+                columnInfo.setValue(columnAnno.value().replace(" ", ""));
             }
-            columnInfo.setValue(columnAnno.value().replace(" ", ""));
             columnInfo.setTableAlias(columnAnno.tableAlias().replace(" ", ""));
         } else {
             ColumnJson columnJson = field.getAnnotation(ColumnJson.class);
             if (Objects.nonNull(columnJson)) {
                 if (StringUtils.isEmpty(columnJson.value())) {
-                    throw new BraveException("ColumnJson列名不可以为空，字段名：" + field.getName() + "，发生在表：" + tableName);
+                    columnInfo.setValue(com.pengwz.dynamic.utils.StringUtils.caseField(field.getName()));
+                } else {
+                    columnInfo.setValue(columnJson.value().replace(" ", ""));
                 }
-                columnInfo.setValue(columnJson.value().replace(" ", ""));
                 columnInfo.setTableAlias(columnJson.tableAlias().replace(" ", ""));
             } else {
                 columnInfo.setValue(com.pengwz.dynamic.utils.StringUtils.caseField(field.getName()));

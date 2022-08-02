@@ -1,6 +1,7 @@
 package com.pengwz.dynamic.dto;
 
 import com.pengwz.dynamic.anno.Column;
+import com.pengwz.dynamic.anno.ColumnJson;
 import com.pengwz.dynamic.anno.Table;
 import com.pengwz.dynamic.config.DataSourceConfig;
 import com.pengwz.dynamic.config.DatabaseConfig;
@@ -17,7 +18,7 @@ import java.time.LocalDateTime;
 @Builder
 @Table(dataSourceClass = DatabaseConfig.class)
 public class SystemDTO {
-    @Column("id")
+    @Column(tableAlias = "t1")
     private Integer id;
 
     /**
@@ -29,26 +30,31 @@ public class SystemDTO {
     /**
      * 角色描述
      */
+    @Column(tableAlias = "t1")
     private String roleDesc;
 
     /**
      * 创建人id
      */
+    @Column(tableAlias = "t1")
     private Integer createId;
 
     /**
      * 更新人id
      */
+    @Column(tableAlias = "t1")
     private Integer updateId;
 
     /**
      * 创建时间
      */
+    @Column(tableAlias = "t1")
     private LocalDateTime createTime;
 
     /**
      * 更新时间
      */
+    @Column(tableAlias = "t1")
     private LocalDateTime updateTime;
 
 //    private Integer id;

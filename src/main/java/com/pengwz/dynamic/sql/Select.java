@@ -22,6 +22,8 @@ public class Select<R> {
 
     private final Map<String, SelectParam> selectParamMap = new HashMap<>();
 
+    private final List<String> queryColumns = new ArrayList<>();
+
     protected Select(Class<R> currentClass) {
         this.resultClass = currentClass;
     }
@@ -68,6 +70,14 @@ public class Select<R> {
         return isSelectAll;
     }
 
+    public void setParams(List<Object> params) {
+        this.params = params;
+    }
+
+    public List<String> getQueryColumns() {
+        return queryColumns;
+    }
+
     public void setSelectAll(boolean selectAll) {
         isSelectAll = selectAll;
     }
@@ -97,7 +107,9 @@ public class Select<R> {
          * @see this#columnAll()
          */
         public CustomColumn<R> column(Fn<R, Object> fn) {
-            return new CustomColumn<>(this, ReflectUtils.fnToFieldName(fn));
+            final String fieldName = ReflectUtils.fnToFieldName(fn);
+            select.getQueryColumns().add(fieldName);
+            return new CustomColumn<>(this, fieldName);
         }
 
         /**
@@ -145,9 +157,6 @@ public class Select<R> {
             return select;
         }
 
-//        private String parseExprCaseColumn(String expr) {
-//            return "abc";
-//        }
     }
 
     /**

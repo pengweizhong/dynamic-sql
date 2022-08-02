@@ -2,8 +2,10 @@ package com.pengwz.dynamic.utils;
 
 import com.pengwz.dynamic.check.Check;
 import com.pengwz.dynamic.exception.BraveException;
+import com.pengwz.dynamic.model.DbType;
 import com.pengwz.dynamic.model.SelectParam;
 import com.pengwz.dynamic.model.TableInfo;
+import com.pengwz.dynamic.sql.ContextApplication;
 import com.pengwz.dynamic.sql.Select;
 
 import java.util.ArrayList;
@@ -48,24 +50,44 @@ public class SelectHelper {
                     .findFirst().orElseThrow(() -> new BraveException("未被查询的字段：" + fieldName));
             // column(SystemDTO::getRoleName).left(1).repeat(2).trim().end()
             final List<SelectParam.Function> functions = selectParam.getFunctions();
-            final ArrayList<Integer> indices = new ArrayList<>();
+            final StringBuilder columnBuilder = new StringBuilder();
             for (int i = functions.size() - 1; i >= 0; i--) {
                 final SelectParam.Function function = functions.get(i);
-                selectBuilder.append(function.getFunc());
-                selectBuilder.append("(");
-                for (Object param : function.getParam()) {
-                    select.getParams().add(param);
-                    indices.add(selectBuilder.length());
+                columnBuilder.append(function.getFunc());
+                columnBuilder.append("(");
+                if (i == 0) {
+                    setColumnName(tableInfo, columnBuilder);
                 }
             }
-            selectBuilder.append(tableInfo.getColumn());
-            for (Integer index : indices) {
-//                selectBuilder.insert(index, ",?");
+            columnBuilder.append(repeatString(")", functions.size()));
+            columnBuilder.append(" as ").append(tableInfo.getColumn());
+            columnBuilder.append(", ");
+            //插入占位符
+            for (int i = 0; i < functions.size(); i++) {
+                final SelectParam.Function function = functions.get(i);
+                if (function.getParam().length == 0) {
+                    continue;
+                }
+                //找到对应的位置
+                final int index = columnBuilder.indexOf(")") + i;
+                final int indexOf = columnBuilder.indexOf(")", index);
+                columnBuilder.insert(indexOf, repeatString(",?", function.getParam().length));
             }
-            selectBuilder.append(repeatString(")", functions.size()));
-            selectBuilder.append(" ");
+            System.out.println(columnBuilder);
+            selectBuilder.append(columnBuilder);
         });
         select.setSelectSql(selectBuilder.toString());
+    }
+
+    private static void setColumnName(final TableInfo tableInfo, final StringBuilder columnBuilder) {
+        final String tableAlias = tableInfo.getTableAlias();
+        if (StringUtils.isEmpty(tableAlias)) {
+            throw new BraveException("使用Select查询时，必须指定表别名");
+        }
+        final DbType dbType = ContextApplication.getDataSourceInfo(tableInfo.getDataSourceName()).getDbType();
+        final String alias = Check.splicingName(dbType, tableAlias);
+        columnBuilder.append(alias).append(".");
+        columnBuilder.append(tableInfo.getColumn());
     }
 
     private static String generatePlaceholders(int repeat) {
@@ -83,9 +105,10 @@ public class SelectHelper {
         if (repeat <= 1) {
             return str;
         }
-        for (int i = 0; i < repeat; i++) {
-            str += str;
+        String string = str;
+        for (int i = 1; i < repeat; i++) {
+            string = string + str;
         }
-        return str;
+        return string;
     }
 }
