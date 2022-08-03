@@ -7,7 +7,11 @@ import com.pengwz.dynamic.entity.SystemRoleEntity;
 import com.pengwz.dynamic.entity.SystemRoleUserEntity;
 import com.pengwz.dynamic.entity.SystemUserEntity;
 import org.junit.Test;
+import org.springframework.util.DigestUtils;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -156,34 +160,33 @@ public class MultiBraveSqlTest {
         System.out.println(pageInfo);
     }
 */
-    @Test
-    public void test4() {
-        Select<SystemDTO> select = Select.builder(SystemDTO.class)
-                .column(SystemDTO::getRoleName).end()
-                .column(SystemDTO::getRoleDesc).end()
-                .columnAll().build();
-        MultiBraveSql<SystemDTO> multiBraveSql = select.from(SystemRoleEntity.class).as("别名1").build();
-        List<SystemDTO> list = multiBraveSql.select();
-        System.out.println(list);
-    }
-
-    @Test
-    public void test5() {
-        Select<SystemDTO> select = Select.builder(SystemDTO.class)
-                .column(SystemDTO::getRoleName).end()
-                .column(SystemDTO::getRoleDesc).end()
-                .columnAll().build();
-
-        MultiBraveSql<SystemDTO> multiBraveSql = select.from(SystemRoleEntity.class).as("别名1").where(() -> {
-            DynamicSql<SystemDTO> dynamicSql = DynamicSql.createDynamicSql();
-            dynamicSql.andEqualTo(SystemDTO::getId, 1);
-            return dynamicSql;
-        }).build();
-
-        List<SystemDTO> list = multiBraveSql.select();
-        System.out.println(list);
-    }
-
+//    @Test
+//    public void test4() {
+//        Select<SystemDTO> select = Select.builder(SystemDTO.class)
+//                .column(SystemDTO::getRoleName).end()
+//                .column(SystemDTO::getRoleDesc).end()
+//                .columnAll().build();
+//        MultiBraveSql<SystemDTO> multiBraveSql = select.from(SystemRoleEntity.class).as("别名1").build();
+//        List<SystemDTO> list = multiBraveSql.select();
+//        System.out.println(list);
+//    }
+//
+//    @Test
+//    public void test5() {
+//        Select<SystemDTO> select = Select.builder(SystemDTO.class)
+//                .column(SystemDTO::getRoleName).end()
+//                .column(SystemDTO::getRoleDesc).end()
+//                .columnAll().build();
+//
+//        MultiBraveSql<SystemDTO> multiBraveSql = select.from(SystemRoleEntity.class).as("别名1").where(() -> {
+//            DynamicSql<SystemDTO> dynamicSql = DynamicSql.createDynamicSql();
+//            dynamicSql.andEqualTo(SystemDTO::getId, 1);
+//            return dynamicSql;
+//        }).build();
+//
+//        List<SystemDTO> list = multiBraveSql.select();
+//        System.out.println(list);
+//    }
     @Test
     public void testSql() throws Exception {
         String databaseName = DatabaseConfig.class.getCanonicalName();
@@ -217,10 +220,13 @@ public class MultiBraveSqlTest {
     public void test6() {
         Select<SystemDTO> select = Select.builder(SystemDTO.class)
                 .column(SystemDTO::getRoleName).left(1).repeat(2).subString(10, 99).dayName().lPad(1, "212121").end()
-//                .column(SystemDTO::getRoleDesc).left(1).repeat(2).trim().end()
-                .column(SystemDTO::getId).end()
-                .column(SystemDTO::getUpdateTime).end()
-                /*.columnAll()*/.build();
+                .column(SystemDTO::getRoleDesc).left(1).repeat(2).trim().end()
+                .column(SystemDTO::getRoleName).lPad(1, "212121").end()
+                .column(SystemDTO::getCreateId).ifNull("").end()
+                .customColumn("t1.id +1 as id  ").end()
+                .customColumn("t1.id +1  id  ").end()
+                .columnAll().lower().repeat(2).end()
+                .build();
 
         System.out.println(select.toString());
 
@@ -235,6 +241,7 @@ public class MultiBraveSqlTest {
             System.out.println(select);
         }
     }
+
 }
 
 

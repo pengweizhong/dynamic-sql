@@ -106,7 +106,7 @@ public class Check {
                 tableInfo.setPrimary(false);
             }
             tableInfo.setField(field);
-            final ColumnInfo columnInfo = getFixColumnInfo(field, tableName, dataSource);
+            final ColumnInfo columnInfo = getFixColumnInfo(field, dataSource);
             tableInfo.setColumn(columnInfo.getValue());
             tableInfo.setJsonMode(columnInfo.getJsonMode());
             tableInfo.setTableAlias(columnInfo.getTableAlias());
@@ -139,8 +139,8 @@ public class Check {
         pageInfo.setOffset((pageInfo.getPageIndex() - 1) * pageInfo.getPageSize());
     }
 
-    public static ColumnInfo getFixColumnInfo(Field field, String tableName, String dataSource) {
-        final ColumnInfo columnInfo = getColumnInfo(field, tableName);
+    public static ColumnInfo getFixColumnInfo(Field field, String dataSource) {
+        final ColumnInfo columnInfo = getColumnInfo(field);
         final String column = columnInfo.getValue();
         if (StringUtils.isNotBlank(dataSource)) {
             DataSourceInfo dataSourceInfo = ContextApplication.getDataSourceInfo(dataSource);
@@ -149,7 +149,7 @@ public class Check {
         return columnInfo;
     }
 
-    public static ColumnInfo getColumnInfo(Field field, String tableName) {
+    public static ColumnInfo getColumnInfo(Field field) {
         Column columnAnno = field.getAnnotation(Column.class);
         final ColumnInfo columnInfo = new ColumnInfo();
         if (Objects.nonNull(columnAnno)) {

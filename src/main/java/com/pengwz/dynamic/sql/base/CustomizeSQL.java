@@ -90,7 +90,7 @@ public class CustomizeSQL<T> {
             while (resultSet.next()) {
                 T obj = target.newInstance();
                 for (Field field : declaredFields) {
-                    TableInfo tableInfo = tableInfoMap.get(Check.getFixColumnInfo(field, TABLE_NAME, dataSourceName).getValue());
+                    TableInfo tableInfo = tableInfoMap.get(Check.getFixColumnInfo(field, dataSourceName).getValue());
                     if (tableInfo == null) {
                         continue;
                     }
@@ -246,7 +246,7 @@ public class CustomizeSQL<T> {
     }
 
     private String getColumnAndFixName(Field field) {
-        String columnName = Check.getColumnInfo(field, TABLE_NAME).getValue();
+        String columnName = Check.getColumnInfo(field).getValue();
         return Check.unSplicingName(columnName).trim();
     }
 

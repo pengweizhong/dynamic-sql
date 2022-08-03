@@ -7,14 +7,17 @@ import com.pengwz.dynamic.model.SelectParam;
 import com.pengwz.dynamic.model.TableInfo;
 import com.pengwz.dynamic.sql.ContextApplication;
 import com.pengwz.dynamic.sql.Select;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 public class SelectHelper {
+    private static final Log log = LogFactory.getLog(SelectHelper.class);
+
     private SelectHelper() {
     }
 
@@ -47,14 +50,22 @@ public class SelectHelper {
         selectBuilder.append("select ");
         final Map<String, SelectParam> selectParamMap = select.getSelectParamMap();
         final List<TableInfo> builderTableInfos = Check.getBuilderTableInfos(select.getResultClass(), false);
-        final Set<String> queryColumns = select.getQueryColumns();
-        if (select.isSelectAll()) {
-            final List<String> collect = builderTableInfos.stream().map(tableInfo -> tableInfo.getField().getName()).collect(Collectors.toList());
-            queryColumns.addAll(collect);
-        }
+        final List<String> queryColumns = select.getQueryColumns().stream().distinct().collect(Collectors.toList());
+        //先处理用户自定义的查询列
         for (String fieldName : queryColumns) {
             final TableInfo tableInfo = builderTableInfos.stream().filter(tInfo -> tInfo.getField().getName().equals(fieldName))
-                    .findFirst().orElseThrow(() -> new BraveException("未被查询的字段：" + fieldName));
+                    .findFirst().orElseGet(() -> {
+                        final String columnName = checkColumn(fieldName);
+                        //加入限定符，与集合中tableInfo进行比较
+                        final String splicingColumnName = splicingName(builderTableInfos.get(0), columnName);
+                        final TableInfo matchCusTableInfo = builderTableInfos.stream().filter(bti -> bti.getColumn().equalsIgnoreCase(splicingColumnName)).findAny()
+                                .orElseThrow(() -> new BraveException("查询了不存在或已忽略的列！参考错误值：" + fieldName));
+                        final String column = matchCusTableInfo.getColumn();
+                        if (queryColumns.contains(matchCusTableInfo.getField().getName())) {
+                            throw new BraveException("查询列和自定义列冲突！参考错误值：[" + fieldName + ", " + column + "]");
+                        }
+                        return matchCusTableInfo;
+                    });
             if (StringUtils.isEmpty(tableInfo.getTableAlias())) {
                 throw new BraveException("多表查询时需要指定字段别名");
             }
@@ -62,11 +73,36 @@ public class SelectHelper {
             //为null表示为对字段进行特殊查询
             if (selectParam == null) {
                 selectBuilder.append(assignmentRegular(tableInfo));
-                continue;
             }
-            selectBuilder.append(assignmentFunction(tableInfo, selectParam));
+            //赋值带有自定义函数的字段
+            else if (selectParam.getFunctions().get(0).getFunc() == null) {
+                selectBuilder.append(selectParam.getFieldName()).append(", ");
+            } else {
+                selectBuilder.append(assignmentFunction(tableInfo, selectParam));
+            }
         }
+        //用户如果没有查询全部的列，那就直接返回
+        if (select.isSelectAll()) {
+        }
+        final List<TableInfo> tableInfoList = builderTableInfos.stream().filter(
+                tableInfo -> !queryColumns.contains(tableInfo.getField().getName())).collect(Collectors.toList());
+
         select.setSelectSql(selectBuilder.toString());
+    }
+
+    /**
+     * 校验用户自定义查询列表达式
+     *
+     * @return 检索出的列名
+     */
+    public static String checkColumn(String expr) {
+        //判断自定义表达式
+        final String trim = expr.trim();
+        final String columnName = trim.substring(trim.lastIndexOf(" "));
+        if (columnName.isEmpty()) {
+            throw new BraveException("自定义查询列：" + expr + " 未指定别名");
+        }
+        return columnName;
     }
 
     /**
@@ -93,7 +129,7 @@ public class SelectHelper {
         //这里需要反转，为对应的函数匹配占位符的位置
         prefixBuilder.append(suffixBuilder.reverse());
         prefixBuilder.append(" as ");
-        prefixBuilder.append(tableInfo.getTableAlias()).append(".").append(tableInfo.getColumn());
+        prefixBuilder.append(tableInfo.getColumn());
         prefixBuilder.append(", ");
         return prefixBuilder;
     }
@@ -103,7 +139,7 @@ public class SelectHelper {
      */
     private static StringBuilder assignmentRegular(final TableInfo tableInfo) {
         final StringBuilder columnBuilder = new StringBuilder();
-        columnBuilder.append(tableInfo.getTableAlias()).append(".");
+        columnBuilder.append(splicingName(tableInfo, tableInfo.getTableAlias())).append(".");
         columnBuilder.append(tableInfo.getColumn());
         columnBuilder.append(", ");
         return columnBuilder;
@@ -115,31 +151,13 @@ public class SelectHelper {
         if (StringUtils.isEmpty(tableAlias)) {
             throw new BraveException("使用Select查询时，必须指定表别名");
         }
-        final DbType dbType = ContextApplication.getDataSourceInfo(tableInfo.getDataSourceName()).getDbType();
-        final String alias = Check.splicingName(dbType, tableAlias);
+        final String alias = splicingName(tableInfo, tableAlias);
         columnBuilder.append(alias).append(".");
         columnBuilder.append(tableInfo.getColumn());
     }
 
-    private static String generatePlaceholders(int repeat) {
-        if (repeat < 1) {
-            return "";
-        }
-        final ArrayList<String> placeholders = new ArrayList<>();
-        for (int i = 0; i < repeat; i++) {
-            placeholders.add(",?");
-        }
-        return String.join(",", placeholders);
-    }
-
-    private static String repeatString(String str, int repeat) {
-        if (repeat <= 1) {
-            return str;
-        }
-        String string = str;
-        for (int i = 1; i < repeat; i++) {
-            string = string + str;
-        }
-        return string;
+    private static String splicingName(TableInfo tableInfo, String column) {
+        final DbType dbType = ContextApplication.getDataSourceInfo(tableInfo.getDataSourceName()).getDbType();
+        return Check.splicingName(dbType, column);
     }
 }

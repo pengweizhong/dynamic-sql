@@ -1,13 +1,20 @@
 package com.pengwz.dynamic.sql;
 
+import com.pengwz.dynamic.model.End;
 import com.pengwz.dynamic.model.SelectParam;
 import com.pengwz.dynamic.sql.base.Fn;
 import com.pengwz.dynamic.utils.ReflectUtils;
 import com.pengwz.dynamic.utils.SelectHelper;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class Select<R> {
+    private static final Log log = LogFactory.getLog(Select.class);
 
     private final Class<R> resultClass;
 
@@ -18,8 +25,8 @@ public class Select<R> {
     private List<Object> params = new ArrayList<>();
 
     private final Map<String, SelectParam> selectParamMap = new HashMap<>();
-
-    private final Set<String> queryColumns = new LinkedHashSet<>();
+    //查询的列  通常这里是字段名，如果是用户自定义的话，那么这里将是表列名
+    private final List<String> queryColumns = new ArrayList<>();
 
     protected Select(Class<R> currentClass) {
         this.resultClass = currentClass;
@@ -71,7 +78,7 @@ public class Select<R> {
         this.params = params;
     }
 
-    public Set<String> getQueryColumns() {
+    public List<String> getQueryColumns() {
         return queryColumns;
     }
 
@@ -105,6 +112,14 @@ public class Select<R> {
          */
         public CustomColumn<R> column(Fn<R, Object> fn) {
             final String fieldName = ReflectUtils.fnToFieldName(fn);
+            final Map<String, SelectParam> selectParamMap = getSelect().getSelectParamMap();
+            if (selectParamMap.get(fieldName) != null) {
+                if (log.isDebugEnabled()) {
+                    log.debug("查询了重复的列，仅本次列查询生效，重复的字段名：" + fieldName);
+                }
+                selectParamMap.remove(fieldName);
+            }
+            select.getQueryColumns().remove(fieldName);
             select.getQueryColumns().add(fieldName);
             return new CustomColumn<>(this, fieldName);
         }
@@ -118,31 +133,39 @@ public class Select<R> {
          * @return 返回构建查询列的对象
          * @see this#column(Fn)
          */
-        public SelectBuilder<R> columnAll() {
+        public CustomColumn<R> columnAll() {
             getSelect().isSelectAll = true;
-            return this;
+            return new CustomColumn<>(this, null);
         }
 
         /**
-         * 自定义查询列，此项函数必须提供as别名
+         * 自定义查询列，此项函数必须提供as别名，该别名要求必须真实存在于结果集中
          * <p>
-         * 比如：列名为abc   <br>
+         * 比如：表名为 t_abc   <br>
          * 那么可以进行如下操作：  <br>
          * <pre>
          *     {@code
-         *           Select.builder(DTO.class).customColumn("if(abc>2,'true','false') as abc").build();
+         *           Select.builder(DTO.class).customColumn("if(t_abc.value>2,'true','false') as value").build();
          *     }
          * </pre>
          * 当此处查询的列与{@link this#columnAll()}冲突时，此处优先级最高
          *
-         * @param expr   自定义方法
+         * @param expr   合法的任意表达式
          * @param params 预编译需要用到的参数，如果不需要参与预编译，此项为空即可
-         * @return 当前自定义字段对象
+         * @return 结束断句
          */
-        public SelectBuilder<R> customColumn(String expr, Object... params) {
+        public End<SelectBuilder<R>> customColumn(String expr, Object... params) {
             final Map<String, SelectParam> selectParamMap = getSelect().getSelectParamMap();
+            if (selectParamMap.get(expr) != null) {
+                if (log.isDebugEnabled()) {
+                    log.debug("自定义查询重复，仅本次列查询生效，重复的表达式：" + expr);
+                }
+                selectParamMap.remove(expr);
+            }
             SelectHelper.putSelectParam(selectParamMap, expr, null, params);
-            return this;
+            select.getQueryColumns().remove(expr);
+            select.getQueryColumns().add(expr);
+            return new End<>(this);
         }
 
         public Select<R> build() {
@@ -163,9 +186,9 @@ public class Select<R> {
      */
     public static class CustomColumn<R> {
 
-        private SelectBuilder<R> selectBuilder;
+        private final SelectBuilder<R> selectBuilder;
 
-        private String fieldName;
+        private final String fieldName;
 
         protected CustomColumn(SelectBuilder<R> selectBuilder, String fieldName) {
             this.selectBuilder = selectBuilder;
@@ -620,8 +643,24 @@ public class Select<R> {
             return this;
         }
 
+        /**
+         * 如果当前字段为null，则返回{@code other}
+         * <p>
+         * example select ifnull(column, other)
+         *
+         * @param other 其他值
+         * @return 当前自定义字段对象
+         */
+        public CustomColumn<R> ifNull(Object other) {
+            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
+            SelectHelper.putSelectParam(selectParamMap, fieldName, "ifnull", other);
+            return this;
+        }
+
         public SelectBuilder<R> getSelectBuilder() {
             return selectBuilder;
         }
+
     }
+
 }
