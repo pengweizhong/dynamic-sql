@@ -73,33 +73,29 @@ public class SelectHelper {
      * 赋值带有函数的字段
      */
     private static StringBuilder assignmentFunction(final TableInfo tableInfo, final SelectParam selectParam) {
-        final StringBuilder columnBuilder = new StringBuilder();
+        final StringBuilder prefixBuilder = new StringBuilder();
+        final StringBuilder suffixBuilder = new StringBuilder();
 
         final List<SelectParam.Function> functions = selectParam.getFunctions();
+        //根据调用顺序，反序决定函数优先级，最先调用的函数在最里层
         for (int i = functions.size() - 1; i >= 0; i--) {
             final SelectParam.Function function = functions.get(i);
-            columnBuilder.append(function.getFunc());
-            columnBuilder.append("(");
+            prefixBuilder.append(function.getFunc());
+            prefixBuilder.append("(");
             if (i == 0) {
-                setColumnName(tableInfo, columnBuilder);
+                setColumnName(tableInfo, prefixBuilder);
+            }
+            suffixBuilder.append(")");
+            for (int i1 = 0; i1 < function.getParam().length; i1++) {
+                suffixBuilder.append("?,");
             }
         }
-        columnBuilder.append(repeatString(")", functions.size()));
-        columnBuilder.append(" as ");
-        columnBuilder.append(tableInfo.getTableAlias()).append(".").append(tableInfo.getColumn());
-        columnBuilder.append(", ");
-        //插入占位符
-        for (int i = 0; i < functions.size(); i++) {
-            final SelectParam.Function function = functions.get(i);
-            if (function.getParam().length == 0) {
-                continue;
-            }
-            //找到对应的位置
-            final int index = columnBuilder.indexOf(")") + i;
-            final int indexOf = columnBuilder.indexOf(")", index);
-            columnBuilder.insert(indexOf, repeatString(",?", function.getParam().length));
-        }
-        return columnBuilder;
+        //这里需要反转，为对应的函数匹配占位符的位置
+        prefixBuilder.append(suffixBuilder.reverse());
+        prefixBuilder.append(" as ");
+        prefixBuilder.append(tableInfo.getTableAlias()).append(".").append(tableInfo.getColumn());
+        prefixBuilder.append(", ");
+        return prefixBuilder;
     }
 
     /**

@@ -216,11 +216,11 @@ public class MultiBraveSqlTest {
     @Test
     public void test6() {
         Select<SystemDTO> select = Select.builder(SystemDTO.class)
-                .column(SystemDTO::getRoleName).left(1).repeat(2).trim().rTrim().subString(10, 99).dayName().weekOfYear().min().lPad(1, "212121").end()
-                .column(SystemDTO::getRoleDesc).left(1).repeat(2).trim().end()
+                .column(SystemDTO::getRoleName).left(1).repeat(2).subString(10, 99).dayName().lPad(1, "212121").end()
+//                .column(SystemDTO::getRoleDesc).left(1).repeat(2).trim().end()
                 .column(SystemDTO::getId).end()
                 .column(SystemDTO::getUpdateTime).end()
-                .columnAll().build();
+                /*.columnAll()*/.build();
 
         System.out.println(select.toString());
 
