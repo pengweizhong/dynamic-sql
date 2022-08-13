@@ -7,15 +7,19 @@ import java.util.List;
 import java.util.function.Supplier;
 
 public class MultiBraveSql<R> {
-
+    //sql结果映射对象
     private Class<R> resultClass;
+    //查询的sql语句
+    private String selectSql;
 
-    private MultiBraveSql(Class<R> resultClass) {
+    protected MultiBraveSql(Class<R> resultClass) {
         this.resultClass = resultClass;
     }
 
-    protected static <R> MultiBraveSqlBuilder<R> builder(Class<?> tableClass, Class<R> resultClass) {
+    protected static <R> MultiBraveSqlBuilder<R> builder(Class<?> tableClass, Class<R> resultClass, String selectSql) {
         MultiBraveSql<R> multiBraveSql = new MultiBraveSql<>(resultClass);
+        multiBraveSql.selectSql = selectSql;
+//        ContextApplication.getTableInfos(tableClass)
         return new MultiBraveSqlBuilder<>(multiBraveSql, tableClass);
     }
 
@@ -72,24 +76,24 @@ public class MultiBraveSql<R> {
     }
 
 
-    public static class As<R> {
-        private Class<R> resultClass;
-        private Class<?> tableClass;
-
-        protected As(Class<?> tableClass, Class<R> resultClass) {
-            this.resultClass = resultClass;
-            this.tableClass = tableClass;
-        }
-
-        protected MultiBraveSqlBuilder<R> multiBraveSqlBuilder() {
-            return MultiBraveSql.builder(tableClass, resultClass);
-        }
-
-        public MultiBraveSqlBuilder<R> as(String alias) {
-            return MultiBraveSql.builder(tableClass, resultClass);
-        }
-
-    }
+//    public static class As<R> {
+//        private Class<R> resultClass;
+//        private Class<?> tableClass;
+//
+//        protected As(Class<?> tableClass, Class<R> resultClass) {
+//            this.resultClass = resultClass;
+//            this.tableClass = tableClass;
+//        }
+//
+//        protected MultiBraveSqlBuilder<R> multiBraveSqlBuilder() {
+//            return MultiBraveSql.builder(tableClass, resultClass);
+//        }
+//
+//        public MultiBraveSqlBuilder<R> as(String alias) {
+//            return MultiBraveSql.builder(tableClass, resultClass);
+//        }
+//
+//    }
 
     public static class JoinCondition<R> {
 

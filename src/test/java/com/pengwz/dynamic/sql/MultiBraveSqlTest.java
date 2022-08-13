@@ -222,11 +222,13 @@ public class MultiBraveSqlTest {
                 .column(SystemDTO::getRoleName).left(1).repeat(2).subString(10, 99).dayName().lPad(1, "212121").end()
                 .column(SystemDTO::getRoleDesc).left(1).repeat(2).trim().end()
                 .column(SystemDTO::getRoleName).lPad(1, "212121").end()
+                .customColumn("   id  ").end()
                 .customColumn("t1.id +1  id  ").end()
-                .customColumn("   id").end()
                 .columnAll().end()
                 .build();
         System.out.println(select.toString());
+
+//        select.from(SystemRoleEntity.class).as
 
 
     }

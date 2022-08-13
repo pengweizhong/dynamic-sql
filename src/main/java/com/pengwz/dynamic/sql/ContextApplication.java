@@ -1,14 +1,18 @@
 package com.pengwz.dynamic.sql;
 
+import com.pengwz.dynamic.check.Check;
 import com.pengwz.dynamic.exception.BraveException;
 import com.pengwz.dynamic.model.DataSourceInfo;
+import com.pengwz.dynamic.model.TableColumnInfo;
 import com.pengwz.dynamic.model.TableInfo;
-import com.pengwz.dynamic.utils.CollectionUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import javax.sql.DataSource;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -16,7 +20,7 @@ import java.util.stream.Collectors;
 public class ContextApplication {
     private static final Log log = LogFactory.getLog(ContextApplication.class);
     //key = tableClass   value = TableInfos
-    private static final Map<Class<?>, List<TableInfo>> tableDataBaseMap = new ConcurrentHashMap<>();
+    private static final Map<Class<?>, TableInfo> tableInfoMap = new ConcurrentHashMap<>();
     //key = DataSource.class.name
     private static final Map<String, DataSourceInfo> dataSourcesMap = new ConcurrentHashMap<>();
 
@@ -61,15 +65,29 @@ public class ContextApplication {
         }
         if (Objects.isNull(dataSourcesMap.get(dataSource.getClassPath()))) {
             if (dataSource.getDataSourceBeanName() != null) {
-                log.info("get the data source name [" + (dataSourcesMap.size() + 1) + "-" + (dataSource.getDataSourceBeanName()) + "]，belong to the category [" + dataSource.getClassPath() + "]");
+                log.info("get the data source name " + (dataSourcesMap.size() + 1) + "-" + (dataSource.getDataSourceBeanName()) + "，belong to the category " + dataSource.getClassPath());
             } else if (dataSource.getClassBeanName() != null) {
-                log.info("get the data source name [" + (dataSourcesMap.size() + 1) + "-" + (dataSource.getClassBeanName()) + "]，belong to the category [" + dataSource.getClassPath() + "]");
+                log.info("get the data source name " + (dataSourcesMap.size() + 1) + "-" + (dataSource.getClassBeanName()) + "，belong to the category " + dataSource.getClassPath());
             } else {
-                log.info("get the data source name [" + (dataSourcesMap.size() + 1) + "]，belong to the category [" + dataSource.getClassPath() + "]");
+                log.info("get the data source name " + (dataSourcesMap.size() + 1) + "，belong to the category " + dataSource.getClassPath());
 
             }
             dataSourcesMap.put(dataSource.getClassPath(), dataSource);
         }
+    }
+
+    public static TableInfo getTableInfo(Class<?> tableClass) {
+        TableInfo tableInfo = tableInfoMap.get(tableClass);
+        if (tableInfo != null) {
+            return tableInfo;
+        }
+        tableInfo = Check.getBuilderTableInfo(tableClass);
+        ContextApplication.saveTableInfo(tableClass, tableInfo);
+        return tableInfo;
+    }
+
+    public static TableColumnInfo getTableColumnInfo(Class<?> tableClass, String property) {
+        return getTableInfo(tableClass).getTableColumnInfos().stream().filter(tb -> tb.getField().getName().equals(property)).findFirst().get();
     }
 
     public static String formatAllColumToStr(Class<?> tableClass) {
@@ -78,44 +96,27 @@ public class ContextApplication {
     }
 
     public static List<String> getAllColumnList(Class<?> tableClass) {
-        final List<TableInfo> tableInfoList = tableDataBaseMap.get(tableClass);
-        return tableInfoList.stream().map(TableInfo::getColumn).collect(Collectors.toList());
+        return getTableInfo(tableClass).getTableColumnInfos().stream().map(TableColumnInfo::getColumn).collect(Collectors.toList());
     }
 
-    public static TableInfo getTableInfo(Class<?> tableClass, String property) {
-        return getTableInfos(tableClass).stream().filter(tb -> tb.getField().getName().equals(property)).findFirst().get();
-    }
 
-    public static List<TableInfo> getTableInfos(Class<?> tableClass) {
-        return Optional.ofNullable(tableDataBaseMap.get(tableClass)).orElseGet(Collections::emptyList);
-    }
-
-    public static String getColumnByField(Class<?> tableClass, String fieldName) {
-        List<TableInfo> tableInfos = tableDataBaseMap.get(tableClass);
-        for (TableInfo tableInfo : tableInfos) {
-            if (tableInfo.getField().getName().equals(fieldName)) {
-                return tableInfo.getColumn();
-            }
-        }
-        throw new BraveException(tableInfos.get(0).getTableName() + "中未识别的字段：" + fieldName);
+    public static List<TableColumnInfo> getTableColumnInfos(Class<?> tableClass) {
+        return getTableInfo(tableClass).getTableColumnInfos();
     }
 
     public static String getPrimaryKey(Class<?> tableClass) {
-        return getTableInfoPrimaryKey(tableClass).getColumn();
+        return getTableColumnInfoPrimaryKey(tableClass).getColumn();
     }
 
-    public static TableInfo getTableInfoPrimaryKey(Class<?> tableClass) {
-        final List<TableInfo> tableInfoList = tableDataBaseMap.get(tableClass);
-        return tableInfoList.stream().filter(tableInfo -> tableInfo.isPrimary()).findFirst().orElse(null);
+    public static TableColumnInfo getTableColumnInfoPrimaryKey(Class<?> tableClass) {
+        final TableInfo tableInfo = getTableInfo(tableClass);
+        return tableInfo.getTableColumnInfos().stream().filter(tableColumnInfo -> tableColumnInfo.isPrimary()).findFirst().orElse(null);
     }
 
-    public static synchronized void saveTableInfos(Class<?> tableClass, List<TableInfo> tableInfos) {
-        if (CollectionUtils.isEmpty(tableInfos)) {
-            throw new BraveException("待保存的表字段不可为空");
-        }
-        final List<TableInfo> tableInfosCache = tableDataBaseMap.get(tableClass);
-        if (CollectionUtils.isEmpty(tableInfosCache)) {
-            tableDataBaseMap.put(tableClass, tableInfos);
+    public static synchronized void saveTableInfo(Class<?> tableClass, TableInfo tableInfo) {
+        final TableInfo tableInfo1 = tableInfoMap.get(tableClass);
+        if (tableInfo1 == null) {
+            tableInfoMap.put(tableClass, tableInfo);
         }
     }
 
@@ -124,13 +125,12 @@ public class ContextApplication {
         return dataSourcesMap;
     }
 
-    public static Map<Class<?>, List<TableInfo>> getAllTableDataBaseMap() {
-        return tableDataBaseMap;
+    public static Map<Class<?>, TableInfo> getAllTableDataBaseMap() {
+        return tableInfoMap;
     }
 
-    public static void clear() {
-        tableDataBaseMap.clear();
+    public static void tableInfoClear() {
+        tableInfoMap.clear();
     }
-
 
 }

@@ -8,6 +8,7 @@ import com.pengwz.dynamic.constant.Constant;
 import com.pengwz.dynamic.exception.BraveException;
 import com.pengwz.dynamic.model.DataSourceInfo;
 import com.pengwz.dynamic.model.DbType;
+import com.pengwz.dynamic.model.TableColumnInfo;
 import com.pengwz.dynamic.model.TableInfo;
 import com.pengwz.dynamic.sql.ContextApplication;
 import com.pengwz.dynamic.sql.PageInfo;
@@ -111,7 +112,7 @@ public class SqlImpl<T> implements Sqls<T> {
         if (property.equals("1")) {
             column = "1";
         } else {
-            column = ContextApplication.getColumnByField(currentClass, property);
+            column = ContextApplication.getTableColumnInfo(currentClass, property).getColumn();
         }
         switch (functionEnum) {
             case AVG:
@@ -263,15 +264,15 @@ public class SqlImpl<T> implements Sqls<T> {
         List<T> list = new ArrayList<>();
         Exception exception = null;
         try {
-            List<TableInfo> tableInfos = ContextApplication.getTableInfos(currentClass);
+            final List<TableColumnInfo> tableColumnInfos = ContextApplication.getTableColumnInfos(currentClass);
             setPreparedStatementParam(sql, false);
             if (interceptorHelper.transferBefore()) {
                 resultSet = preparedStatement.executeQuery();
                 while (resultSet.next()) {
                     T t = (T) currentClass.newInstance();
-                    for (TableInfo tableInfo : tableInfos) {
-                        Object o = ConverterUtils.convertJdbc(currentClass, resultSet, tableInfo);
-                        ReflectUtils.setFieldValue(tableInfo.getField(), t, o);
+                    for (TableColumnInfo tableColumnInfo : tableColumnInfos) {
+                        Object o = ConverterUtils.convertJdbc(currentClass, resultSet, tableColumnInfo);
+                        ReflectUtils.setFieldValue(tableColumnInfo.getField(), t, o);
                     }
                     list.add(t);
                 }
@@ -287,34 +288,34 @@ public class SqlImpl<T> implements Sqls<T> {
     @Override
     public Integer batchInsert() {
         String columnToStr = ContextApplication.formatAllColumToStr(currentClass);
-        List<TableInfo> tableInfos = ContextApplication.getTableInfos(currentClass);
+        List<TableColumnInfo> tableColumnInfos = ContextApplication.getTableColumnInfos(currentClass);
         final StringBuilder sql = new StringBuilder();
         sql.append("insert into ").append(tableName).append(" ( ").append(columnToStr).append(" ) values ");
         sql.append("( ");
-        tableInfos.forEach(tableInfo -> sql.append(" " + PLACEHOLDER + " ,"));
+        tableColumnInfos.forEach(tableInfo -> sql.append(" " + PLACEHOLDER + " ,"));
         sql.deleteCharAt(sql.lastIndexOf(","));
         sql.append("),");
         String prepareSql = sql.deleteCharAt(sql.lastIndexOf(",")).toString();
-        return setValuesExecuteSql(prepareSql, tableInfos);
+        return setValuesExecuteSql(prepareSql, tableColumnInfos);
     }
 
     @Override
     public Integer insertActive() {
-        List<TableInfo> tableInfos = ContextApplication.getTableInfos(currentClass);
+        final List<TableColumnInfo> tableColumnInfos = ContextApplication.getTableColumnInfos(currentClass);
         T next = data.iterator().next();
         final StringBuilder prefix = new StringBuilder();
         final StringBuilder suffix = new StringBuilder();
         prefix.append("insert into ").append(tableName).append(" ( ");
         final List<Object> parameter = preparedSql.startBatchParameter();
-        for (TableInfo tableInfo : tableInfos) {
+        for (TableColumnInfo tableColumnInfo : tableColumnInfos) {
             try {
-                Object invoke = getTableFieldValue(tableInfo, next, true);
-                final GeneratedValue generatedValue = tableInfo.getGeneratedValue();
+                Object invoke = getTableFieldValue(tableColumnInfo, next, true);
+                final GeneratedValue generatedValue = tableColumnInfo.getGeneratedValue();
                 //判断主键生成策略，非自增直接过滤
                 if (Objects.isNull(invoke) && (generatedValue == null || !generatedValue.strategy().equals(AUTO))) {
                     continue;
                 }
-                prefix.append(SPACE).append(tableInfo.getColumn()).append(COMMA);
+                prefix.append(SPACE).append(tableColumnInfo.getColumn()).append(COMMA);
                 suffix.append(PLACEHOLDER + ", ");
                 parameter.add(invoke);
             } catch (Exception ex) {
@@ -344,7 +345,7 @@ public class SqlImpl<T> implements Sqls<T> {
     }
 
 
-    private Integer setValuesExecuteSql(String sql, List<TableInfo> tableInfos) {
+    private Integer setValuesExecuteSql(String sql, List<TableColumnInfo> tableColumnInfos) {
         Iterator<T> iterator = data.iterator();
         Exception exception = null;
         try {
@@ -354,9 +355,9 @@ public class SqlImpl<T> implements Sqls<T> {
                     interceptorHelper.transferAfter(new BraveException("新增的数据不可为空"), sql);
                 }
                 final List<Object> parameters = preparedSql.startBatchParameter();
-                for (int i = 1; i <= tableInfos.size(); i++) {
-                    TableInfo tableInfo = tableInfos.get(i - 1);
-                    Object fieldValue = getTableFieldValue(tableInfo, next, true);
+                for (int i = 1; i <= tableColumnInfos.size(); i++) {
+                    TableColumnInfo tableColumnInfo = tableColumnInfos.get(i - 1);
+                    Object fieldValue = getTableFieldValue(tableColumnInfo, next, true);
                     parameters.add(ConverterUtils.convertValueJdbc(fieldValue));
                 }
             }
@@ -374,44 +375,44 @@ public class SqlImpl<T> implements Sqls<T> {
     /**
      * 获取字段的值，若是主键则尝试生成主键的值，若是程序生成的主键，将生成的主键赋值给该主键字段
      *
-     * @param tableInfo        主键 tableInfo
+     * @param tableColumnInfo  主键 tableInfo
      * @param next             当前查询的对象
      * @param isGeneratedValue 主键值为null时，是否生成主键 true 生成，false不生成
      * @return 主键值
      */
-    private Object getTableFieldValue(TableInfo tableInfo, Object next, boolean isGeneratedValue) {
+    private Object getTableFieldValue(TableColumnInfo tableColumnInfo, Object next, boolean isGeneratedValue) {
         //先确定源字段是否有值
-        Object invoke = ReflectUtils.getFieldValue(tableInfo.getField(), next);
+        Object invoke = ReflectUtils.getFieldValue(tableColumnInfo.getField(), next);
         if (null != invoke) {
             //判断写入前是否需要转json
-            if (tableInfo.getJsonMode() != null) {
-                return ConverterUtils.getGson(tableInfo.getJsonMode()).toJson(invoke);
+            if (tableColumnInfo.getJsonMode() != null) {
+                return ConverterUtils.getGson(tableColumnInfo.getJsonMode()).toJson(invoke);
             }
             return invoke;
         }
         //若该值为null，则看看是不是需要程序生成主键
-        GeneratedValue generatedValue = tableInfo.getGeneratedValue();
+        GeneratedValue generatedValue = tableColumnInfo.getGeneratedValue();
         if (generatedValue == null) {
             //啥也没有，直接返回null
             return null;
         }
-        Object value = generatedPrimaryValue(tableInfo, isGeneratedValue);
-        ReflectUtils.setFieldValue(tableInfo.getField(), next, value);
+        Object value = generatedPrimaryValue(tableColumnInfo, isGeneratedValue);
+        ReflectUtils.setFieldValue(tableColumnInfo.getField(), next, value);
         return value;
     }
 
     /**
      * 生成主键值
      *
-     * @param tableInfo        表信息
+     * @param tableColumnInfo  表列信息
      * @param isGeneratedValue 是否生成新的主键
      * @return 主键值，若不生成主键，则返回 null
      */
-    private Object generatedPrimaryValue(TableInfo tableInfo, boolean isGeneratedValue) {
+    private Object generatedPrimaryValue(TableColumnInfo tableColumnInfo, boolean isGeneratedValue) {
         if (!isGeneratedValue) {
             return null;
         }
-        GeneratedValue generatedValue = tableInfo.getGeneratedValue();
+        GeneratedValue generatedValue = tableColumnInfo.getGeneratedValue();
         switch (generatedValue.strategy()) {
             case AUTO:
                 //直接返回null，使用数据库机制自增主键
@@ -439,7 +440,7 @@ public class SqlImpl<T> implements Sqls<T> {
                     ps = connection.prepareStatement(sql);//NOSONAR
                     rs = ps.executeQuery();
                     rs.next();
-                    return rs.getObject(1, tableInfo.getField().getType());
+                    return rs.getObject(1, tableColumnInfo.getField().getType());
                 } catch (SQLException sqlException) {
                     //此处关闭。。。。
                     close(dataSourceName, rs, ps, connection);
@@ -449,7 +450,7 @@ public class SqlImpl<T> implements Sqls<T> {
                 return null;
             //不会走到default这里
             default:
-                throw new IllegalStateException("Unexpected value: " + tableInfo.getGeneratedValue());
+                throw new IllegalStateException("Unexpected value: " + tableColumnInfo.getGeneratedValue());
         }
     }
 
@@ -461,17 +462,17 @@ public class SqlImpl<T> implements Sqls<T> {
         }
         int[] ints = preparedStatement.executeBatch();
         successCount = ints.length;
-        TableInfo tableInfoPrimaryKey = ContextApplication.getTableInfoPrimaryKey(currentClass);
+        final TableColumnInfo tableColumnInfoPrimaryKey = ContextApplication.getTableColumnInfoPrimaryKey(currentClass);
         //若没有设置主键，直接返回
-        if (tableInfoPrimaryKey == null || tableInfoPrimaryKey.getGeneratedValue() == null)
+        if (tableColumnInfoPrimaryKey == null || tableColumnInfoPrimaryKey.getGeneratedValue() == null)
             return successCount;
         //不是自增的直接返回，因为在执行前已经获取到了
-        if (!tableInfoPrimaryKey.getGeneratedValue().strategy().equals(AUTO)) {
+        if (!tableColumnInfoPrimaryKey.getGeneratedValue().strategy().equals(AUTO)) {
             return successCount;
         }
         DataSourceInfo dataSourceInfo = ContextApplication.getDataSourceInfo(dataSourceName);
         //若是oracle 且 执行的是序列，直接返回
-        if (dataSourceInfo.getDbType().equals(DbType.ORACLE) && tableInfoPrimaryKey.getGeneratedValue().strategy().equals(SEQUENCE))
+        if (dataSourceInfo.getDbType().equals(DbType.ORACLE) && tableColumnInfoPrimaryKey.getGeneratedValue().strategy().equals(SEQUENCE))
             return successCount;
         //使用数据库机制的，接收返回值并且对返回对象赋值
         Iterator<T> resultIterator = data.iterator();
@@ -481,11 +482,11 @@ public class SqlImpl<T> implements Sqls<T> {
             generatedKeys.next();
             Object object;
             if (dataSourceInfo.getDbType().equals(DbType.ORACLE)) {
-                object = generatedKeys.getObject(Check.unSplicingName(tableInfoPrimaryKey.getColumn()), tableInfoPrimaryKey.getField().getType());
+                object = generatedKeys.getObject(Check.unSplicingName(tableColumnInfoPrimaryKey.getColumn()), tableColumnInfoPrimaryKey.getField().getType());
             } else {
-                object = generatedKeys.getObject(RETURN_GENERATED_KEYS, tableInfoPrimaryKey.getField().getType());
+                object = generatedKeys.getObject(RETURN_GENERATED_KEYS, tableColumnInfoPrimaryKey.getField().getType());
             }
-            ReflectUtils.setFieldValue(tableInfoPrimaryKey.getField(), next, object);
+            ReflectUtils.setFieldValue(tableColumnInfoPrimaryKey.getField(), next, object);
         }
         return successCount;
     }
@@ -498,38 +499,38 @@ public class SqlImpl<T> implements Sqls<T> {
             interceptorHelper.transferAfter(new BraveException("oracle 尚未支持 insertOrUpdate"), null);
         }
         String columnToStr = ContextApplication.formatAllColumToStr(currentClass);
-        List<TableInfo> tableInfos = ContextApplication.getTableInfos(currentClass);
+        List<TableColumnInfo> tableColumnInfos = ContextApplication.getTableColumnInfos(currentClass);
         StringBuilder sql = new StringBuilder();
         sql.append("insert into ").append(tableName).append(" ( ").append(columnToStr).append(" ) values ( ");
         List<String> duplicateKeys = new ArrayList<>();
-        tableInfos.forEach(tableInfo -> {
+        tableColumnInfos.forEach(tableInfo -> {
             sql.append(" " + PLACEHOLDER + " ,");
             duplicateKeys.add(tableInfo.getColumn() + " = values(" + tableInfo.getColumn() + ")");
         });
         String prepareSql = sql.substring(0, sql.length() - 1) + ")";
         String join = String.join(",", duplicateKeys);
         prepareSql = prepareSql.concat(" on duplicate key update ").concat(join);
-        return setValuesExecuteSql(prepareSql, tableInfos);
+        return setValuesExecuteSql(prepareSql, tableColumnInfos);
     }
 
     @Override
     public Integer update() {
-        List<TableInfo> tableInfos = ContextApplication.getTableInfos(currentClass);
+        List<TableColumnInfo> tableColumnInfos = ContextApplication.getTableColumnInfos(currentClass);
         StringBuilder sql = new StringBuilder();
         sql.append("update ").append(tableName).append(" set");
         for (T next : data) {
-            appendSetValueSql(tableInfos, sql, next);
+            appendSetValueSql(tableColumnInfos, sql, next);
         }
         return baseUpdate(sql);
     }
 
     @Override
     public Integer updateActive() {
-        List<TableInfo> tableInfos = ContextApplication.getTableInfos(currentClass);
+        List<TableColumnInfo> tableColumnInfos = ContextApplication.getTableColumnInfos(currentClass);
         StringBuilder sql = new StringBuilder();
         sql.append("update ").append(tableName).append(" set");
         for (T next : data) {
-            updateSqlCheckSetNullProperties(sql, tableInfos, next);
+            updateSqlCheckSetNullProperties(sql, tableColumnInfos, next);
         }
         return baseUpdate(sql);
     }
@@ -554,20 +555,20 @@ public class SqlImpl<T> implements Sqls<T> {
 
     @Override
     public Integer updateByPrimaryKey() {
-        List<TableInfo> tableInfos = ContextApplication.getTableInfos(currentClass);
-        TableInfo tableInfoPrimaryKey = ContextApplication.getTableInfoPrimaryKey(currentClass);
-        if (Objects.isNull(tableInfoPrimaryKey)) {
+        List<TableColumnInfo> tableColumnInfos = ContextApplication.getTableColumnInfos(currentClass);
+        TableColumnInfo tableColumnInfoPrimaryKey = ContextApplication.getTableColumnInfoPrimaryKey(currentClass);
+        if (Objects.isNull(tableColumnInfoPrimaryKey)) {
             close(dataSourceName, resultSet, preparedStatement, connection);
             interceptorHelper.transferAfter(new BraveException(tableName + " 表未配置主键"), null);
         }
         StringBuilder sql = new StringBuilder();
         sql.append("update ").append(tableName).append(" set");
         T next = data.iterator().next();
-        appendSetValueSql(tableInfos, sql, next);
-        return assertEndSet(tableInfoPrimaryKey, sql, next);
+        appendSetValueSql(tableColumnInfos, sql, next);
+        return assertEndSet(tableColumnInfoPrimaryKey, sql, next);
     }
 
-    private Integer assertEndSet(TableInfo tableInfoPrimaryKey, StringBuilder sql, T next) {
+    private Integer assertEndSet(TableColumnInfo tableInfoPrimaryKey, StringBuilder sql, T next) {
         if (sql.toString().endsWith("set")) {
             close(dataSourceName, resultSet, preparedStatement, connection);
             return 0;
@@ -579,13 +580,13 @@ public class SqlImpl<T> implements Sqls<T> {
         return executeUpdateSqlAndReturnAffectedRows(parseSql);
     }
 
-    private void appendSetValueSql(List<TableInfo> tableInfos, StringBuilder sql, Object next) {
+    private void appendSetValueSql(List<TableColumnInfo> tableColumnInfos, StringBuilder sql, Object next) {
         int whereBeforeParamIndex = 0;
-        for (TableInfo tableInfo : tableInfos) {
+        for (TableColumnInfo tableColumnInfo : tableColumnInfos) {
             try {
-                sql.append(SPACE).append(tableInfo.getColumn()).append(SPACE).append(EQ).append(SPACE);
-                Object invoke = getTableFieldValue(tableInfo, next, false);
-                preparedSql.addParameter(whereBeforeParamIndex++, ParseSql.matchFixValue(invoke, currentClass, tableInfo.getField().getName()));
+                sql.append(SPACE).append(tableColumnInfo.getColumn()).append(SPACE).append(EQ).append(SPACE);
+                Object invoke = getTableFieldValue(tableColumnInfo, next, false);
+                preparedSql.addParameter(whereBeforeParamIndex++, ParseSql.matchFixValue(invoke, currentClass, tableColumnInfo.getField().getName()));
                 sql.append(PLACEHOLDER).append(COMMA);
             } catch (Exception ex) {
                 close(dataSourceName, resultSet, preparedStatement, connection);
@@ -594,7 +595,7 @@ public class SqlImpl<T> implements Sqls<T> {
         }
     }
 
-    private Object getPrimaryKeyValue(TableInfo tableInfoPrimaryKey, Object next) {
+    private Object getPrimaryKeyValue(TableColumnInfo tableInfoPrimaryKey, Object next) {
         Object primaryKeyValue;
         try {
             primaryKeyValue = ReflectUtils.getFieldValue(tableInfoPrimaryKey.getField(), next);
@@ -611,8 +612,8 @@ public class SqlImpl<T> implements Sqls<T> {
 
     @Override
     public Integer updateActiveByPrimaryKey() {
-        List<TableInfo> tableInfos = ContextApplication.getTableInfos(currentClass);
-        TableInfo tableInfoPrimaryKey = ContextApplication.getTableInfoPrimaryKey(currentClass);
+        List<TableColumnInfo> tableInfos = ContextApplication.getTableColumnInfos(currentClass);
+        TableColumnInfo tableInfoPrimaryKey = ContextApplication.getTableColumnInfoPrimaryKey(currentClass);
         if (Objects.isNull(tableInfoPrimaryKey)) {
             close(dataSourceName, resultSet, preparedStatement, connection);
             interceptorHelper.transferAfter(new BraveException(tableName + " 表未配置主键"), null);
@@ -641,7 +642,7 @@ public class SqlImpl<T> implements Sqls<T> {
 
     @Override
     public Integer deleteByPrimaryKey(Object primaryKeyValue) {
-        TableInfo tableInfoPrimaryKey = ContextApplication.getTableInfoPrimaryKey(currentClass);
+        TableColumnInfo tableInfoPrimaryKey = ContextApplication.getTableColumnInfoPrimaryKey(currentClass);
         if (Objects.isNull(tableInfoPrimaryKey)) {
             close(dataSourceName, resultSet, preparedStatement, connection);
             interceptorHelper.transferAfter(new BraveException(tableName + " 表未配置主键"), null);
@@ -690,16 +691,16 @@ public class SqlImpl<T> implements Sqls<T> {
         return -1;
     }
 
-    private void updateSqlCheckSetNullProperties(StringBuilder sql, List<TableInfo> tableInfos, T nextObject) {
+    private void updateSqlCheckSetNullProperties(StringBuilder sql, List<TableColumnInfo> tableColumnInfos, T nextObject) {
         int whereBeforeParamIndex = 0;
-        for (TableInfo tableInfo : tableInfos) {
+        for (TableColumnInfo tableColumnInfo : tableColumnInfos) {
             try {
-                Object invoke = getTableFieldValue(tableInfo, nextObject, false);
-                if (Objects.isNull(invoke) && !updateNullProperties.contains(tableInfo.getField().getName())) {
+                Object invoke = getTableFieldValue(tableColumnInfo, nextObject, false);
+                if (Objects.isNull(invoke) && !updateNullProperties.contains(tableColumnInfo.getField().getName())) {
                     continue;
                 }
-                sql.append(SPACE).append(tableInfo.getColumn()).append(SPACE).append(EQ).append(SPACE);
-                preparedSql.addParameter(whereBeforeParamIndex++, ParseSql.matchFixValue(invoke, currentClass, tableInfo.getField().getName()));
+                sql.append(SPACE).append(tableColumnInfo.getColumn()).append(SPACE).append(EQ).append(SPACE);
+                preparedSql.addParameter(whereBeforeParamIndex++, ParseSql.matchFixValue(invoke, currentClass, tableColumnInfo.getField().getName()));
                 sql.append(PLACEHOLDER).append(COMMA);
             } catch (Exception ex) {
                 JdbcUtils.closeConnection(connection);
@@ -730,9 +731,9 @@ public class SqlImpl<T> implements Sqls<T> {
         this.updateNullProperties = updateNullProperties;
         this.preparedSql = new PreparedSql(currentClass, params);
         this.interceptorHelper = new InterceptorHelper(preparedSql);
-        final List<TableInfo> tableInfos = ContextApplication.getTableInfos(currentClass);
-        this.tableName = tableInfos.get(0).getTableName();
-        this.dataSourceName = tableInfos.get(0).getDataSourceName();
+        final TableInfo tableInfo = ContextApplication.getTableInfo(currentClass);
+        this.tableName = tableInfo.getTableName();
+        this.dataSourceName = tableInfo.getDataSourceName();
         this.connection = DataSourceManagement.initConnection(dataSourceName);
     }
 }

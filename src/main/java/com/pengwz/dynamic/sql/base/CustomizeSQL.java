@@ -4,6 +4,7 @@ import com.pengwz.dynamic.check.Check;
 import com.pengwz.dynamic.config.DataSourceConfig;
 import com.pengwz.dynamic.config.DataSourceManagement;
 import com.pengwz.dynamic.exception.BraveException;
+import com.pengwz.dynamic.model.TableColumnInfo;
 import com.pengwz.dynamic.model.TableInfo;
 import com.pengwz.dynamic.sql.ContextApplication;
 import com.pengwz.dynamic.utils.ConverterUtils;
@@ -79,8 +80,8 @@ public class CustomizeSQL<T> {
             log.debug(sql);
         }
         List<T> selectResult = new ArrayList<>();
-        List<TableInfo> tableInfos = initTableInfo();
-        Map<String, TableInfo> tableInfoMap = tableInfos.stream().collect(Collectors.toMap(k -> Check.unSplicingName(k.getColumn()), v -> v));
+        final TableInfo tableInfo = initTableInfo();
+        Map<String, TableColumnInfo> tableColumnInfoMap = tableInfo.getTableColumnInfos().stream().collect(Collectors.toMap(k -> Check.unSplicingName(k.getColumn()), v -> v));
         Field[] declaredFields = target.getDeclaredFields();
         PreparedStatement preparedStatement = null;
         ResultSet resultSet = null;
@@ -90,11 +91,11 @@ public class CustomizeSQL<T> {
             while (resultSet.next()) {
                 T obj = target.newInstance();
                 for (Field field : declaredFields) {
-                    TableInfo tableInfo = tableInfoMap.get(Check.getFixColumnInfo(field, dataSourceName).getValue());
-                    if (tableInfo == null) {
+                    TableColumnInfo tableColumnInfo = tableColumnInfoMap.get(Check.getFixColumnInfo(field, dataSourceName).getValue());
+                    if (tableColumnInfo == null) {
                         continue;
                     }
-                    Object object = ConverterUtils.convertJdbc(target, resultSet, tableInfo);
+                    Object object = ConverterUtils.convertJdbc(target, resultSet, tableColumnInfo);
                     ReflectUtils.setFieldValue(field, obj, object);
                 }
                 selectResult.add(obj);
@@ -107,10 +108,10 @@ public class CustomizeSQL<T> {
         return selectResult;
     }
 
-    private List<TableInfo> initTableInfo() {
+    private TableInfo initTableInfo() {
         List<Field> allFiledList = new ArrayList<>();
         Check.recursionGetAllFields(target, allFiledList);
-        return Check.builderTableInfos(allFiledList, TABLE_NAME, dataSourceName);
+        return Check.builderTableInfo(allFiledList, TABLE_NAME, dataSourceName);
     }
 
     @Deprecated
@@ -184,8 +185,8 @@ public class CustomizeSQL<T> {
             log.debug(sql);
         }
         PreparedStatement preparedStatement = null;
-        List<TableInfo> tableInfos = initTableInfo();
-        Map<String, TableInfo> tableInfoMap = tableInfos.stream().collect(Collectors.toMap(k -> Check.unSplicingName(k.getColumn()), v -> v));
+        final TableInfo tableInfo = initTableInfo();
+        Map<String, TableColumnInfo> tableColumnInfoMap = tableInfo.getTableColumnInfos().stream().collect(Collectors.toMap(k -> Check.unSplicingName(k.getColumn()), v -> v));
         try {
             preparedStatement = connection.prepareStatement(sql);
             ResultSet resultSet = preparedStatement.executeQuery();
@@ -197,12 +198,12 @@ public class CustomizeSQL<T> {
                 T instance = target.newInstance();
                 for (int i = 1; i <= columnCount; i++) {
                     String columnName = metaData.getColumnName(i);
-                    TableInfo tableInfo = tableInfoMap.get(columnName);
-                    if (tableInfo == null) {
+                    TableColumnInfo tableColumnInfo = tableColumnInfoMap.get(columnName);
+                    if (tableColumnInfo == null) {
                         continue;
                     }
-                    Object value = ConverterUtils.convertJdbc(target, resultSet, tableInfo);
-                    ReflectUtils.setFieldValue(tableInfo.getField(), instance, value);
+                    Object value = ConverterUtils.convertJdbc(target, resultSet, tableColumnInfo);
+                    ReflectUtils.setFieldValue(tableColumnInfo.getField(), instance, value);
                 }
                 resultList.add(instance);
             }

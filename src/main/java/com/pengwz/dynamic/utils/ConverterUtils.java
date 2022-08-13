@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder;
 import com.pengwz.dynamic.anno.JsonMode;
 import com.pengwz.dynamic.check.Check;
 import com.pengwz.dynamic.exception.BraveException;
+import com.pengwz.dynamic.model.TableColumnInfo;
 import com.pengwz.dynamic.model.TableInfo;
 import com.pengwz.dynamic.utils.convert.ConverterAdapter;
 import com.pengwz.dynamic.utils.convert.LocalDateConverterAdapter;
@@ -37,11 +38,11 @@ public class ConverterUtils {
     }
 
     @SuppressWarnings("unchecked")
-    public static <T> T convertJdbc(Class<?> entityClass, ResultSet resultSet, TableInfo tableInfo) throws SQLException {
+    public static <T> T convertJdbc(Class<?> entityClass, ResultSet resultSet, TableColumnInfo tableColumnInfo) throws SQLException {
         if (Objects.isNull(resultSet)) {
             throw new BraveException("java.sql.ResultSet不可为null");
         }
-        return convertJdbc(entityClass, resultSet, tableInfo.getColumn(), (Class<T>) tableInfo.getField().getType(), tableInfo.getJsonMode());
+        return convertJdbc(entityClass, resultSet, tableColumnInfo.getColumn(), (Class<T>) tableColumnInfo.getField().getType(), tableColumnInfo.getJsonMode());
     }
 
     public static <T> T convertJdbc(Class<?> entityClass, ResultSet resultSet, String columnName, Class<T> targetType) throws SQLException {

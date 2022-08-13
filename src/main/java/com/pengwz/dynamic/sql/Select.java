@@ -51,8 +51,8 @@ public class Select<R> {
      * @param tableClass 表实体类
      * @return 获得多表查询的支持对象
      */
-    public MultiBraveSql.As<R> from(Class<?> tableClass) {
-        return new MultiBraveSql.As<>(tableClass, resultClass);
+    public MultiBraveSql.MultiBraveSqlBuilder<R> from(Class<?> tableClass) {
+        return MultiBraveSql.builder(tableClass, resultClass, selectSql);
     }
 
     public Class<R> getResultClass() {

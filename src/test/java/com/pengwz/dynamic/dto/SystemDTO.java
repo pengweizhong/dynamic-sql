@@ -6,6 +6,7 @@ import com.pengwz.dynamic.anno.ColumnJson;
 import com.pengwz.dynamic.anno.Table;
 import com.pengwz.dynamic.config.DataSourceConfig;
 import com.pengwz.dynamic.config.DatabaseConfig;
+import com.pengwz.dynamic.entity.SystemRoleEntity;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -25,7 +26,7 @@ public class SystemDTO {
     /**
      * 角色名称
      */
-    @Column(value = "role_name", tableAlias = "t1")
+    @Column(value = "role_name", tableClass = SystemRoleEntity.class)
     private String roleName;
 
     /**

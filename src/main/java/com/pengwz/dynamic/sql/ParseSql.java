@@ -1,6 +1,7 @@
 package com.pengwz.dynamic.sql;
 
 import com.pengwz.dynamic.exception.BraveException;
+import com.pengwz.dynamic.model.TableColumnInfo;
 import com.pengwz.dynamic.model.TableInfo;
 import com.pengwz.dynamic.sql.base.HandleFunction;
 import com.pengwz.dynamic.sql.base.impl.Count;
@@ -19,6 +20,9 @@ import static com.pengwz.dynamic.check.Check.checkAndSave;
 import static com.pengwz.dynamic.constant.Constant.*;
 
 public class ParseSql {
+    private ParseSql() {
+    }
+
     public static String parse(Class<?> currentClass, List<Declaration> declarationList,
                                Map<String, List<String>> orderByMap, List<Object> params) {
         checkAndSave(currentClass);
@@ -28,6 +32,7 @@ public class ParseSql {
                 whereSql.append(declaration.getBrackets()).append(SPACE);
                 continue;
             }
+            String column = ContextApplication.getTableColumnInfo(currentClass, declaration.getProperty()).getColumn();
             //解析函数
             if (Objects.nonNull(declaration.getHandleFunction())) {
                 HandleFunction handleFunction = declaration.getHandleFunction();
@@ -36,7 +41,6 @@ public class ParseSql {
                 }
                 if (handleFunction instanceof OrderBy) {
                     handleFunction.execute(currentClass, declaration);
-                    String column = ContextApplication.getColumnByField(currentClass, declaration.getProperty());
                     whereSql.append(" order by " + column + " " + declaration.getSortMode());
                     continue;
                 }
@@ -44,14 +48,14 @@ public class ParseSql {
                     String property = declaration.getProperty();
                     String[] split = property.split(",");
                     List<String> columns = new ArrayList<>();
-                    Arrays.asList(split).forEach(field -> columns.add(ContextApplication.getColumnByField(currentClass, field)));
+                    Arrays.asList(split).forEach(field -> columns.add(ContextApplication.getTableColumnInfo(currentClass, field).getColumn()));
                     whereSql.append(SPACE + GROUP + SPACE + BY + SPACE + String.join(",", columns));
                     continue;
                 }
                 whereSql.append(declaration.getHandleFunction().execute(currentClass, declaration)).append(SPACE);
             } else if (declaration.getCondition().equals(BETWEEN) || declaration.getCondition().equals(NOT_BETWEEN)) {
                 whereSql.append(declaration.getAndOr()).append(SPACE);
-                whereSql.append(ContextApplication.getColumnByField(currentClass, declaration.getProperty())).append(SPACE);
+                whereSql.append(column).append(SPACE);
                 whereSql.append(declaration.getCondition()).append(SPACE);
                 params.add(matchFixValue(declaration.getValue(), currentClass, declaration.getProperty()));
                 splicePlaceholders(whereSql, declaration.getValue());
@@ -60,12 +64,12 @@ public class ParseSql {
                 splicePlaceholders(whereSql, declaration.getValue2());
             } else if (declaration.getCondition().equals(IS) || declaration.getCondition().equals(IS_NOT)) {
                 whereSql.append(declaration.getAndOr()).append(SPACE);
-                whereSql.append(ContextApplication.getColumnByField(currentClass, declaration.getProperty())).append(SPACE);
+                whereSql.append(column).append(SPACE);
                 whereSql.append(declaration.getCondition()).append(SPACE);
                 whereSql.append("null").append(SPACE);
             } else {
                 whereSql.append(declaration.getAndOr()).append(SPACE);
-                whereSql.append(ContextApplication.getColumnByField(currentClass, declaration.getProperty())).append(SPACE);
+                whereSql.append(column).append(SPACE);
                 whereSql.append(declaration.getCondition()).append(SPACE);
                 params.add(matchFixValue(declaration.getValue(), currentClass, declaration.getProperty()));
                 splicePlaceholders(whereSql, declaration.getValue());
@@ -77,7 +81,7 @@ public class ParseSql {
                 whereSql.append(ORDER).append(SPACE).append(BY).append(SPACE);
                 List<String> list = orderByMap.get(key);
                 for (String field : list) {
-                    String columnByField = ContextApplication.getColumnByField(currentClass, field);
+                    String columnByField = ContextApplication.getTableColumnInfo(currentClass, field).getColumn();
                     whereSql.append(columnByField).append(COMMA).append(SPACE);
                 }
                 whereSql = new StringBuilder(whereSql.substring(0, whereSql.length() - 2));
@@ -156,9 +160,9 @@ public class ParseSql {
         if (value == null) {
             return null;
         }
-        final TableInfo tableInfo = ContextApplication.getTableInfo(tableClass, property);
-        if (tableInfo.getJsonMode() != null) {
-            return ConverterUtils.getGson(tableInfo.getJsonMode()).toJson(value);
+        final TableColumnInfo tableColumnInfo = ContextApplication.getTableColumnInfo(tableClass, property);
+        if (tableColumnInfo.getJsonMode() != null) {
+            return ConverterUtils.getGson(tableColumnInfo.getJsonMode()).toJson(value);
         }
         return value;
     }
@@ -214,11 +218,11 @@ public class ParseSql {
 //    }
 
     public static String parseAggregateFunction(String aggregateFunctionName, Class<?> tableClass, Declaration declaration) {
-        final TableInfo tableInfo = ContextApplication.getTableInfos(tableClass).get(0);
+        final TableInfo tableInfo = ContextApplication.getTableInfo(tableClass);
         StringBuilder whereFunctionSql = new StringBuilder();
         whereFunctionSql.append(declaration.getAndOr());
         // id = (
-        String column = ContextApplication.getColumnByField(tableClass, declaration.getProperty());
+        String column = ContextApplication.getTableColumnInfo(tableClass, declaration.getProperty()).getColumn();
         whereFunctionSql.append(SPACE).append(column).append(SPACE).append(EQ).append(SPACE).append(LEFT_BRACKETS).append(SPACE);
         //select min(property)
         whereFunctionSql.append(SELECT).append(SPACE).append(aggregateFunctionName).append(LEFT_BRACKETS).append(column).append(RIGHT_BRACKETS).append(SPACE);

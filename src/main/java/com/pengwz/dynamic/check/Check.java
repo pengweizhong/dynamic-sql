@@ -3,13 +3,9 @@ package com.pengwz.dynamic.check;
 import com.pengwz.dynamic.anno.*;
 import com.pengwz.dynamic.config.DataSourceManagement;
 import com.pengwz.dynamic.exception.BraveException;
-import com.pengwz.dynamic.model.ColumnInfo;
-import com.pengwz.dynamic.model.DataSourceInfo;
-import com.pengwz.dynamic.model.DbType;
-import com.pengwz.dynamic.model.TableInfo;
+import com.pengwz.dynamic.model.*;
 import com.pengwz.dynamic.sql.ContextApplication;
 import com.pengwz.dynamic.sql.PageInfo;
-import com.pengwz.dynamic.utils.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -27,19 +23,19 @@ public class Check {
     private static final Log log = LogFactory.getLog(Check.class);
 
     public static void checkAndSave(Class<?> currentClass) {
-        final List<TableInfo> cacheTableInfos = ContextApplication.getTableInfos(currentClass);
-        if (CollectionUtils.isNotEmpty(cacheTableInfos)) {
+        final TableInfo tableInfoHis = ContextApplication.getTableInfo(currentClass);
+        if (tableInfoHis != null) {
             return;
         }
-        final List<TableInfo> builderTableInfos = getBuilderTableInfos(currentClass);
-        ContextApplication.saveTableInfos(currentClass, builderTableInfos);
+        final TableInfo tableInfo = getBuilderTableInfo(currentClass);
+        ContextApplication.saveTableInfo(currentClass, tableInfo);
     }
 
-    public static List<TableInfo> getBuilderTableInfos(Class<?> currentClass) {
-        return getBuilderTableInfos(currentClass, true);
+    public static TableInfo getBuilderTableInfo(Class<?> currentClass) {
+        return getBuilderTableInfo(currentClass, true);
     }
 
-    public static List<TableInfo> getBuilderTableInfos(Class<?> currentClass, boolean isCheckTableName) {
+    public static TableInfo getBuilderTableInfo(Class<?> currentClass, boolean isCheckTableName) {
         Table table = currentClass.getAnnotation(Table.class);
         if (StringUtils.isEmpty(table.value()) && isCheckTableName) {
             throw new BraveException("当前实体类：" + currentClass + "未获取到表名");
@@ -48,27 +44,30 @@ public class Check {
         String tableName = table.value().trim();
         List<Field> allFiledList = new ArrayList<>();
         recursionGetAllFields(currentClass, allFiledList);
-        List<TableInfo> tableInfos = builderTableInfos(allFiledList, tableName, dataSource);
+        final TableInfo tableInfo = builderTableInfo(allFiledList, tableName, dataSource);
         //校验重复列  空列
-        if (tableInfos.isEmpty()) {
+        if (tableInfo.getTableColumnInfos().isEmpty()) {
             throw new BraveException("映射实体类未发现可用属性，发生在表：" + tableName);
         }
-        List<TableInfo> primaryList = tableInfos.stream().filter(TableInfo::isPrimary).collect(Collectors.toList());
+        final List<TableColumnInfo> tableColumnInfos = tableInfo.getTableColumnInfos();
+        List<TableColumnInfo> primaryList = tableColumnInfos.stream().filter(TableColumnInfo::isPrimary).collect(Collectors.toList());
         if (primaryList.size() > 1) {
             throw new BraveException("获取到多个主键，发生在表：" + tableName);
         }
-        Map<String, List<TableInfo>> stringListMap = tableInfos.stream().collect(Collectors.groupingBy(TableInfo::getColumn));
+        Map<String, List<TableColumnInfo>> stringListMap = tableColumnInfos.stream().collect(Collectors.groupingBy(TableColumnInfo::getColumn));
         stringListMap.forEach((column, tableInfoList) -> {
             if (tableInfoList.size() > 1) {
                 throw new BraveException("重复的列名：" + column + "，发生在表：" + tableName);
             }
         });
-        return tableInfos;
+        return tableInfo;
     }
 
 
-    public static List<TableInfo> builderTableInfos(List<Field> allFiledList, String tableName, String dataSource) {
-        List<TableInfo> tableInfos = new ArrayList<>();
+    public static TableInfo builderTableInfo(List<Field> allFiledList, String tableName, String dataSource) {
+        final TableInfo tableInfo = new TableInfo();
+        List<TableColumnInfo> tableColumnInfos = new ArrayList<>();
+        tableInfo.setTableColumnInfos(tableColumnInfos);
         for (Field field : allFiledList) {
             if (checkedFieldType(field)) {
                 continue;
@@ -79,10 +78,10 @@ public class Check {
             if (field.getAnnotation(ColumnIgnore.class) != null) {
                 continue;
             }
-            TableInfo tableInfo = new TableInfo();
+            final TableColumnInfo tableColumnInfo = new TableColumnInfo();
             Id id = field.getAnnotation(Id.class);
             if (Objects.nonNull(id)) {
-                tableInfo.setPrimary(true);
+                tableColumnInfo.setPrimary(true);
                 GeneratedValue generatedValue = field.getAnnotation(GeneratedValue.class);
                 if (Objects.nonNull(generatedValue)) {
                     if (!Number.class.isAssignableFrom(field.getType()) && generatedValue.strategy().equals(GenerationType.AUTO)) {
@@ -100,22 +99,22 @@ public class Check {
                             throw new BraveException("使用序列自增时，必须指定序列名[GeneratedValue#sequenceName()]，且序列名不允许为空");
                         }
                     }
-                    tableInfo.setGeneratedValue(generatedValue);
+                    tableColumnInfo.setGeneratedValue(generatedValue);
                 }
             } else {
-                tableInfo.setPrimary(false);
+                tableColumnInfo.setPrimary(false);
             }
-            tableInfo.setField(field);
+            tableColumnInfo.setField(field);
             final ColumnInfo columnInfo = getFixColumnInfo(field, dataSource);
-            tableInfo.setColumn(columnInfo.getValue());
-            tableInfo.setJsonMode(columnInfo.getJsonMode());
-            tableInfo.setTableAlias(columnInfo.getTableAlias());
-            tableInfo.setDataSourceName(dataSource);
-            DataSourceInfo dataSourceInfo = ContextApplication.getDataSourceInfo(dataSource);
-            tableInfo.setTableName(getTableName(tableName, dataSourceInfo.getDbType()));
-            tableInfos.add(tableInfo);
+            tableColumnInfo.setColumn(columnInfo.getValue());
+            tableColumnInfo.setJsonMode(columnInfo.getJsonMode());
+            tableColumnInfo.setTableAlias(columnInfo.getTableAlias());
+            tableColumnInfos.add(tableColumnInfo);
         }
-        return tableInfos;
+        tableInfo.setDataSourceName(dataSource);
+        DataSourceInfo dataSourceInfo = ContextApplication.getDataSourceInfo(dataSource);
+        tableInfo.setTableName(getTableName(tableName, dataSourceInfo.getDbType()));
+        return tableInfo;
     }
 
     public static void recursionGetAllFields(Class<?> thisClass, List<Field> fieldList) {
@@ -158,21 +157,38 @@ public class Check {
             } else {
                 columnInfo.setValue(columnAnno.value().replace(" ", ""));
             }
-            columnInfo.setTableAlias(columnAnno.tableAlias().replace(" ", ""));
-        } else {
-            ColumnJson columnJson = field.getAnnotation(ColumnJson.class);
-            if (Objects.nonNull(columnJson)) {
-                if (StringUtils.isEmpty(columnJson.value())) {
-                    columnInfo.setValue(com.pengwz.dynamic.utils.StringUtils.caseField(field.getName()));
-                } else {
-                    columnInfo.setValue(columnJson.value().replace(" ", ""));
-                }
-                columnInfo.setTableAlias(columnJson.tableAlias().replace(" ", ""));
-            } else {
+            columnInfo.setTableAlias(getTableAlias(columnAnno));
+        }
+        ColumnJson columnJson = field.getAnnotation(ColumnJson.class);
+        if (Objects.nonNull(columnJson)) {
+            if (StringUtils.isEmpty(columnJson.value())) {
                 columnInfo.setValue(com.pengwz.dynamic.utils.StringUtils.caseField(field.getName()));
+            } else {
+                columnInfo.setValue(columnJson.value().replace(" ", ""));
             }
+            columnInfo.setTableAlias(getTableAlias(columnJson));
+        } else {
+            columnInfo.setValue(com.pengwz.dynamic.utils.StringUtils.caseField(field.getName()));
         }
         return columnInfo;
+    }
+
+    public static String getTableAlias(Column columnAnno) {
+        final Class<?> aClass = columnAnno.tableClass();
+        if (!aClass.equals(Void.class)) {
+            final TableInfo tableInfo = ContextApplication.getTableInfo(aClass);
+            return tableInfo.getTableName();
+        }
+        return columnAnno.tableAlias().replace(" ", "");
+    }
+
+    public static String getTableAlias(ColumnJson columnAnno) {
+        final Class<?> aClass = columnAnno.tableClass();
+        if (!aClass.equals(Void.class)) {
+            final TableInfo tableInfo = ContextApplication.getTableInfo(aClass);
+            return tableInfo.getTableName();
+        }
+        return columnAnno.tableAlias().replace(" ", "");
     }
 
     public static String getTableName(String tableName, DbType dbType) {
