@@ -9,6 +9,10 @@ public class SelectParam {
      */
     private String fieldName;
     /**
+     * 是否为自定义列
+     */
+    private boolean isCustomColumn;
+    /**
      * 该字段对应的列表函数
      */
     private List<Function> functions;
@@ -22,10 +26,6 @@ public class SelectParam {
          * 入参值
          */
         private Object[] param;
-//        /**
-//         * 调用的先后顺序
-//         */
-//        private int sort;
 
         public String getFunc() {
             return func;
@@ -34,10 +34,6 @@ public class SelectParam {
         public Object[] getParam() {
             return param;
         }
-//
-//        public int getSort() {
-//            return sort;
-//        }
 
         @Override
         public String toString() {
@@ -65,10 +61,19 @@ public class SelectParam {
         this.functions = functions;
     }
 
+    public boolean isCustomColumn() {
+        return isCustomColumn;
+    }
+
+    public void setCustomColumn(boolean customColumn) {
+        isCustomColumn = customColumn;
+    }
+
     @Override
     public String toString() {
         return "SelectParam{" +
                 "fieldName='" + fieldName + '\'' +
+                ", isCustomColumn=" + isCustomColumn +
                 ", functions=" + functions +
                 '}';
     }

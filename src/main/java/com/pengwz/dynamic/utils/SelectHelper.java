@@ -10,10 +10,7 @@ import com.pengwz.dynamic.sql.Select;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.*;
 
 public class SelectHelper {
     private static final Log log = LogFactory.getLog(SelectHelper.class);
@@ -41,52 +38,69 @@ public class SelectHelper {
             selectParamMap.put(fieldName, selectParam1);
             return;
         }
-        final List<SelectParam.Function> functions = selectParam.getFunctions();
+        final List<SelectParam.Function> functions = Optional.ofNullable(selectParam.getFunctions()).orElseGet(ArrayList::new);
         functions.add(SelectParam.functionBuilder().func(func).param(param).build());
+        selectParam.setFunctions(functions);
+    }
+
+    public static void putSelectParam(Map<String, SelectParam> selectParamMap, String fieldName, SelectParam selectParam) {
+        if (selectParamMap.get(fieldName) != null) {
+            selectParamMap.remove(fieldName);
+        }
+        selectParamMap.put(fieldName, selectParam);
     }
 
     public static void assembleQueryStatement(Select<?> select) {
         StringBuilder selectBuilder = new StringBuilder();
         selectBuilder.append("select ");
         final Map<String, SelectParam> selectParamMap = select.getSelectParamMap();
-        final List<TableInfo> builderTableInfos = Check.getBuilderTableInfos(select.getResultClass(), false);
-        final List<String> queryColumns = select.getQueryColumns().stream().distinct().collect(Collectors.toList());
+        final Set<String> queryColumns = selectParamMap.keySet();
+        final List<TableInfo> tableInfos = Check.getBuilderTableInfos(select.getResultClass(), false);
+        final LinkedHashSet<String> queryAllFieldNames = new LinkedHashSet<>();
         //先处理用户自定义的查询列
         for (String fieldName : queryColumns) {
-            final TableInfo tableInfo = builderTableInfos.stream().filter(tInfo -> tInfo.getField().getName().equals(fieldName))
+            final TableInfo tableInfo = tableInfos.stream().filter(tInfo -> tInfo.getField().getName().equals(fieldName))
                     .findFirst().orElseGet(() -> {
-                        final String columnName = checkColumn(fieldName);
+                        final String columnName = getColumn(fieldName);
                         //加入限定符，与集合中tableInfo进行比较
-                        final String splicingColumnName = splicingName(builderTableInfos.get(0), columnName);
-                        final TableInfo matchCusTableInfo = builderTableInfos.stream().filter(bti -> bti.getColumn().equalsIgnoreCase(splicingColumnName)).findAny()
+                        final String splicingColumnName = splicingName(tableInfos.get(0), columnName);
+                        final TableInfo matchCusTableInfo = tableInfos.stream().filter(bti -> bti.getColumn().equalsIgnoreCase(splicingColumnName)).findAny()
                                 .orElseThrow(() -> new BraveException("查询了不存在或已忽略的列！参考错误值：" + fieldName));
                         final String column = matchCusTableInfo.getColumn();
                         if (queryColumns.contains(matchCusTableInfo.getField().getName())) {
                             throw new BraveException("查询列和自定义列冲突！参考错误值：[" + fieldName + ", " + column + "]");
                         }
+                        queryAllFieldNames.add(matchCusTableInfo.getField().getName());
                         return matchCusTableInfo;
                     });
+            queryAllFieldNames.add(tableInfo.getField().getName());
             if (StringUtils.isEmpty(tableInfo.getTableAlias())) {
                 throw new BraveException("多表查询时需要指定字段别名");
             }
             final SelectParam selectParam = selectParamMap.get(fieldName);
-            //为null表示为对字段进行特殊查询
-            if (selectParam == null) {
-                selectBuilder.append(assignmentRegular(tableInfo));
-            }
-            //赋值带有自定义函数的字段
-            else if (selectParam.getFunctions().get(0).getFunc() == null) {
+            //赋值自定义列
+            if (selectParam.isCustomColumn()) {
                 selectBuilder.append(selectParam.getFieldName()).append(", ");
-            } else {
+            }
+            //赋值带有函数的列
+            else if (selectParam.getFunctions() != null) {
                 selectBuilder.append(assignmentFunction(tableInfo, selectParam));
             }
+            //赋值原生普通列
+            else {
+                selectBuilder.append(assignmentRegular(tableInfo));
+            }
         }
-        //用户如果没有查询全部的列，那就直接返回
+        //用户如果查询全部的列
         if (select.isSelectAll()) {
+            tableInfos.forEach(tableInfo -> {
+                final String name = tableInfo.getField().getName();
+                if (queryAllFieldNames.contains(name)) {
+                    return;
+                }
+                selectBuilder.append(assignmentRegular(tableInfo));
+            });
         }
-        final List<TableInfo> tableInfoList = builderTableInfos.stream().filter(
-                tableInfo -> !queryColumns.contains(tableInfo.getField().getName())).collect(Collectors.toList());
-
         select.setSelectSql(selectBuilder.toString());
     }
 
@@ -95,14 +109,14 @@ public class SelectHelper {
      *
      * @return 检索出的列名
      */
-    public static String checkColumn(String expr) {
+    public static String getColumn(String expr) {
         //判断自定义表达式
         final String trim = expr.trim();
-        final String columnName = trim.substring(trim.lastIndexOf(" "));
+        final String columnName = trim.substring(trim.lastIndexOf(" ") + 1);
         if (columnName.isEmpty()) {
             throw new BraveException("自定义查询列：" + expr + " 未指定别名");
         }
-        return columnName;
+        return Check.unSplicingName(columnName);
     }
 
     /**

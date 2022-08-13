@@ -1,17 +1,20 @@
 package com.pengwz.dynamic.sql;
 
+import com.pengwz.dynamic.exception.BraveException;
 import com.pengwz.dynamic.model.End;
 import com.pengwz.dynamic.model.SelectParam;
 import com.pengwz.dynamic.sql.base.Fn;
 import com.pengwz.dynamic.utils.ReflectUtils;
 import com.pengwz.dynamic.utils.SelectHelper;
+import com.pengwz.dynamic.utils.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class Select<R> {
     private static final Log log = LogFactory.getLog(Select.class);
@@ -23,10 +26,8 @@ public class Select<R> {
     private boolean isSelectAll;
 
     private List<Object> params = new ArrayList<>();
-
-    private final Map<String, SelectParam> selectParamMap = new HashMap<>();
-    //查询的列  通常这里是字段名，如果是用户自定义的话，那么这里将是表列名
-    private final List<String> queryColumns = new ArrayList<>();
+    //查询的列MAP  key通常这里是字段名，如果是用户自定义的话，那么这里将是表列名
+    private final Map<String, SelectParam> selectParamMap = new LinkedHashMap<>();
 
     protected Select(Class<R> currentClass) {
         this.resultClass = currentClass;
@@ -66,20 +67,12 @@ public class Select<R> {
         return selectParamMap;
     }
 
-    public void setSelectSql(String selectSql) {
-        this.selectSql = selectSql;
-    }
-
     public boolean isSelectAll() {
         return isSelectAll;
     }
 
     public void setParams(List<Object> params) {
         this.params = params;
-    }
-
-    public List<String> getQueryColumns() {
-        return queryColumns;
     }
 
     public void setSelectAll(boolean selectAll) {
@@ -95,9 +88,13 @@ public class Select<R> {
         return selectSql;
     }
 
+    public void setSelectSql(String selectSql) {
+        this.selectSql = selectSql;
+    }
+
     public static class SelectBuilder<R> {
 
-        private Select<R> select;
+        private final Select<R> select;
 
         protected SelectBuilder(Select<R> select) {
             this.select = select;
@@ -119,8 +116,10 @@ public class Select<R> {
                 }
                 selectParamMap.remove(fieldName);
             }
-            select.getQueryColumns().remove(fieldName);
-            select.getQueryColumns().add(fieldName);
+            final SelectParam selectParam = new SelectParam();
+            selectParam.setCustomColumn(false);
+            selectParam.setFieldName(fieldName);
+            SelectHelper.putSelectParam(selectParamMap, fieldName, selectParam);
             return new CustomColumn<>(this, fieldName);
         }
 
@@ -133,9 +132,9 @@ public class Select<R> {
          * @return 返回构建查询列的对象
          * @see this#column(Fn)
          */
-        public CustomColumn<R> columnAll() {
+        public End<SelectBuilder<R>> columnAll() {
             getSelect().isSelectAll = true;
-            return new CustomColumn<>(this, null);
+            return new End<>(this);
         }
 
         /**
@@ -155,21 +154,34 @@ public class Select<R> {
          * @return 结束断句
          */
         public End<SelectBuilder<R>> customColumn(String expr, Object... params) {
-            final Map<String, SelectParam> selectParamMap = getSelect().getSelectParamMap();
-            if (selectParamMap.get(expr) != null) {
-                if (log.isDebugEnabled()) {
-                    log.debug("自定义查询重复，仅本次列查询生效，重复的表达式：" + expr);
-                }
-                selectParamMap.remove(expr);
+            if (StringUtils.isEmpty(expr)) {
+                throw new BraveException("查询自定义列不可为空");
             }
+            expr = expr.trim();
+            final String column = expr.contains(" ") ? SelectHelper.getColumn(expr) : expr;
+            final Map<String, SelectParam> selectParamMap = getSelect().getSelectParamMap();
+            final List<SelectParam> selectParams = selectParamMap.values().stream().filter(SelectParam::isCustomColumn).collect(Collectors.toList());
+            selectParams.forEach(selectParam -> {
+                final String columnHistory = selectParam.getFieldName().contains(" ") ? SelectHelper.getColumn(selectParam.getFieldName()) : selectParam.getFieldName();
+                if (columnHistory.equalsIgnoreCase(column)) {
+                    if (log.isDebugEnabled()) {
+                        log.debug("自定义查询重复，仅本次列查询生效，重复的查询列名：" + column);
+                    }
+                    selectParamMap.remove(selectParam.getFieldName());
+                }
+            });
+            final SelectParam selectParam = new SelectParam();
+            selectParam.setCustomColumn(true);
+            selectParam.setFieldName(expr);
+            SelectHelper.putSelectParam(selectParamMap, expr, selectParam);
             SelectHelper.putSelectParam(selectParamMap, expr, null, params);
-            select.getQueryColumns().remove(expr);
-            select.getQueryColumns().add(expr);
             return new End<>(this);
         }
 
         public Select<R> build() {
             SelectHelper.assembleQueryStatement(select);
+            final String selectSql = select.getSelectSql();
+            select.selectSql = selectSql.substring(0, selectSql.lastIndexOf(","));
             return select;
         }
 
