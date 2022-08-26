@@ -645,6 +645,42 @@ public class SqlsTest {
         }
     }
 
+    /**
+     * 测试 json的曾删改查
+     */
+    @Test
+    public void testJson() {
+        final MysqlUserEntity entity = new MysqlUserEntity();
+        HobbyEntity desc = new HobbyEntity();
+        desc.setMaxDouble(12.0);
+        entity.setDesc(desc);
+
+        //insert
+        entity.setId(null);
+        BraveSql.build(MysqlUserEntity.class).insertOrUpdate(entity);
+        entity.setId(null);
+        BraveSql.build(MysqlUserEntity.class).batchInsertOrUpdate(Arrays.asList(entity));
+        entity.setId(null);
+        BraveSql.build(MysqlUserEntity.class).insert(entity);
+        entity.setId(null);
+        BraveSql.build(MysqlUserEntity.class).batchInsert(Arrays.asList(entity));
+        entity.setId(null);
+        BraveSql.build(MysqlUserEntity.class).insertActive(entity);
+        System.out.println(entity);
+        MysqlUserEntity entity2 = new MysqlUserEntity();
+        entity2.setId(entity.getId());
+        entity2.setHobby(new HobbyEntity());
+//        entity2.setHobby(desc);
+        final DynamicSql<MysqlUserEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.andEqualTo(MysqlUserEntity::getId, entity2.getId());
+        //update
+        BraveSql.build(dynamicSql, MysqlUserEntity.class).update(entity2);
+        BraveSql.build(dynamicSql, MysqlUserEntity.class).updateActive(entity2);
+        BraveSql.build(MysqlUserEntity.class).updateByPrimaryKey(entity2);
+        BraveSql.build(MysqlUserEntity.class).updateActiveByPrimaryKey(entity2);
+        System.out.println(entity2);
+    }
+
     private void execute(boolean b) {
         try {
             System.out.println(b);
