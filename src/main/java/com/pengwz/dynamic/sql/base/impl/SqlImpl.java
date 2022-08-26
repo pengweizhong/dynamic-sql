@@ -593,7 +593,7 @@ public class SqlImpl<T> implements Sqls<T> {
             try {
                 sql.append(SPACE).append(tableInfo.getColumn()).append(SPACE).append(EQ).append(SPACE);
                 Object invoke = getTableFieldValue(tableInfo, next, false);
-                preparedSql.addParameter(whereBeforeParamIndex++, ParseSql.matchFixValue(invoke, dataSourceName, tableName, tableInfo.getField().getName()));
+                preparedSql.addParameter(whereBeforeParamIndex++, invoke);
                 sql.append(PLACEHOLDER).append(COMMA);
             } catch (Exception ex) {
                 close(dataSourceName, resultSet, preparedStatement, connection);
@@ -687,7 +687,7 @@ public class SqlImpl<T> implements Sqls<T> {
                     continue;
                 }
                 sql.append(SPACE).append(tableInfo.getColumn()).append(SPACE).append(EQ).append(SPACE);
-                preparedSql.addParameter(whereBeforeParamIndex++, ParseSql.matchFixValue(invoke, dataSourceName, tableName, tableInfo.getField().getName()));
+                preparedSql.addParameter(whereBeforeParamIndex++, invoke);
                 sql.append(PLACEHOLDER).append(COMMA);
             } catch (Exception ex) {
                 JdbcUtils.closeConnection(connection);
