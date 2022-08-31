@@ -56,7 +56,7 @@ public class SelectHelper {
         selectBuilder.append("select ");
         final Map<String, SelectParam> selectParamMap = select.getSelectParamMap();
         final Set<String> queryColumns = selectParamMap.keySet();
-        final TableInfo tableInfo = Check.getBuilderTableInfo(select.getResultClass(), false);
+        final TableInfo tableInfo = Check.getBuilderTableInfo(select.getResultClass(), Check.ViewType.RESULT);
         final LinkedHashSet<String> queryAllFieldNames = new LinkedHashSet<>();
         //先处理用户自定义的查询列
         for (String fieldName : queryColumns) {

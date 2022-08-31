@@ -22,22 +22,23 @@ public class Check {
 
     private static final Log log = LogFactory.getLog(Check.class);
 
-    public static void checkAndSave(Class<?> currentClass) {
-        final TableInfo tableInfoHis = ContextApplication.getTableInfo(currentClass);
-        if (tableInfoHis != null) {
-            return;
-        }
-        final TableInfo tableInfo = getBuilderTableInfo(currentClass);
-        ContextApplication.saveTableInfo(currentClass, tableInfo);
-    }
-
     public static TableInfo getBuilderTableInfo(Class<?> currentClass) {
-        return getBuilderTableInfo(currentClass, true);
+        return getBuilderTableInfo(currentClass, ViewType.TABLE);
     }
 
-    public static TableInfo getBuilderTableInfo(Class<?> currentClass, boolean isCheckTableName) {
+    public static TableInfo getBuilderTableInfo(Class<?> currentClass, ViewType viewType) {
+        if (viewType == null) {
+            throw new BraveException("必须指定ViewType");
+        }
+        final TableInfo tableInfoCache = ContextApplication.getTableInfoCache(currentClass);
+        if (tableInfoCache != null) {
+            return tableInfoCache;
+        }
         Table table = currentClass.getAnnotation(Table.class);
-        if (StringUtils.isEmpty(table.value()) && isCheckTableName) {
+        if (viewType.equals(ViewType.RESULT) && StringUtils.isNotEmpty(table.value())) {
+            throw new BraveException("查询结果对象指定表名无意义，发生在类：" + currentClass.getCanonicalName());
+        }
+        if (StringUtils.isEmpty(table.value())) {
             throw new BraveException("当前实体类：" + currentClass + "未获取到表名");
         }
         String dataSource = DataSourceManagement.initDataSourceConfig(table.dataSourceClass());
@@ -57,9 +58,18 @@ public class Check {
         Map<String, List<TableColumnInfo>> stringListMap = tableColumnInfos.stream().collect(Collectors.groupingBy(TableColumnInfo::getColumn));
         stringListMap.forEach((column, tableInfoList) -> {
             if (tableInfoList.size() > 1) {
-                throw new BraveException("重复的列名：" + column + "，发生在表：" + tableName);
+                String errSuffix;
+                if (StringUtils.isEmpty(tableName)) {
+                    errSuffix = "发生在类：" + currentClass.getCanonicalName();
+                } else {
+                    errSuffix = "发生在表：" + tableName;
+                }
+                throw new BraveException("重复的列名：" + column + "，" + errSuffix + "；可能是手动copy错误或发生在继承类中，请检查");
             }
         });
+        if (table.isCache()) {
+            ContextApplication.saveTableInfo(currentClass, tableInfo);
+        }
         return tableInfo;
     }
 
@@ -174,21 +184,21 @@ public class Check {
     }
 
     public static String getTableAlias(Column columnAnno) {
-        final Class<?> aClass = columnAnno.tableClass();
+        final Class<?> aClass = columnAnno.dependentTableClass();
         if (!aClass.equals(Void.class)) {
             final TableInfo tableInfo = ContextApplication.getTableInfo(aClass);
             return tableInfo.getTableName();
         }
-        return columnAnno.tableAlias().replace(" ", "");
+        return "";
     }
 
     public static String getTableAlias(ColumnJson columnAnno) {
-        final Class<?> aClass = columnAnno.tableClass();
+        final Class<?> aClass = columnAnno.dependentTableClass();
         if (!aClass.equals(Void.class)) {
             final TableInfo tableInfo = ContextApplication.getTableInfo(aClass);
             return tableInfo.getTableName();
         }
-        return columnAnno.tableAlias().replace(" ", "");
+        return "";
     }
 
     public static String getTableName(String tableName, DbType dbType) {
@@ -255,5 +265,20 @@ public class Check {
                 || Modifier.isNative(field.getModifiers())
                 || Modifier.isInterface(field.getModifiers())
                 || Modifier.isTransient(field.getModifiers());
+    }
+
+    public enum ViewType {
+        /**
+         * 表
+         */
+        TABLE,
+        /**
+         * 视图
+         */
+        VIEW,
+        /**
+         * 多表查询的结果集，往往是多表查询的产物
+         */
+        RESULT;
     }
 }

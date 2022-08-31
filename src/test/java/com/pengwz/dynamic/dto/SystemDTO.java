@@ -1,62 +1,71 @@
 package com.pengwz.dynamic.dto;
 
 import com.pengwz.dynamic.anno.Column;
-import com.pengwz.dynamic.anno.ColumnIgnore;
-import com.pengwz.dynamic.anno.ColumnJson;
 import com.pengwz.dynamic.anno.Table;
-import com.pengwz.dynamic.config.DataSourceConfig;
 import com.pengwz.dynamic.config.DatabaseConfig;
 import com.pengwz.dynamic.entity.SystemRoleEntity;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import com.pengwz.dynamic.entity.SystemUserEntity;
+import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDateTime;
 
-@Data
+@EqualsAndHashCode(callSuper = true)
+@Data()
 @AllArgsConstructor
 @NoArgsConstructor
+//@SuperBuilder
 @Builder
-@Table(dataSourceClass = DatabaseConfig.class)
-public class SystemDTO {
-    @Column(tableAlias = "t1")
+@ToString(callSuper = true)
+@Table(value = "12", dataSourceClass = DatabaseConfig.class)
+public class SystemDTO extends BaseDTO {
+    @Column(dependentTableClass = SystemUserEntity.class)
     private Integer id;
+    /**
+     * 姓名
+     */
+    @Column(dependentTableClass = SystemUserEntity.class)
+    private String nickName;
 
+    /**
+     * 手机号
+     */
+    @Column(dependentTableClass = SystemUserEntity.class)
+    private String phone;
     /**
      * 角色名称
      */
-    @Column(value = "role_name", tableClass = SystemRoleEntity.class)
+    @Column(value = "role_name", dependentTableClass = SystemRoleEntity.class)
     private String roleName;
 
     /**
      * 角色描述
      */
-    @Column(tableAlias = "t1")
+    @Column(dependentTableClass = SystemRoleEntity.class)
     private String roleDesc;
 
     /**
      * 创建人id
      */
-    @Column(tableAlias = "t1")
+    @Column(dependentTableClass = SystemRoleEntity.class)
     private Integer createId;
 
     /**
      * 更新人id
      */
-    @Column(tableAlias = "t1")
+    @Column(dependentTableClass = SystemRoleEntity.class)
     private Integer updateId;
 
     /**
      * 创建时间
      */
-    @Column(tableAlias = "t1")
+    @Column(dependentTableClass = SystemRoleEntity.class)
     private LocalDateTime createTime;
 
     /**
      * 更新时间
      */
-    @Column(tableAlias = "t1")
+    @Column(dependentTableClass = SystemRoleEntity.class)
     private LocalDateTime updateTime;
 
 //    private Integer id;

@@ -16,7 +16,6 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-import static com.pengwz.dynamic.check.Check.checkAndSave;
 import static com.pengwz.dynamic.constant.Constant.*;
 
 public class ParseSql {
@@ -25,7 +24,6 @@ public class ParseSql {
 
     public static String parse(Class<?> currentClass, List<Declaration> declarationList,
                                Map<String, List<String>> orderByMap, List<Object> params) {
-        checkAndSave(currentClass);
         StringBuilder whereSql = new StringBuilder();
         for (Declaration declaration : declarationList) {
             if (Objects.nonNull(declaration.getBrackets())) {

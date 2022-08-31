@@ -70,7 +70,7 @@ public class TableColumnInfo {
     @Override
     public String toString() {
         return "TableColumnInfo{" +
-                ", column='" + column + '\'' +
+                "column='" + column + '\'' +
                 ", tableAlias='" + tableAlias + '\'' +
                 ", isPrimary=" + isPrimary +
                 ", generatedValue=" + generatedValue +

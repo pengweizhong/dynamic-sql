@@ -6,6 +6,7 @@ import com.pengwz.dynamic.dto.SystemDTO;
 import com.pengwz.dynamic.entity.SystemRoleEntity;
 import com.pengwz.dynamic.entity.SystemRoleUserEntity;
 import com.pengwz.dynamic.entity.SystemUserEntity;
+import com.pengwz.dynamic.model.TableInfo;
 import org.junit.Test;
 import org.springframework.util.DigestUtils;
 
@@ -17,6 +18,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class MultiBraveSqlTest {
 
@@ -219,18 +221,22 @@ public class MultiBraveSqlTest {
     @Test
     public void test6() {
         Select<SystemDTO> select = Select.builder(SystemDTO.class)
+                .columnAll().end()
                 .column(SystemDTO::getRoleName).left(1).repeat(2).subString(10, 99).dayName().lPad(1, "212121").end()
                 .column(SystemDTO::getRoleDesc).left(1).repeat(2).trim().end()
                 .column(SystemDTO::getRoleName).lPad(1, "212121").end()
                 .customColumn("   id  ").end()
                 .customColumn("t1.id +1  id  ").end()
-                .columnAll().end()
                 .build();
         System.out.println(select.toString());
 
 //        select.from(SystemRoleEntity.class).as
 
-
+        //查看缓存中的对象
+        final Map<Class<?>, TableInfo> allTableDataBaseMap = ContextApplication.getAllTableDataBaseMap();
+        allTableDataBaseMap.forEach((cls, table) -> {
+            System.out.println(cls + " = " + table);
+        });
     }
 
     @Test

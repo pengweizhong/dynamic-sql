@@ -5,6 +5,7 @@ import com.pengwz.dynamic.exception.BraveException;
 import com.pengwz.dynamic.model.DataSourceInfo;
 import com.pengwz.dynamic.model.TableColumnInfo;
 import com.pengwz.dynamic.model.TableInfo;
+import javafx.scene.control.Tab;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -76,13 +77,27 @@ public class ContextApplication {
         }
     }
 
+    /**
+     * 从缓存中获取表信息
+     *
+     * @param tableClass 表实体
+     * @return 如果缓存中不存在，将返回null
+     */
+    public static TableInfo getTableInfoCache(Class<?> tableClass) {
+        return tableInfoMap.get(tableClass);
+    }
+
+    /**
+     * 获取表信息
+     *
+     * @param tableClass 表实体
+     * @return 优先从缓存中读取，如果缓存中不存在，那么将实时获取
+     */
     public static TableInfo getTableInfo(Class<?> tableClass) {
-        TableInfo tableInfo = tableInfoMap.get(tableClass);
-        if (tableInfo != null) {
-            return tableInfo;
+        final TableInfo tableInfo = tableInfoMap.get(tableClass);
+        if (tableInfo == null) {
+            return Check.getBuilderTableInfo(tableClass);
         }
-        tableInfo = Check.getBuilderTableInfo(tableClass);
-        ContextApplication.saveTableInfo(tableClass, tableInfo);
         return tableInfo;
     }
 

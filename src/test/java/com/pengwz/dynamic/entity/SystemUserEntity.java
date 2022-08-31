@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-@Table(value = "t_system_user", dataSourceClass = DatabaseConfig.class)
+@Table(value = "t_system_user", isCache = false, dataSourceClass = DatabaseConfig.class)
 public class SystemUserEntity {
     /**
      * id
