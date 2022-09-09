@@ -111,7 +111,8 @@ public class CustomizeSQL<T> {
     private TableInfo initTableInfo() {
         List<Field> allFiledList = new ArrayList<>();
         Check.recursionGetAllFields(target, allFiledList);
-        return Check.builderTableInfo(allFiledList, TABLE_NAME, dataSourceName);
+//        return Check.builderTableInfo(allFiledList, TABLE_NAME, dataSourceName);
+        return null;//TODO
     }
 
     @Deprecated

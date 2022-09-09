@@ -1,25 +1,28 @@
 package com.pengwz.dynamic.sql;
 
+import com.pengwz.dynamic.model.TableColumnInfo;
+import com.pengwz.dynamic.model.TableInfo;
 import com.pengwz.dynamic.sql.base.Fn;
+import com.pengwz.dynamic.utils.ReflectUtils;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
+
+import static com.pengwz.dynamic.constant.Constant.*;
 
 public class MultiBraveSql<R> {
     //sql结果映射对象
     private Class<R> resultClass;
     //查询的sql语句
-    private String selectSql;
+    private StringBuilder selectSql;
 
-    protected MultiBraveSql(Class<R> resultClass) {
-        this.resultClass = resultClass;
-    }
-
-    protected static <R> MultiBraveSqlBuilder<R> builder(Class<?> tableClass, Class<R> resultClass, String selectSql) {
-        MultiBraveSql<R> multiBraveSql = new MultiBraveSql<>(resultClass);
+    protected static <R> MultiBraveSqlBuilder<R> builder(Class<?> tableClass, Class<R> resultClass, StringBuilder selectSql) {
+        MultiBraveSql<R> multiBraveSql = new MultiBraveSql<>();
+        multiBraveSql.resultClass = resultClass;
         multiBraveSql.selectSql = selectSql;
-//        ContextApplication.getTableInfos(tableClass)
         return new MultiBraveSqlBuilder<>(multiBraveSql, tableClass);
     }
 
@@ -36,6 +39,8 @@ public class MultiBraveSql<R> {
         private MultiBraveSql<R> multiBraveSql;
         private DynamicSql<?> dynamicSql;
         private Class<?> tableClass;
+        //TODO join表时加入此属性  并判断条件类是否存在
+        private final Map<String, Class<?>> joinClassMap = new ConcurrentHashMap<>();
 
         protected MultiBraveSqlBuilder(MultiBraveSql<R> multiBraveSql, Class<?> tableClass) {
             this.multiBraveSql = multiBraveSql;
@@ -51,8 +56,10 @@ public class MultiBraveSql<R> {
         }
 
 
-        public AsMultiBraveSqlBuilder<R> join(Class<?> join) {
-            return new AsMultiBraveSqlBuilder<>(this, join);
+        public JoinCondition<R> join(Class<?> tableClass) {
+            final TableInfo tableInfo = ContextApplication.getTableInfo(tableClass);
+            multiBraveSql.selectSql.append(SPACE).append(JOIN).append(SPACE).append(tableInfo.getTableName());
+            return new JoinCondition<>(this, tableClass);
         }
 
         public MultiBraveSql<R> build() {
@@ -68,9 +75,9 @@ public class MultiBraveSql<R> {
                 this.join = join;
             }
 
-            public JoinCondition<R> as(String alias) {
-                return new JoinCondition<>(multiBraveSqlBuilder, join);
-            }
+//            public JoinCondition<R> as(String alias) {
+//                return new JoinCondition<>(multiBraveSqlBuilder, join);
+//            }
         }
 
     }
@@ -97,37 +104,45 @@ public class MultiBraveSql<R> {
 
     public static class JoinCondition<R> {
 
-        private Class<?> joinEntity;
+        private Class<?> joinTableClass;
 
         private MultiBraveSqlBuilder<?> multiBraveSqlBuilder;
 
-        protected JoinCondition(MultiBraveSqlBuilder<?> multiBraveSqlBuilder, Class<?> join) {
+        protected JoinCondition(MultiBraveSqlBuilder<?> multiBraveSqlBuilder, Class<?> joinTableClass) {
             this.multiBraveSqlBuilder = multiBraveSqlBuilder;
-            joinEntity = join;
-        }
-
-        public JoinCondition<R> join(Class<?> join) {
-            return this;
+            this.joinTableClass = joinTableClass;
         }
 
         public <T> OnJoinCondition on(Fn<T, Object> fn) {
+            final String fieldName = ReflectUtils.fnToFieldName(fn);
+            final TableColumnInfo tableColumnInfo = ContextApplication.getTableColumnInfo(joinTableClass, fieldName);
+            final TableInfo tableInfo = ContextApplication.getTableInfo(joinTableClass);
+            multiBraveSqlBuilder.multiBraveSql.selectSql.append(SPACE).append(ON).append(SPACE)
+                    .append(tableInfo.getTableName()).append(POINT).append(tableColumnInfo.getColumn());
             return new OnJoinCondition(this);
         }
+
+        public JoinCondition<R> join(Class<?> joinTableClass) {
+            final TableInfo tableInfo = ContextApplication.getTableInfo(joinTableClass);
+            multiBraveSqlBuilder.multiBraveSql.selectSql.append(SPACE).append(JOIN).append(SPACE).append(tableInfo.getTableName());
+            return this;
+        }
+
 
 //        public JoinCondition<R> as(String alias) {
 //            return this;
 //        }
 
 
-        public MultiBraveSql<R> build() {
-            return null;
-        }
+//        public MultiBraveSql<R> build() {
+//            return null;
+//        }
 
-        public JoinCondition<R> where(DynamicSql<R> dynamicSql) {
+        public <T> JoinCondition<R> where(DynamicSql<T> dynamicSql) {
             return this;
         }
 
-        public JoinCondition<R> where(Supplier<DynamicSql<R>> sqlSupplier) {
+        public <T> JoinCondition<R> where(Supplier<DynamicSql<T>> sqlSupplier) {
             multiBraveSqlBuilder.dynamicSql = sqlSupplier.get();
             return this;
         }
@@ -135,19 +150,24 @@ public class MultiBraveSql<R> {
     }
 
     public static class OnJoinCondition {
-        private JoinCondition joinCondition;
+        private final JoinCondition<?> joinCondition;
 
-        protected OnJoinCondition(JoinCondition joinCondition) {
+        protected OnJoinCondition(JoinCondition<?> joinCondition) {
             this.joinCondition = joinCondition;
         }
 
         public <O> OnJoinMultiCondition equalTo(Fn<O, Object> fn) {
+            final String fieldName = ReflectUtils.fnToFieldName(fn);
+            final TableColumnInfo tableColumnInfo = ContextApplication.getTableColumnInfo(joinCondition.joinTableClass, fieldName);
+            final TableInfo tableInfo = ContextApplication.getTableInfo(joinCondition.joinTableClass);
+            joinCondition.multiBraveSqlBuilder.multiBraveSql.selectSql.append(SPACE).append(EQ).append(SPACE)
+                    .append(tableInfo.getTableName()).append(POINT).append(tableColumnInfo.getColumn());
             return new OnJoinMultiCondition(joinCondition, this);
         }
 
-        public JoinCondition end() {
-            return joinCondition;
-        }
+//        public JoinCondition end() {
+//            return joinCondition;
+//        }
     }
 
     public static class OnJoinMultiCondition {
@@ -163,6 +183,26 @@ public class MultiBraveSql<R> {
             return this;
         }
 
+        public <O> OnJoinMultiCondition andIsNull(Fn<O, Object> fn) {
+            return this;
+        }
+
+        public <O> OnJoinMultiCondition andIsNotNull(Fn<O, Object> fn) {
+            final String fieldName = ReflectUtils.fnToFieldName(fn);
+
+            final TableColumnInfo tableColumnInfo = ContextApplication.getTableColumnInfo(joinCondition.joinTableClass, fieldName);
+            final TableInfo tableInfo = ContextApplication.getTableInfo(joinCondition.joinTableClass);
+            joinCondition.multiBraveSqlBuilder.multiBraveSql.selectSql.append(SPACE).append(AND).append(SPACE)
+                    .append(tableInfo.getTableName()).append(POINT).append(tableColumnInfo.getColumn()).append(SPACE).append("is not null");
+            return this;
+        }
+
+        /**
+         * 结束当前表的约束条件
+         *
+         * @param <R>
+         * @return
+         */
         public <R> JoinCondition<R> end() {
             return (JoinCondition<R>) joinCondition;
         }

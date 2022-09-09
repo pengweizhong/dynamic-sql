@@ -57,6 +57,7 @@ public class SelectHelper {
         final Map<String, SelectParam> selectParamMap = select.getSelectParamMap();
         final Set<String> queryColumns = selectParamMap.keySet();
         final TableInfo tableInfo = Check.getBuilderTableInfo(select.getResultClass(), Check.ViewType.RESULT);
+        assertTableInfoResult(tableInfo);
         final LinkedHashSet<String> queryAllFieldNames = new LinkedHashSet<>();
         //先处理用户自定义的查询列
         for (String fieldName : queryColumns) {
@@ -69,7 +70,8 @@ public class SelectHelper {
                                 .orElseThrow(() -> new BraveException("查询了不存在或已忽略的列！参考错误值：" + fieldName));
                         final String column = matchTableColumnInfo.getColumn();
                         if (queryColumns.contains(matchTableColumnInfo.getField().getName())) {
-                            throw new BraveException("查询列和自定义列冲突！参考错误值：[" + fieldName + ", " + column + "]");
+                            throw new BraveException("查询列和自定义列冲突！参考错误值：[" + fieldName + ", " + column + "]\n" +
+                                    "column()方法和customColumn()方法不允许指向同一个字段");
                         }
                         queryAllFieldNames.add(matchTableColumnInfo.getField().getName());
                         return matchTableColumnInfo;
@@ -102,7 +104,22 @@ public class SelectHelper {
                 selectBuilder.append(assignmentRegular(tableColumnInfo, tableInfo.getDataSourceName()));
             });
         }
-        select.setSelectSql(selectBuilder.toString());
+        select.appendSelectSql(selectBuilder.substring(0, selectBuilder.lastIndexOf(",")));
+    }
+
+    private static void assertTableInfoResult(TableInfo tableInfo) {
+        if (tableInfo.getViewType().equalsIgnoreCase(Check.ViewType.RESULT.name())) {
+            final String tableName = tableInfo.getTableName();
+            if (StringUtils.isNotEmpty(tableName)) {
+                throw new BraveException("多表查询时，实体类无需声明表名");
+            }
+        }
+        final List<TableColumnInfo> tableColumnInfos = tableInfo.getTableColumnInfos();
+        for (TableColumnInfo tableColumnInfo : tableColumnInfos) {
+            if (StringUtils.isEmpty(tableColumnInfo.getTableAlias())) {
+                throw new BraveException("多表查询时，实体类字段必须指定所依赖的表实体类；字段位置：" + tableColumnInfo.getField().getName());
+            }
+        }
     }
 
     /**

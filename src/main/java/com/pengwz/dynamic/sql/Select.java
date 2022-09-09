@@ -1,8 +1,10 @@
 package com.pengwz.dynamic.sql;
 
+import com.pengwz.dynamic.constant.Constant;
 import com.pengwz.dynamic.exception.BraveException;
 import com.pengwz.dynamic.model.End;
 import com.pengwz.dynamic.model.SelectParam;
+import com.pengwz.dynamic.model.TableInfo;
 import com.pengwz.dynamic.sql.base.Fn;
 import com.pengwz.dynamic.utils.ReflectUtils;
 import com.pengwz.dynamic.utils.SelectHelper;
@@ -21,29 +23,33 @@ public class Select<R> {
 
     private final Class<R> resultClass;
 
-    private String selectSql;
+    private final StringBuilder selectSql;
 
     private boolean isSelectAll;
 
-    private List<Object> params = new ArrayList<>();
+    private final List<Object> params = new ArrayList<>();
+
     //查询的列MAP  key通常这里是字段名，如果是用户自定义的话，那么这里将是表列名
     private final Map<String, SelectParam> selectParamMap = new LinkedHashMap<>();
 
-    protected Select(Class<R> currentClass) {
-        this.resultClass = currentClass;
-    }
 
     /**
      * 构建Select查询对象
      *
      * @param resultClass 当前查询的结果集
-     * @param <R>         任何实体类
+     * @param <R>         允许任何实体类
      * @return select构建者
      */
     public static <R> SelectBuilder<R> builder(Class<R> resultClass) {
-        Select<R> select = new Select<>(resultClass);
+        Select<R> select = new Select<>(resultClass, new StringBuilder());
         return new SelectBuilder<>(select);
     }
+
+    protected Select(Class<R> currentClass, StringBuilder selectSql) {
+        this.resultClass = currentClass;
+        this.selectSql = selectSql;
+    }
+
 
     /**
      * 从哪个主表开始查询
@@ -52,15 +58,24 @@ public class Select<R> {
      * @return 获得多表查询的支持对象
      */
     public MultiBraveSql.MultiBraveSqlBuilder<R> from(Class<?> tableClass) {
+        final TableInfo tableInfo = ContextApplication.getTableInfo(tableClass);
+        selectSql.append(Constant.SPACE).append(Constant.FROM).append(Constant.SPACE).append(tableInfo.getTableName());
         return MultiBraveSql.builder(tableClass, resultClass, selectSql);
+    }
+
+    /**
+     * 追加SQL语句
+     *
+     * @param selectSql 查询sql
+     */
+    public void appendSelectSql(String selectSql) {
+        if (null != selectSql) {
+            this.selectSql.append(selectSql);
+        }
     }
 
     public Class<R> getResultClass() {
         return resultClass;
-    }
-
-    public String getSelectSql() {
-        return selectSql;
     }
 
     public Map<String, SelectParam> getSelectParamMap() {
@@ -71,25 +86,17 @@ public class Select<R> {
         return isSelectAll;
     }
 
-    public void setParams(List<Object> params) {
-        this.params = params;
-    }
-
-    public void setSelectAll(boolean selectAll) {
-        isSelectAll = selectAll;
-    }
-
     public List<Object> getParams() {
         return params;
     }
 
-    @Override
-    public String toString() {
-        return selectSql;
+    public String getSelectSql() {
+        return selectSql.toString();
     }
 
-    public void setSelectSql(String selectSql) {
-        this.selectSql = selectSql;
+    @Override
+    public String toString() {
+        return getSelectSql();
     }
 
     public static class SelectBuilder<R> {
@@ -138,7 +145,7 @@ public class Select<R> {
         }
 
         /**
-         * 自定义查询列，此项函数必须提供as别名，该别名要求必须真实存在于结果集中
+         * 自定义查询列，此项函数强烈建议提供as别名，该别名要求必须真实存在于结果集中；以减少不必要的麻烦。
          * <p>
          * 比如：表名为 t_abc   <br>
          * 那么可以进行如下操作：  <br>
@@ -180,8 +187,7 @@ public class Select<R> {
 
         public Select<R> build() {
             SelectHelper.assembleQueryStatement(select);
-            final String selectSql = select.getSelectSql();
-            select.selectSql = selectSql.substring(0, selectSql.lastIndexOf(","));
+            select.appendSelectSql(Constant.SPACE);
             return select;
         }
 

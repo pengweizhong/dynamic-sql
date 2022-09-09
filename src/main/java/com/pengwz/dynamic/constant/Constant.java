@@ -41,6 +41,11 @@ public class Constant {
     public static final String MIN = "min";
     public static final String MAX = "max";
 
+    public static final String JOIN = "join";
+    public static final String LEFT_JOIN = "left join";
+    public static final String RIGHT_JOIN = "right join";
+    public static final String ON = "on";
+
 
     public static final String EQ = "=";
     public static final String NEQ = "<>";
@@ -50,7 +55,7 @@ public class Constant {
     public static final String LTE = "<=";
 
 
-    public static final String EMPTY = "";
+    public static final String POINT = ".";
     public static final String SPACE = " ";
     public static final String PLACEHOLDER = "?";
     public static final String LEFT_BRACKETS = "(";

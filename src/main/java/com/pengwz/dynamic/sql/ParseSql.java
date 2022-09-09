@@ -39,7 +39,7 @@ public class ParseSql {
                 }
                 if (handleFunction instanceof OrderBy) {
                     handleFunction.execute(currentClass, declaration);
-                    whereSql.append(" order by " + column + " " + declaration.getSortMode());
+                    whereSql.append(" order by " + column + SPACE + declaration.getSortMode());
                     continue;
                 }
                 if (handleFunction instanceof GroupBy) {

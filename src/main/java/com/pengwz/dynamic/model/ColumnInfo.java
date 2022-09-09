@@ -9,13 +9,9 @@ public class ColumnInfo {
     private String value;
 
     /**
-     * 所属表别名，它将还在多表join时使用
+     * 此字段从属表，它将还在多表join时使用
      */
-    private String tableAlias;
-//    /**
-//     * 所属表实体类，它将还在多表join时使用
-//     */
-//    private Class<?> tableClass;
+    private TableInfo dependentTableInfo;
 
     /**
      * JSON转换时所使用的序列化模式，默认值不会序列化null值 ，为null表名该字段不需要转JSON
@@ -30,27 +26,19 @@ public class ColumnInfo {
         this.value = value;
     }
 
-    public String getTableAlias() {
-        return tableAlias;
-    }
-
-    public void setTableAlias(String tableAlias) {
-        this.tableAlias = tableAlias;
-    }
-
-//    public Class<?> getTableClass() {
-//        return tableClass;
-//    }
-//
-//    public void setTableClass(Class<?> tableClass) {
-//        this.tableClass = tableClass;
-//    }
-
     public JsonMode getJsonMode() {
         return jsonMode;
     }
 
     public void setJsonMode(JsonMode jsonMode) {
         this.jsonMode = jsonMode;
+    }
+
+    public TableInfo getDependentTableInfo() {
+        return dependentTableInfo;
+    }
+
+    public void setDependentTableInfo(TableInfo dependentTableInfo) {
+        this.dependentTableInfo = dependentTableInfo;
     }
 }

@@ -27,23 +27,33 @@ public class ReflectUtils {
     private static final Map<Class<?>, Field[]> declaredFieldsCache = new ConcurrentHashMap<Class<?>, Field[]>(256);
 
     public static String fnToFieldName(Fn fn) {
+        SerializedLambda serializedLambda = serializedLambda(fn);
+        String getter = serializedLambda.getImplMethodName();
+        if (GET_PATTERN.matcher(getter).matches()) {
+            getter = getter.substring(3);
+        } else if (IS_PATTERN.matcher(getter).matches()) {
+            getter = getter.substring(2);
+        }
+        return Introspector.decapitalize(getter);
+    }
+
+    public static String getImplClassname(Fn fn) {
+        SerializedLambda serializedLambda = serializedLambda(fn);
+        final String implClassname = serializedLambda.getImplClass();
+        return implClassname.replace("/", ".");
+    }
+
+
+    private static SerializedLambda serializedLambda(Fn fn) {
         try {
             Method method = fn.getClass().getDeclaredMethod("writeReplace");
             method.setAccessible(Boolean.TRUE);
-            SerializedLambda serializedLambda = (SerializedLambda) method.invoke(fn);
-            String getter = serializedLambda.getImplMethodName();
-            if (GET_PATTERN.matcher(getter).matches()) {
-                getter = getter.substring(3);
-            } else if (IS_PATTERN.matcher(getter).matches()) {
-                getter = getter.substring(2);
-            }
-            return Introspector.decapitalize(getter);
+            return (SerializedLambda) method.invoke(fn);
         } catch (ReflectiveOperationException e) {
             log.warning(e.getMessage());
             throw new BraveException(e.getMessage());
         }
     }
-
 
     public static Method findMethod(Class<?> clazz, String name) {
         return findMethod(clazz, name, new Class<?>[0]);

@@ -8,11 +8,7 @@ import com.pengwz.dynamic.entity.SystemRoleUserEntity;
 import com.pengwz.dynamic.entity.SystemUserEntity;
 import com.pengwz.dynamic.model.TableInfo;
 import org.junit.Test;
-import org.springframework.util.DigestUtils;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -223,20 +219,33 @@ public class MultiBraveSqlTest {
         Select<SystemDTO> select = Select.builder(SystemDTO.class)
                 .columnAll().end()
                 .column(SystemDTO::getRoleName).left(1).repeat(2).subString(10, 99).dayName().lPad(1, "212121").end()
-                .column(SystemDTO::getRoleDesc).left(1).repeat(2).trim().end()
-                .column(SystemDTO::getRoleName).lPad(1, "212121").end()
-                .customColumn("   id  ").end()
-                .customColumn("t1.id +1  id  ").end()
+                .column(SystemDTO::getRoleDesc).trim().end()
+                .column(SystemDTO::getRoleName).end()
+                .column(SystemDTO::getRoleId).end()
+//                .customColumn("   id  ").end()
+//                .customColumn("t_system_role_user.id +1  id  ").end()
                 .build();
+        select.from(SystemUserEntity.class)
+                .join(SystemRoleUserEntity.class)
+                .on(SystemUserEntity::getId).equalTo(SystemRoleUserEntity::getUserId)
+                .andIsNotNull(SystemRoleUserEntity::getUserId).end()
+                .join(SystemRoleEntity.class)
+                .on(SystemRoleEntity::getId).equalTo(SystemRoleUserEntity::getRoleId).end()
+                .where(() -> {
+                    final DynamicSql<SystemDTO> dynamicSql = DynamicSql.createDynamicSql();
+//                    dynamicSql.andIsNotNull(SystemDTO::getNickName);
+                    return dynamicSql;
+                });
+        System.out.println("====================================================================");
         System.out.println(select.toString());
+        System.out.println("====================================================================");
 
-//        select.from(SystemRoleEntity.class).as
 
         //查看缓存中的对象
-        final Map<Class<?>, TableInfo> allTableDataBaseMap = ContextApplication.getAllTableDataBaseMap();
-        allTableDataBaseMap.forEach((cls, table) -> {
-            System.out.println(cls + " = " + table);
-        });
+//        final Map<Class<?>, TableInfo> allTableDataBaseMap = ContextApplication.getAllTableDataBaseMap();
+//        allTableDataBaseMap.forEach((cls, table) -> {
+//            System.out.println(cls + " = " + table);
+//        });
     }
 
     @Test

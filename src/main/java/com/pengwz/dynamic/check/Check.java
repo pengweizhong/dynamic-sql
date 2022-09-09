@@ -1,6 +1,7 @@
 package com.pengwz.dynamic.check;
 
 import com.pengwz.dynamic.anno.*;
+import com.pengwz.dynamic.config.DataSourceConfig;
 import com.pengwz.dynamic.config.DataSourceManagement;
 import com.pengwz.dynamic.exception.BraveException;
 import com.pengwz.dynamic.model.*;
@@ -34,50 +35,63 @@ public class Check {
         if (tableInfoCache != null) {
             return tableInfoCache;
         }
-        Table table = currentClass.getAnnotation(Table.class);
-        if (viewType.equals(ViewType.RESULT) && StringUtils.isNotEmpty(table.value())) {
-            throw new BraveException("查询结果对象指定表名无意义，发生在类：" + currentClass.getCanonicalName());
-        }
-        if (StringUtils.isEmpty(table.value())) {
-            throw new BraveException("当前实体类：" + currentClass + "未获取到表名");
-        }
-        String dataSource = DataSourceManagement.initDataSourceConfig(table.dataSourceClass());
-        String tableName = table.value().trim();
-        List<Field> allFiledList = new ArrayList<>();
-        recursionGetAllFields(currentClass, allFiledList);
-        final TableInfo tableInfo = builderTableInfo(allFiledList, tableName, dataSource);
+        final TableInfo tableInfo = builderTableInfo(currentClass, viewType);
+        tableInfo.setViewType(viewType.name());
         //校验重复列  空列
         if (tableInfo.getTableColumnInfos().isEmpty()) {
-            throw new BraveException("映射实体类未发现可用属性，发生在表：" + tableName);
+            throw new BraveException("映射实体类未发现可用属性，发生在表：" + tableInfo.getTableName());
         }
         final List<TableColumnInfo> tableColumnInfos = tableInfo.getTableColumnInfos();
         List<TableColumnInfo> primaryList = tableColumnInfos.stream().filter(TableColumnInfo::isPrimary).collect(Collectors.toList());
         if (primaryList.size() > 1) {
-            throw new BraveException("获取到多个主键，发生在表：" + tableName);
+            throw new BraveException("获取到多个主键，发生在表：" + tableInfo.getTableName());
         }
         Map<String, List<TableColumnInfo>> stringListMap = tableColumnInfos.stream().collect(Collectors.groupingBy(TableColumnInfo::getColumn));
         stringListMap.forEach((column, tableInfoList) -> {
             if (tableInfoList.size() > 1) {
                 String errSuffix;
-                if (StringUtils.isEmpty(tableName)) {
+                if (StringUtils.isEmpty(tableInfo.getTableName())) {
                     errSuffix = "发生在类：" + currentClass.getCanonicalName();
                 } else {
-                    errSuffix = "发生在表：" + tableName;
+                    errSuffix = "发生在表：" + tableInfo.getTableName();
                 }
-                throw new BraveException("重复的列名：" + column + "，" + errSuffix + "；可能是手动copy错误或发生在继承类中，请检查");
+                //除了多表查询的结果对象外，一律抛出此异常
+                if (!viewType.equals(ViewType.RESULT)) {
+                    throw new BraveException("重复的列名：" + column + "，" + errSuffix + "；可能是手动copy错误或发生在继承类中，请检查");
+                }
             }
         });
-        if (table.isCache()) {
+        if (tableInfo.isCache()) {
             ContextApplication.saveTableInfo(currentClass, tableInfo);
         }
         return tableInfo;
     }
 
 
-    public static TableInfo builderTableInfo(List<Field> allFiledList, String tableName, String dataSource) {
+    public static TableInfo builderTableInfo(Class<?> currentClass, ViewType viewType) {
+        Table table = currentClass.getAnnotation(Table.class);
+        if (viewType.equals(ViewType.RESULT) && StringUtils.isNotEmpty(table.value())) {
+            throw new BraveException("查询结果对象指定表名无意义，发生在类：" + currentClass.getCanonicalName());
+        }
+        if (StringUtils.isEmpty(table.value()) && !viewType.equals(ViewType.RESULT)) {
+            throw new BraveException("当前实体类：" + currentClass + "未获取到表名");
+        }
+        if (!table.dataSourceClass().equals(DataSourceConfig.class) && viewType.equals(ViewType.RESULT)) {
+            throw new BraveException("查询结果对象不需要指定数据源");
+        }
+        String dataSource = null;
+        if (!viewType.equals(ViewType.RESULT)) {
+            dataSource = DataSourceManagement.initDataSourceConfig(table.dataSourceClass());
+        }
+
+        String tableName = table.value().trim();
+        List<Field> allFiledList = new ArrayList<>();
+        recursionGetAllFields(currentClass, allFiledList);
         final TableInfo tableInfo = new TableInfo();
         List<TableColumnInfo> tableColumnInfos = new ArrayList<>();
         tableInfo.setTableColumnInfos(tableColumnInfos);
+        //join 的数据源
+        HashSet<String> joinDataSourceNameSet = new HashSet<>();
         for (Field field : allFiledList) {
             if (checkedFieldType(field)) {
                 continue;
@@ -115,11 +129,26 @@ public class Check {
                 tableColumnInfo.setPrimary(false);
             }
             tableColumnInfo.setField(field);
+
             final ColumnInfo columnInfo = getFixColumnInfo(field, dataSource);
             tableColumnInfo.setColumn(columnInfo.getValue());
             tableColumnInfo.setJsonMode(columnInfo.getJsonMode());
-            tableColumnInfo.setTableAlias(columnInfo.getTableAlias());
+            final TableInfo dependentTableInfo = columnInfo.getDependentTableInfo();
+            if (dependentTableInfo != null) {
+                tableColumnInfo.setTableAlias(dependentTableInfo.getTableName());
+                final String dataSourceName = dependentTableInfo.getDataSourceName();
+                joinDataSourceNameSet.add(dataSourceName);
+            }
             tableColumnInfos.add(tableColumnInfo);
+        }
+        //为null时，走多表查询，当前对象为结果集对象，并非表对象
+        //如果数据源集合不为空，则需要校验
+        if (dataSource == null && !joinDataSourceNameSet.isEmpty()) {
+            if (joinDataSourceNameSet.size() > 1) {
+                throw new BraveException("多表操作时，不可以跨数据源！发生错误的类：" + currentClass.getCanonicalName());
+            }
+            //给定多表查询的数据源
+            dataSource = joinDataSourceNameSet.iterator().next();
         }
         tableInfo.setDataSourceName(dataSource);
         DataSourceInfo dataSourceInfo = ContextApplication.getDataSourceInfo(dataSource);
@@ -167,7 +196,9 @@ public class Check {
             } else {
                 columnInfo.setValue(columnAnno.value().replace(" ", ""));
             }
-            columnInfo.setTableAlias(getTableAlias(columnAnno));
+            final TableInfo dependentTableInfo = getDependentTableInfo(columnAnno);
+            columnInfo.setDependentTableInfo(dependentTableInfo);
+            return columnInfo;
         }
         ColumnJson columnJson = field.getAnnotation(ColumnJson.class);
         if (Objects.nonNull(columnJson)) {
@@ -176,32 +207,40 @@ public class Check {
             } else {
                 columnInfo.setValue(columnJson.value().replace(" ", ""));
             }
-            columnInfo.setTableAlias(getTableAlias(columnJson));
+            final TableInfo dependentTableInfo = getDependentTableInfo(columnJson);
+            columnInfo.setDependentTableInfo(dependentTableInfo);
         } else {
             columnInfo.setValue(com.pengwz.dynamic.utils.StringUtils.caseField(field.getName()));
         }
         return columnInfo;
     }
 
-    public static String getTableAlias(Column columnAnno) {
+    /**
+     * 获取字段依赖的表信息对象
+     *
+     * @param columnAnno 当前列注释
+     * @return 表信息对象
+     */
+    public static TableInfo getDependentTableInfo(Column columnAnno) {
         final Class<?> aClass = columnAnno.dependentTableClass();
         if (!aClass.equals(Void.class)) {
-            final TableInfo tableInfo = ContextApplication.getTableInfo(aClass);
-            return tableInfo.getTableName();
+            return ContextApplication.getTableInfo(aClass);
         }
-        return "";
+        return null;
     }
 
-    public static String getTableAlias(ColumnJson columnAnno) {
+    public static TableInfo getDependentTableInfo(ColumnJson columnAnno) {
         final Class<?> aClass = columnAnno.dependentTableClass();
         if (!aClass.equals(Void.class)) {
-            final TableInfo tableInfo = ContextApplication.getTableInfo(aClass);
-            return tableInfo.getTableName();
+            return ContextApplication.getTableInfo(aClass);
         }
-        return "";
+        return null;
     }
 
     public static String getTableName(String tableName, DbType dbType) {
+        if (StringUtils.isBlank(tableName)) {
+            return null;
+        }
         tableName = tableName.trim();
         if (tableName.contains(".")) {
             String[] splitTableName = tableName.split("\\.");
@@ -272,10 +311,10 @@ public class Check {
          * 表
          */
         TABLE,
-        /**
-         * 视图
-         */
-        VIEW,
+//        /**
+//         * 视图
+//         */
+//        VIEW,
         /**
          * 多表查询的结果集，往往是多表查询的产物
          */
