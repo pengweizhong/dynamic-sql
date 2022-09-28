@@ -213,29 +213,37 @@ public class MultiBraveSqlTest {
         }
     }
 
-
+    /*
+     *    TODO
+     * 1 结果集映射规则。根据注解找到字段名，然后根据字段名匹配结果集对象字段名
+     * 2 函数需要支持传入其他字段
+     */
     @Test
     public void test6() {
         Select<SystemDTO> select = Select.builder(SystemDTO.class)
-                .columnAll().end()
-                .column(SystemDTO::getRoleName).left(1).repeat(2).subString(10, 99).dayName().lPad(1, "212121").end()
-                .column(SystemDTO::getRoleDesc).trim().end()
-                .column(SystemDTO::getRoleName).end()
-                .column(SystemDTO::getRoleId).end()
+//                .allColumn().end()
+                .column(SystemRoleEntity::getRoleName).left(1).repeat(2).subString(10, 99).dayName().lPad(1, "212121").end()
+                .column(SystemRoleEntity::getRoleDesc).trim().end()
+//                .column(SystemDTO::getRoleName).end()
+                .column(SystemRoleUserEntity::getRoleId).end()
 //                .customColumn("   id  ").end()
 //                .customColumn("t_system_role_user.id +1  id  ").end()
+//                .ignoreColumn(SystemDTO::getPhone).end()
                 .build();
-        select.from(SystemUserEntity.class)
-                .join(SystemRoleUserEntity.class)
-                .on(SystemUserEntity::getId).equalTo(SystemRoleUserEntity::getUserId)
-                .andIsNotNull(SystemRoleUserEntity::getUserId).end()
-                .join(SystemRoleEntity.class)
-                .on(SystemRoleEntity::getId).equalTo(SystemRoleUserEntity::getRoleId).end()
-                .where(() -> {
-                    final DynamicSql<SystemDTO> dynamicSql = DynamicSql.createDynamicSql();
-//                    dynamicSql.andIsNotNull(SystemDTO::getNickName);
-                    return dynamicSql;
-                });
+        select.appendBuilder();
+//        final Select.SelectBuilder<SystemDTO> builder = Select.builder(SystemDTO.class);
+//        builder.column(null).end().
+//        select.from(SystemUserEntity.class)
+//                .join(SystemRoleUserEntity.class)
+//                .on(SystemUserEntity::getId).equalTo(SystemRoleUserEntity::getUserId)
+//                .andIsNotNull(SystemRoleUserEntity::getUserId).end()
+//                .join(SystemRoleEntity.class)
+//                .on(SystemRoleEntity::getId).equalTo(SystemRoleUserEntity::getRoleId).end()
+//                .where(() -> {
+//                    final DynamicSql<SystemDTO> dynamicSql = DynamicSql.createDynamicSql();
+////                    dynamicSql.andIsNotNull(SystemDTO::getNickName);
+//                    return dynamicSql;
+//                });
         System.out.println("====================================================================");
         System.out.println(select.toString());
         System.out.println("====================================================================");

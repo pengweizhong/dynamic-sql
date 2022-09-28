@@ -19,35 +19,44 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 public class Select<R> {
+
     private static final Log log = LogFactory.getLog(Select.class);
 
+    //结果接收类
     private final Class<R> resultClass;
-
+    //查询的SQL语句
     private final StringBuilder selectSql;
-
+    //构建SQL语句对象
+    private SelectBuilder<R> selectBuilder;
+    //是否查询全部列，该属性暂未启用
     private boolean isSelectAll;
-
+    //查询参数集合，在SQL执行时将会替代占位符，防止SQL注入
     private final List<Object> params = new ArrayList<>();
-
     //查询的列MAP  key通常这里是字段名，如果是用户自定义的话，那么这里将是表列名
     private final Map<String, SelectParam> selectParamMap = new LinkedHashMap<>();
 
 
-    /**
-     * 构建Select查询对象
-     *
-     * @param resultClass 当前查询的结果集
-     * @param <R>         允许任何实体类
-     * @return select构建者
-     */
-    public static <R> SelectBuilder<R> builder(Class<R> resultClass) {
-        Select<R> select = new Select<>(resultClass, new StringBuilder());
-        return new SelectBuilder<>(select);
-    }
-
     protected Select(Class<R> currentClass, StringBuilder selectSql) {
         this.resultClass = currentClass;
         this.selectSql = selectSql;
+    }
+
+    public static <R> SelectBuilder<R> builder(Class<R> resultClass) {
+        Select<R> select = new Select<>(resultClass, new StringBuilder());
+        select.selectBuilder = new SelectBuilder<>(select);
+        return select.selectBuilder;
+    }
+
+    /**
+     * 追加{@code SelectBuilder}查询列属性
+     *
+     * @return SelectBuilder
+     */
+    public SelectBuilder<R> appendBuilder() {
+        if (selectBuilder == null) {
+            throw new BraveException("尚未构建SelectBuilder对象");
+        }
+        return selectBuilder;
     }
 
 
@@ -99,6 +108,7 @@ public class Select<R> {
         return getSelectSql();
     }
 
+
     public static class SelectBuilder<R> {
 
         private final Select<R> select;
@@ -110,11 +120,12 @@ public class Select<R> {
         /**
          * 指定需要查询的列
          *
-         * @param fn 列名
+         * @param fn  列名
+         * @param <E> 其他表实体类
          * @return 返回构建查询列的对象
-         * @see this#columnAll()
+         * @see this#allColumn()
          */
-        public CustomColumn<R> column(Fn<R, Object> fn) {
+        public <E> CustomColumn<R> column(Fn<E, Object> fn) {
             final String fieldName = ReflectUtils.fnToFieldName(fn);
             final Map<String, SelectParam> selectParamMap = getSelect().getSelectParamMap();
             if (selectParamMap.get(fieldName) != null) {
@@ -129,20 +140,33 @@ public class Select<R> {
             SelectHelper.putSelectParam(selectParamMap, fieldName, selectParam);
             return new CustomColumn<>(this, fieldName);
         }
+// 这个方法存在是有意义的吗？
+//        /**
+//         * 查询所有列
+//         * <p>
+//         * 此方法始终会查询所有列，当它和{@link this#column(Fn)}一起使用时，{@link this#column(Fn)}方法返回的列优先级最高<br>
+//         * {@link this#column(Fn)}将会覆盖相同属性的{@link this#column(Fn)}字段。
+//         *
+//         * @return 返回构建查询列的对象
+//         * @see this#column(Fn)
+//         */
+//        public End<SelectBuilder<R>> allColumn() {
+//            getSelect().isSelectAll = true;
+//            return new End<>(this);
+//        }
+// 这个方法存在是有意义的吗？
+//        /**
+//         * 将指定列排除，被忽略的列将不参与数据库查询
+//         *
+//         * @param fn 忽略的列
+//         * @return 返回构建查询列的对象
+//         */
+//        @SafeVarargs
+//        @SuppressWarnings("unckecked")
+//        public final End<SelectBuilder<R>> ignoreColumn(Fn<R, Object>... fn) {
+//            return new End<>(this);
+//        }
 
-        /**
-         * 查询所有列
-         * <p>
-         * 此方法始终会查询所有列，当它和{@link this#column(Fn)}一起使用时，{@link this#column(Fn)}方法返回的列优先级最高<br>
-         * {@link this#column(Fn)}将会覆盖相同属性的{@link this#column(Fn)}字段。
-         *
-         * @return 返回构建查询列的对象
-         * @see this#column(Fn)
-         */
-        public End<SelectBuilder<R>> columnAll() {
-            getSelect().isSelectAll = true;
-            return new End<>(this);
-        }
 
         /**
          * 自定义查询列，此项函数强烈建议提供as别名，该别名要求必须真实存在于结果集中；以减少不必要的麻烦。
@@ -154,7 +178,7 @@ public class Select<R> {
          *           Select.builder(DTO.class).customColumn("if(t_abc.value>2,'true','false') as value").build();
          *     }
          * </pre>
-         * 当此处查询的列与{@link this#columnAll()}冲突时，此处优先级最高
+         * 当此处查询的列与{@link this#allColumn()} ()}冲突时，此处优先级最高
          *
          * @param expr   合法的任意表达式
          * @param params 预编译需要用到的参数，如果不需要参与预编译，此项为空即可
