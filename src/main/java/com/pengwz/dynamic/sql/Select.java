@@ -7,7 +7,6 @@ import com.pengwz.dynamic.model.SelectParam;
 import com.pengwz.dynamic.model.TableInfo;
 import com.pengwz.dynamic.sql.base.Fn;
 import com.pengwz.dynamic.utils.ReflectUtils;
-import com.pengwz.dynamic.utils.SelectHelper;
 import com.pengwz.dynamic.utils.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -47,17 +46,17 @@ public class Select<R> {
         return select.selectBuilder;
     }
 
-    /**
-     * 追加{@code SelectBuilder}查询列属性
-     *
-     * @return SelectBuilder
-     */
-    public SelectBuilder<R> appendBuilder() {
-        if (selectBuilder == null) {
-            throw new BraveException("尚未构建SelectBuilder对象");
-        }
-        return selectBuilder;
-    }
+//    /**
+//     * 追加{@code SelectBuilder}查询列属性
+//     *
+//     * @return SelectBuilder
+//     */
+//    public SelectBuilder<R> getSelectBuilder() {
+//        if (selectBuilder == null) {
+//            throw new BraveException("尚未构建SelectBuilder对象");
+//        }
+//        return selectBuilder;
+//    }
 
 
     /**
@@ -77,7 +76,7 @@ public class Select<R> {
      *
      * @param selectSql 查询sql
      */
-    public void appendSelectSql(String selectSql) {
+    protected void appendSelectSql(String selectSql) {
         if (null != selectSql) {
             this.selectSql.append(selectSql);
         }
@@ -87,7 +86,7 @@ public class Select<R> {
         return resultClass;
     }
 
-    public Map<String, SelectParam> getSelectParamMap() {
+    protected Map<String, SelectParam> getSelectParamMap() {
         return selectParamMap;
     }
 
@@ -95,7 +94,7 @@ public class Select<R> {
         return isSelectAll;
     }
 
-    public List<Object> getParams() {
+    protected List<Object> getParams() {
         return params;
     }
 
@@ -107,7 +106,6 @@ public class Select<R> {
     public String toString() {
         return getSelectSql();
     }
-
 
     public static class SelectBuilder<R> {
 
@@ -139,6 +137,18 @@ public class Select<R> {
             selectParam.setFieldName(fieldName);
             SelectHelper.putSelectParam(selectParamMap, fieldName, selectParam);
             return new CustomColumn<>(this, fieldName);
+        }
+
+        /**
+         * 将指定的查询类从本次查询中移除，这个方法在将来也许会非常有用；<br>
+         * 它常常出现在共享的{@code SelectBuilder}中移除某些不需要查询的列
+         *
+         * @param fn  列名
+         * @param <E> 其他表实体类
+         * @return 返回构建查询列的对象
+         */
+        public <E> RemoveColumn<R> removeColumn(Fn<E, Object> fn) {
+            return new RemoveColumn<>(this, ReflectUtils.fnToFieldName(fn));
         }
 // 这个方法存在是有意义的吗？
 //        /**
@@ -209,16 +219,42 @@ public class Select<R> {
             return new End<>(this);
         }
 
+        /**
+         * 结束查询列的构建并返回可供联表的{@code Select}对象
+         *
+         * @return Select
+         */
         public Select<R> build() {
             SelectHelper.assembleQueryStatement(select);
             select.appendSelectSql(Constant.SPACE);
             return select;
         }
 
-        public Select<R> getSelect() {
+        private Select<R> getSelect() {
             return select;
         }
 
+    }
+
+    public static class RemoveColumn<R> {
+        private final SelectBuilder<R> selectBuilder;
+        private final String fieldName;
+
+        public RemoveColumn(SelectBuilder<R> selectBuilder, String fieldName) {
+            this.selectBuilder = selectBuilder;
+            this.fieldName = fieldName;
+        }
+
+        public SelectBuilder<R> end() {
+            final Map<String, SelectParam> selectParamMap = selectBuilder.getSelect().getSelectParamMap();
+            if (selectParamMap.get(fieldName) != null) {
+                if (log.isDebugEnabled()) {
+                    log.debug("此列无需被移除，因为它本身就不存在：" + fieldName);
+                }
+                selectParamMap.remove(fieldName);
+            }
+            return selectBuilder;
+        }
     }
 
     /**

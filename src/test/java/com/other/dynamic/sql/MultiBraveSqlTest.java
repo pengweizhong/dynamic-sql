@@ -1,4 +1,4 @@
-package com.pengwz.dynamic.sql;
+package com.other.dynamic.sql;
 
 import com.pengwz.dynamic.config.DataSourceManagement;
 import com.pengwz.dynamic.config.DatabaseConfig;
@@ -6,7 +6,8 @@ import com.pengwz.dynamic.dto.SystemDTO;
 import com.pengwz.dynamic.entity.SystemRoleEntity;
 import com.pengwz.dynamic.entity.SystemRoleUserEntity;
 import com.pengwz.dynamic.entity.SystemUserEntity;
-import com.pengwz.dynamic.model.TableInfo;
+import com.pengwz.dynamic.sql.BraveSql;
+import com.pengwz.dynamic.sql.Select;
 import org.junit.Test;
 
 import java.sql.Connection;
@@ -14,7 +15,6 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 public class MultiBraveSqlTest {
 
@@ -216,21 +216,21 @@ public class MultiBraveSqlTest {
     /*
      *    TODO
      * 1 结果集映射规则。根据注解找到字段名，然后根据字段名匹配结果集对象字段名
-     * 2 函数需要支持传入其他字段
+     * 2 函数需要支持传入其他字段,如ifnull
+     * 3 加入limit
      */
     @Test
     public void test6() {
-        Select<SystemDTO> select = Select.builder(SystemDTO.class)
-//                .allColumn().end()
+        final Select.SelectBuilder<SystemDTO> selectBuilder = Select.builder(SystemDTO.class)
+                .column(SystemRoleEntity::getRoleName).end()
                 .column(SystemRoleEntity::getRoleName).left(1).repeat(2).subString(10, 99).dayName().lPad(1, "212121").end()
                 .column(SystemRoleEntity::getRoleDesc).trim().end()
-//                .column(SystemDTO::getRoleName).end()
                 .column(SystemRoleUserEntity::getRoleId).end()
-//                .customColumn("   id  ").end()
-//                .customColumn("t_system_role_user.id +1  id  ").end()
-//                .ignoreColumn(SystemDTO::getPhone).end()
-                .build();
-        select.appendBuilder();
+                .customColumn("   id  ").end()
+                .customColumn("t_system_role_user.id +1  id  ").end();
+        selectBuilder.removeColumn(SystemRoleEntity::getRoleDesc).end();
+        final Select<SystemDTO> select = selectBuilder.build();
+
 //        final Select.SelectBuilder<SystemDTO> builder = Select.builder(SystemDTO.class);
 //        builder.column(null).end().
 //        select.from(SystemUserEntity.class)
@@ -245,7 +245,7 @@ public class MultiBraveSqlTest {
 //                    return dynamicSql;
 //                });
         System.out.println("====================================================================");
-        System.out.println(select.toString());
+        System.out.println(select);
         System.out.println("====================================================================");
 
 

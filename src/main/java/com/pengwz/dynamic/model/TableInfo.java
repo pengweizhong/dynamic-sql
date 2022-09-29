@@ -7,8 +7,6 @@ public class TableInfo {
     private String dataSourceName;
     //表名
     private String tableName;
-    //表类型
-    private String viewType;
     //是否允许缓存
     private boolean isCache;
     //列集合
@@ -38,14 +36,6 @@ public class TableInfo {
         this.tableColumnInfos = tableColumnInfos;
     }
 
-    public String getViewType() {
-        return viewType;
-    }
-
-    public void setViewType(String viewType) {
-        this.viewType = viewType;
-    }
-
     public boolean isCache() {
         return isCache;
     }
@@ -59,7 +49,6 @@ public class TableInfo {
         return "TableInfo{" +
                 "dataSourceName='" + dataSourceName + '\'' +
                 ", tableName='" + tableName + '\'' +
-                ", viewType='" + viewType + '\'' +
                 ", isCache=" + isCache +
                 ", tableColumnInfos=" + tableColumnInfos +
                 '}';

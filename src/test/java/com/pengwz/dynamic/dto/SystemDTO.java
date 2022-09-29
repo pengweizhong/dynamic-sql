@@ -1,20 +1,14 @@
 package com.pengwz.dynamic.dto;
 
-import com.pengwz.dynamic.anno.Column;
-import com.pengwz.dynamic.anno.Table;
-import com.pengwz.dynamic.config.DatabaseConfig;
-import com.pengwz.dynamic.entity.SystemRoleEntity;
-import com.pengwz.dynamic.entity.SystemUserEntity;
 import lombok.*;
 
 @EqualsAndHashCode(callSuper = true)
 @Data()
 @AllArgsConstructor
 @NoArgsConstructor
-//@SuperBuilder
 @Builder
 @ToString(callSuper = true)
-@Table(isCache = false)
+//@Table(isCache = false)
 public class SystemDTO extends BaseDTO {
     /**
      * 姓名
@@ -27,7 +21,7 @@ public class SystemDTO extends BaseDTO {
 //    @Column(dependentTableClass = SystemUserEntity.class)
     private String phone;
 
-//    @Column(value = "id", dependentTableClass = SystemUserEntity.class)
+    //    @Column(value = "id", dependentTableClass = SystemUserEntity.class)
     private Integer userId;
 
     /**

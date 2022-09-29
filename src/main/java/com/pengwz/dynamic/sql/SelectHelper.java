@@ -1,4 +1,4 @@
-package com.pengwz.dynamic.utils;
+package com.pengwz.dynamic.sql;
 
 import com.pengwz.dynamic.check.Check;
 import com.pengwz.dynamic.exception.BraveException;
@@ -6,8 +6,7 @@ import com.pengwz.dynamic.model.DbType;
 import com.pengwz.dynamic.model.SelectParam;
 import com.pengwz.dynamic.model.TableColumnInfo;
 import com.pengwz.dynamic.model.TableInfo;
-import com.pengwz.dynamic.sql.ContextApplication;
-import com.pengwz.dynamic.sql.Select;
+import com.pengwz.dynamic.utils.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -56,8 +55,8 @@ public class SelectHelper {
         selectBuilder.append("select ");
         final Map<String, SelectParam> selectParamMap = select.getSelectParamMap();
         final Set<String> queryColumns = selectParamMap.keySet();
-        final TableInfo tableInfo = Check.getBuilderTableInfo(select.getResultClass(), Check.ViewType.RESULT);
-        assertTableInfoResult(tableInfo);
+        final TableInfo tableInfo = Check.getBuilderTableInfo(select.getResultClass());
+//        assertTableInfoResult(tableInfo);
         final LinkedHashSet<String> queryAllFieldNames = new LinkedHashSet<>();
         //先处理用户自定义的查询列
         for (String fieldName : queryColumns) {
@@ -107,20 +106,20 @@ public class SelectHelper {
         select.appendSelectSql(selectBuilder.substring(0, selectBuilder.lastIndexOf(",")));
     }
 
-    private static void assertTableInfoResult(TableInfo tableInfo) {
-        if (tableInfo.getViewType().equalsIgnoreCase(Check.ViewType.RESULT.name())) {
-            final String tableName = tableInfo.getTableName();
-            if (StringUtils.isNotEmpty(tableName)) {
-                throw new BraveException("多表查询时，实体类无需声明表名");
-            }
-        }
-        final List<TableColumnInfo> tableColumnInfos = tableInfo.getTableColumnInfos();
-        for (TableColumnInfo tableColumnInfo : tableColumnInfos) {
-            if (StringUtils.isEmpty(tableColumnInfo.getTableAlias())) {
-                throw new BraveException("多表查询时，实体类字段必须指定所依赖的表实体类；字段位置：" + tableColumnInfo.getField().getName());
-            }
-        }
-    }
+//    private static void assertTableInfoResult(TableInfo tableInfo) {
+//        if (tableInfo.getViewType().equalsIgnoreCase(Check.ViewType.RESULT.name())) {
+//            final String tableName = tableInfo.getTableName();
+//            if (StringUtils.isNotEmpty(tableName)) {
+//                throw new BraveException("多表查询时，实体类无需声明表名");
+//            }
+//        }
+//        final List<TableColumnInfo> tableColumnInfos = tableInfo.getTableColumnInfos();
+//        for (TableColumnInfo tableColumnInfo : tableColumnInfos) {
+//            if (StringUtils.isEmpty(tableColumnInfo.getTableAlias())) {
+//                throw new BraveException("多表查询时，实体类字段必须指定所依赖的表实体类；字段位置：" + tableColumnInfo.getField().getName());
+//            }
+//        }
+//    }
 
     /**
      * 校验用户自定义查询列表达式

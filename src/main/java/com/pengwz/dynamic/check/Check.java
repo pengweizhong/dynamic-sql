@@ -1,12 +1,12 @@
 package com.pengwz.dynamic.check;
 
 import com.pengwz.dynamic.anno.*;
-import com.pengwz.dynamic.config.DataSourceConfig;
 import com.pengwz.dynamic.config.DataSourceManagement;
 import com.pengwz.dynamic.exception.BraveException;
 import com.pengwz.dynamic.model.*;
 import com.pengwz.dynamic.sql.ContextApplication;
 import com.pengwz.dynamic.sql.PageInfo;
+import com.pengwz.dynamic.utils.ReflectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -24,19 +24,11 @@ public class Check {
     private static final Log log = LogFactory.getLog(Check.class);
 
     public static TableInfo getBuilderTableInfo(Class<?> currentClass) {
-        return getBuilderTableInfo(currentClass, ViewType.TABLE);
-    }
-
-    public static TableInfo getBuilderTableInfo(Class<?> currentClass, ViewType viewType) {
-        if (viewType == null) {
-            throw new BraveException("必须指定ViewType");
-        }
         final TableInfo tableInfoCache = ContextApplication.getTableInfoCache(currentClass);
         if (tableInfoCache != null) {
             return tableInfoCache;
         }
-        final TableInfo tableInfo = builderTableInfo(currentClass, viewType);
-        tableInfo.setViewType(viewType.name());
+        final TableInfo tableInfo = builderTableInfo(currentClass);
         //校验重复列  空列
         if (tableInfo.getTableColumnInfos().isEmpty()) {
             throw new BraveException("映射实体类未发现可用属性，发生在表：" + tableInfo.getTableName());
@@ -55,10 +47,7 @@ public class Check {
                 } else {
                     errSuffix = "发生在表：" + tableInfo.getTableName();
                 }
-                //除了多表查询的结果对象外，一律抛出此异常
-                if (!viewType.equals(ViewType.RESULT)) {
-                    throw new BraveException("重复的列名：" + column + "，" + errSuffix + "；可能是手动copy错误或发生在继承类中，请检查");
-                }
+                throw new BraveException("重复的列名：" + column + "，" + errSuffix + "；可能是手动copy错误或发生在继承类中，请检查");
             }
         });
         if (tableInfo.isCache()) {
@@ -67,40 +56,40 @@ public class Check {
         return tableInfo;
     }
 
-
-    public static TableInfo builderTableInfo(Class<?> currentClass, ViewType viewType) {
+    /**
+     * 根据当前表实体类构建TableInfo对象
+     *
+     * @param currentClass 当前表实体类
+     * @return TableInfo
+     */
+    public static TableInfo builderTableInfo(Class<?> currentClass) {
         Table table = currentClass.getAnnotation(Table.class);
-        if (viewType.equals(ViewType.RESULT) && StringUtils.isNotEmpty(table.value())) {
-            throw new BraveException("查询结果对象指定表名无意义，发生在类：" + currentClass.getCanonicalName());
+        if (table == null) {
+            throw new BraveException("实体类必须指定Table注解，发生在类：" + currentClass.getCanonicalName());
         }
-        if (StringUtils.isEmpty(table.value()) && !viewType.equals(ViewType.RESULT)) {
-            throw new BraveException("当前实体类：" + currentClass + "未获取到表名");
-        }
-        if (!table.dataSourceClass().equals(DataSourceConfig.class) && viewType.equals(ViewType.RESULT)) {
-            throw new BraveException("查询结果对象不需要指定数据源");
-        }
-        String dataSource = null;
-        if (!viewType.equals(ViewType.RESULT)) {
-            dataSource = DataSourceManagement.initDataSourceConfig(table.dataSourceClass());
-        }
-
         String tableName = table.value().trim();
-        List<Field> allFiledList = new ArrayList<>();
-        recursionGetAllFields(currentClass, allFiledList);
+        if (StringUtils.isEmpty(tableName)) {
+            throw new BraveException("表名不可为空，发生在类：" + currentClass.getCanonicalName());
+        }
+        String dataSource = DataSourceManagement.initDataSourceConfig(table.dataSourceClass());
+        final Field[] allDeclaredFields = ReflectUtils.getAllDeclaredFields(currentClass);
+        if (allDeclaredFields.length == 0) {
+            throw new BraveException("实体类未发现可用属性，发生在类：" + currentClass.getCanonicalName());
+        }
         final TableInfo tableInfo = new TableInfo();
         List<TableColumnInfo> tableColumnInfos = new ArrayList<>();
         tableInfo.setTableColumnInfos(tableColumnInfos);
         //join 的数据源
         HashSet<String> joinDataSourceNameSet = new HashSet<>();
-        for (Field field : allFiledList) {
+        for (Field field : allDeclaredFields) {
             if (checkedFieldType(field)) {
+                continue;
+            }
+            if (field.getAnnotation(ColumnIgnore.class) != null) {
                 continue;
             }
             if (field.getType().isPrimitive()) {
                 throw new BraveException("字段类型不可以是基本类型，因为基本类型在任何时候都不等于null，字段名：" + field.getName() + "，发生在表：" + tableName);
-            }
-            if (field.getAnnotation(ColumnIgnore.class) != null) {
-                continue;
             }
             final TableColumnInfo tableColumnInfo = new TableColumnInfo();
             Id id = field.getAnnotation(Id.class);
@@ -306,18 +295,18 @@ public class Check {
                 || Modifier.isTransient(field.getModifiers());
     }
 
-    public enum ViewType {
-        /**
-         * 表
-         */
-        TABLE,
+//    public enum ViewType {
 //        /**
-//         * 视图
+//         * 表
 //         */
-//        VIEW,
-        /**
-         * 多表查询的结果集，往往是多表查询的产物
-         */
-        RESULT;
-    }
+//        TABLE,
+////        /**
+////         * 视图
+////         */
+////        VIEW,
+//        /**
+//         * 多表查询的结果集，往往是多表查询的产物
+//         */
+//        RESULT;
+//    }
 }
