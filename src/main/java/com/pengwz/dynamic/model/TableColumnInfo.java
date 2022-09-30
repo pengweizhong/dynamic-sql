@@ -8,8 +8,6 @@ import java.lang.reflect.Field;
 public class TableColumnInfo {
     //数据库字段名
     private String column;
-    //所属表别名，它将还在多表join时使用
-    private String tableAlias;
     //是否为主键
     private boolean isPrimary;
     //主键生成策略
@@ -59,19 +57,11 @@ public class TableColumnInfo {
         this.jsonMode = jsonMode;
     }
 
-    public String getTableAlias() {
-        return tableAlias;
-    }
-
-    public void setTableAlias(String tableAlias) {
-        this.tableAlias = tableAlias;
-    }
 
     @Override
     public String toString() {
         return "TableColumnInfo{" +
                 "column='" + column + '\'' +
-                ", tableAlias='" + tableAlias + '\'' +
                 ", isPrimary=" + isPrimary +
                 ", generatedValue=" + generatedValue +
                 ", field=" + field +

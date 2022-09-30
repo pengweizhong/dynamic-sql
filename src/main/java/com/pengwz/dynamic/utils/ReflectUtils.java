@@ -43,7 +43,6 @@ public class ReflectUtils {
         return implClassname.replace("/", ".");
     }
 
-
     private static SerializedLambda serializedLambda(Fn fn) {
         try {
             Method method = fn.getClass().getDeclaredMethod("writeReplace");
@@ -230,6 +229,28 @@ public class ReflectUtils {
             field.set(target, value);//NOSONAR
         } catch (IllegalAccessException ex) {
             throw new BraveException(ex.getMessage());
+        }
+    }
+
+    public static <T> T instance(Class<T> tClass) {
+        if (tClass == null) {
+            return null;
+        }
+        try {
+            return tClass.newInstance();
+        } catch (InstantiationException | IllegalAccessException e) {
+            throw new BraveException(e);
+        }
+    }
+
+    public static Class<?> forName(String className) {
+        if (StringUtils.isEmpty(className)) {
+            return null;
+        }
+        try {
+            return Class.forName(className);
+        } catch (ClassNotFoundException e) {
+            throw new BraveException(e);
         }
     }
 }

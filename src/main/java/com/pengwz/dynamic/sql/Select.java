@@ -1,21 +1,21 @@
 package com.pengwz.dynamic.sql;
 
+import com.pengwz.dynamic.anno.Table;
 import com.pengwz.dynamic.constant.Constant;
 import com.pengwz.dynamic.exception.BraveException;
 import com.pengwz.dynamic.model.End;
 import com.pengwz.dynamic.model.SelectParam;
+import com.pengwz.dynamic.model.SelectParam.Function;
+import com.pengwz.dynamic.model.TableColumnInfo;
 import com.pengwz.dynamic.model.TableInfo;
 import com.pengwz.dynamic.sql.base.Fn;
 import com.pengwz.dynamic.utils.ReflectUtils;
 import com.pengwz.dynamic.utils.StringUtils;
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.*;
 
 public class Select<R> {
 
@@ -25,38 +25,30 @@ public class Select<R> {
     private final Class<R> resultClass;
     //查询的SQL语句
     private final StringBuilder selectSql;
-    //构建SQL语句对象
-    private SelectBuilder<R> selectBuilder;
     //是否查询全部列，该属性暂未启用
     private boolean isSelectAll;
     //查询参数集合，在SQL执行时将会替代占位符，防止SQL注入
     private final List<Object> params = new ArrayList<>();
-    //查询的列MAP  key通常这里是字段名，如果是用户自定义的话，那么这里将是表列名
+    //查询的列MAP  key是(结果成员属性的字段名)
     private final Map<String, SelectParam> selectParamMap = new LinkedHashMap<>();
 
 
-    protected Select(Class<R> currentClass, StringBuilder selectSql) {
-        this.resultClass = currentClass;
+    protected Select(Class<R> resultClass, StringBuilder selectSql) {
+        this.resultClass = resultClass;
         this.selectSql = selectSql;
     }
 
+    /**
+     * 构建查询对象
+     *
+     * @param resultClass 查询结果接收类
+     * @param <R>         任意自定义实体类
+     * @return 可供构建的查询对象
+     */
     public static <R> SelectBuilder<R> builder(Class<R> resultClass) {
         Select<R> select = new Select<>(resultClass, new StringBuilder());
-        select.selectBuilder = new SelectBuilder<>(select);
-        return select.selectBuilder;
+        return new SelectBuilder<>(select);
     }
-
-//    /**
-//     * 追加{@code SelectBuilder}查询列属性
-//     *
-//     * @return SelectBuilder
-//     */
-//    public SelectBuilder<R> getSelectBuilder() {
-//        if (selectBuilder == null) {
-//            throw new BraveException("尚未构建SelectBuilder对象");
-//        }
-//        return selectBuilder;
-//    }
 
 
     /**
@@ -117,107 +109,121 @@ public class Select<R> {
 
         /**
          * 指定需要查询的列
+         * <p>
+         * 比如：想要查询{@code Entity.class}类中的 Id,Name字段，查询结果对象为{@code Result.class}  <br>
+         * 那么可以进行如下操作，即可构成查询的列：  <br>
+         * <pre>
+         *     {@code
+         *          Select.builder(Result.class)
+         *                 .column(Entity::getId).end()
+         *                 .column(Entity::getName).left(1)... .end()
+         *                 ... ...
+         *          .build()
+         *     }
+         * </pre>
+         * <p>
+         * 如果从多个表（对应的实体类）查询了重复的字段，可以通过“alias”指定别名进行区分 <br>
+         * 查询结果对象仍为{@code Result.class}，表数据来自{@code Entity.class}和{@code Entity2.class}
+         * 那么还可以这么做： <br>
+         * <pre>
+         *     {@code
+         *          Select.builder(Result.class)
+         *                 .column(Entity::getId).alias(Result::getId).end()
+         *                 .column(Entity2::getId).alias(Result::getEntity2Id).end()
+         *                 .column(Entity::getName).left(1)... .end()
+         *                 ... ...
+         *          .build()
+         *     }
+         * </pre>
+         * <p>
+         * 注意，如果查询了相同的列，那么只有最后一次查询才会生效。
+         * 此方法优先级与{@link this#column(String, Object...)} 等同，查询的结果以最后一次声明的为准。
          *
          * @param fn  列名
          * @param <E> 其他表实体类
          * @return 返回构建查询列的对象
-         * @see this#allColumn()
          */
-        public <E> CustomColumn<R> column(Fn<E, Object> fn) {
-            final String fieldName = ReflectUtils.fnToFieldName(fn);
-            final Map<String, SelectParam> selectParamMap = getSelect().getSelectParamMap();
-            if (selectParamMap.get(fieldName) != null) {
-                if (log.isDebugEnabled()) {
-                    log.debug("查询了重复的列，仅本次列查询生效，重复的字段名：" + fieldName);
-                }
-                selectParamMap.remove(fieldName);
-            }
-            final SelectParam selectParam = new SelectParam();
-            selectParam.setCustomColumn(false);
-            selectParam.setFieldName(fieldName);
-            SelectHelper.putSelectParam(selectParamMap, fieldName, selectParam);
-            return new CustomColumn<>(this, fieldName);
+        public <E> QueryColumn<R, E> column(Fn<E, Object> fn) {
+            return new QueryColumn<>(this, fn);
         }
 
         /**
-         * 将指定的查询类从本次查询中移除，这个方法在将来也许会非常有用；<br>
-         * 它常常出现在共享的{@code SelectBuilder}中移除某些不需要查询的列
+         * 自定义查询列，键入的查询列在结束时必须指定别名，该别名要求必须真实存在于结果集中，并且与字段名保持一致，否则查询结果会无法映射到具体的字段上。<br>
+         * 查询字段的格式为：表名+列名 + 具体语句
          *
-         * @param fn  列名
-         * @param <E> 其他表实体类
-         * @return 返回构建查询列的对象
-         */
-        public <E> RemoveColumn<R> removeColumn(Fn<E, Object> fn) {
-            return new RemoveColumn<>(this, ReflectUtils.fnToFieldName(fn));
-        }
-// 这个方法存在是有意义的吗？
-//        /**
-//         * 查询所有列
-//         * <p>
-//         * 此方法始终会查询所有列，当它和{@link this#column(Fn)}一起使用时，{@link this#column(Fn)}方法返回的列优先级最高<br>
-//         * {@link this#column(Fn)}将会覆盖相同属性的{@link this#column(Fn)}字段。
-//         *
-//         * @return 返回构建查询列的对象
-//         * @see this#column(Fn)
-//         */
-//        public End<SelectBuilder<R>> allColumn() {
-//            getSelect().isSelectAll = true;
-//            return new End<>(this);
-//        }
-// 这个方法存在是有意义的吗？
-//        /**
-//         * 将指定列排除，被忽略的列将不参与数据库查询
-//         *
-//         * @param fn 忽略的列
-//         * @return 返回构建查询列的对象
-//         */
-//        @SafeVarargs
-//        @SuppressWarnings("unckecked")
-//        public final End<SelectBuilder<R>> ignoreColumn(Fn<R, Object>... fn) {
-//            return new End<>(this);
-//        }
-
-
-        /**
-         * 自定义查询列，此项函数强烈建议提供as别名，该别名要求必须真实存在于结果集中；以减少不必要的麻烦。
          * <p>
          * 比如：表名为 t_abc   <br>
          * 那么可以进行如下操作：  <br>
          * <pre>
+         *     //不需要预编译
          *     {@code
-         *           Select.builder(DTO.class).customColumn("if(t_abc.value>2,'true','false') as value").build();
+         *           Select.builder(Result.class).column("if(t_abc.value>2,'true','false') as value").build();
+         *     }
+         *     //或者需要预编译，此处2将被作为参数编译到SQL中
+         *     {@code
+         *           Select.builder(Result.class).column("if(t_abc.value>?,'true','false') as value",2).build();
          *     }
          * </pre>
-         * 当此处查询的列与{@link this#allColumn()} ()}冲突时，此处优先级最高
+         * <p>
+         * 此方法优先级与{@link this#column(Fn)} 等同，查询的结果以最后一次声明的为准。
          *
-         * @param expr   合法的任意表达式
+         * @param expr   合法的任意表达式，不需要指定结束分割符，如 “,”，直接书写语句即可
          * @param params 预编译需要用到的参数，如果不需要参与预编译，此项为空即可
-         * @return 结束断句
+         * @return CustomQueryColumn
          */
-        public End<SelectBuilder<R>> customColumn(String expr, Object... params) {
-            if (StringUtils.isEmpty(expr)) {
-                throw new BraveException("查询自定义列不可为空");
-            }
-            expr = expr.trim();
-            final String column = expr.contains(" ") ? SelectHelper.getColumn(expr) : expr;
-            final Map<String, SelectParam> selectParamMap = getSelect().getSelectParamMap();
-            final List<SelectParam> selectParams = selectParamMap.values().stream().filter(SelectParam::isCustomColumn).collect(Collectors.toList());
-            selectParams.forEach(selectParam -> {
-                final String columnHistory = selectParam.getFieldName().contains(" ") ? SelectHelper.getColumn(selectParam.getFieldName()) : selectParam.getFieldName();
-                if (columnHistory.equalsIgnoreCase(column)) {
-                    if (log.isDebugEnabled()) {
-                        log.debug("自定义查询重复，仅本次列查询生效，重复的查询列名：" + column);
-                    }
-                    selectParamMap.remove(selectParam.getFieldName());
-                }
-            });
-            final SelectParam selectParam = new SelectParam();
-            selectParam.setCustomColumn(true);
-            selectParam.setFieldName(expr);
-            SelectHelper.putSelectParam(selectParamMap, expr, selectParam);
-            SelectHelper.putSelectParam(selectParamMap, expr, null, params);
+        public CustomQueryColumn<R> column(String expr, Object... params) {
+            return new CustomQueryColumn<>(this, expr, params);
+        }
+
+        /**
+         * 查询指定实体类所有列，该实体类必须要求加注{@link Table}注解;
+         * 具体查询的列数由实体类关联的属性数量决定
+         * <p>
+         * 此方法始终会查询所有列，当它和{@link this#column(Fn)}、{@link this#column(String, Object...)}一起使用时，
+         * {@link this#column(Fn)}、{@link this#column(String, Object...)}方法返回的列优先级最高<br>
+         *
+         * @param tableClass 其他表实体类
+         * @param <E>        任意表实体类
+         * @return 返回构建查询列的对象
+         * @see this#column(Fn)
+         * @see this#column(String, Object...)
+         * @see Table
+         */
+        public <E> End<SelectBuilder<R>> allColumn(Class<E> tableClass) {
+            getSelect().isSelectAll = true;
             return new End<>(this);
         }
+
+
+        /**
+         * 将指定的列从本次查询中排除，这个方法在将来也许会非常有用；<br>
+         * 它常常出现在共享的{@code SelectBuilder}中移除某些不需要查询的列
+         *
+         * @param fn 忽略的列
+         * @return 返回构建查询列的对象
+         */
+        public <E> End<SelectBuilder<R>> ignoreColumn(Fn<E, Object> fn) {
+            return ignoreColumn(Collections.singletonList(fn));
+        }
+
+        /**
+         * 将指定的多个列从本次查询中排除，这个方法在将来也许会非常有用；<br>
+         * 它常常出现在共享的{@code SelectBuilder}中移除某些不需要查询的列
+         *
+         * @param fns 忽略的列表
+         * @return 返回构建查询列的对象
+         */
+        public <E> End<SelectBuilder<R>> ignoreColumn(List<Fn<E, Object>> fns) {
+            if (CollectionUtils.isNotEmpty(fns)) {
+                final Map<String, SelectParam> selectParamMap = this.getSelect().getSelectParamMap();
+                for (Fn<E, Object> fn : fns) {
+                    final String fieldName = ReflectUtils.fnToFieldName(fn);
+                    selectParamMap.remove(fieldName);
+                }
+            }
+            return new End<>(this);
+        }
+
 
         /**
          * 结束查询列的构建并返回可供联表的{@code Select}对象
@@ -257,20 +263,82 @@ public class Select<R> {
         }
     }
 
-    /**
-     * 自定义查询列规则
-     *
-     * @param <R>
-     */
-    public static class CustomColumn<R> {
-
+    public static class CustomQueryColumn<R> {
+        //查询构建者
         private final SelectBuilder<R> selectBuilder;
+        //用户键入的自定义查询语句
+        private final String expr;
+        //预编译使到的参数
+        private final Object[] params;
 
-        private final String fieldName;
-
-        protected CustomColumn(SelectBuilder<R> selectBuilder, String fieldName) {
+        public CustomQueryColumn(SelectBuilder<R> selectBuilder, String expr, Object[] params) {
             this.selectBuilder = selectBuilder;
-            this.fieldName = fieldName;
+            this.expr = expr;
+            this.params = params;
+        }
+
+        public SelectBuilder<R> end() {
+            if (StringUtils.isEmpty(expr)) {
+                throw new BraveException("查询自定义列不可为空");
+            }
+            final String aliasName = SelectHelper.getColumnAliasName(expr);
+            final Map<String, SelectParam> selectParamMap = selectBuilder.getSelect().getSelectParamMap();
+            if (selectParamMap.get(aliasName) != null) {
+                if (log.isDebugEnabled()) {
+                    log.debug("查询了重复的列，仅本次列查询生效，查询重复的字段名：" + aliasName);
+                }
+                selectParamMap.remove(aliasName);
+            }
+            final SelectParam selectParam = new SelectParam();
+            selectParam.setCustomColumn(true);
+            selectParam.setPriority(Integer.MIN_VALUE);
+            List<Function> functions = new ArrayList<>();
+            if (params != null) {
+                functions.add(Function.builder().func(null).param(params).build());
+            }
+            selectParam.setFunctions(functions);
+            selectParamMap.put(aliasName, selectParam);
+            return selectBuilder;
+        }
+    }
+
+    /**
+     * 自定义查询列
+     *
+     * @param <R> 查询结果类型
+     * @param <E> 参与查询的对象
+     */
+    public static class QueryColumn<R, E> extends End<SelectBuilder<R>> {
+        //查询构建者
+        private final SelectBuilder<R> selectBuilder;
+        //当前查询对象的get方法
+        private final Fn<E, Object> queryColumnFn;
+        //当前查询对象的字段名
+        private final String fieldName;
+        //当前查询列的别名
+        private String alias;
+        //查询列需要使用的函数，若用户没指定，则此集合为空
+        private final List<Function> functions = new ArrayList<>();
+
+        protected QueryColumn(SelectBuilder<R> selectBuilder, Fn<E, Object> fn) {
+            super(selectBuilder);
+            super.register(this);
+            this.selectBuilder = selectBuilder;
+            this.queryColumnFn = fn;
+            this.fieldName = ReflectUtils.fnToFieldName(fn);
+        }
+
+        /**
+         * 将当前查询的字段映射到结果的字段，通常情况下，您不需要调用它，除非查询时出现了相同列。
+         * <br>
+         * 如有需要，通常在语句末尾调用
+         *
+         * @param fn 结果类：：字段名
+         * @return 结束当前字段的构建
+         */
+        public End<SelectBuilder<R>> alias(Fn<R, Object> fn) {
+            this.alias = ReflectUtils.fnToFieldName(fn);
+            return this;
         }
 
         /**
@@ -278,7 +346,30 @@ public class Select<R> {
          *
          * @return SelectBuilder
          */
+        @Override
         public SelectBuilder<R> end() {
+            final String tableClassname = ReflectUtils.getImplClassname(queryColumnFn);
+            final Class<?> tableClass = ReflectUtils.forName(tableClassname);
+            final TableInfo tableInfo = ContextApplication.getTableInfo(tableClass);
+            final TableColumnInfo tableColumnInfo = tableInfo.getTableColumnInfoByFieldName(fieldName);
+            final Map<String, SelectParam> selectParamMap = selectBuilder.getSelect().getSelectParamMap();
+            //如果用户没有指定别名，那么别名应当和查询的列名本身保持一致
+            alias = alias == null ? fieldName : alias;
+            if (selectParamMap.get(alias) != null) {
+                final SelectParam remove = selectParamMap.remove(alias);
+                if (log.isDebugEnabled()) {
+                    log.debug("查询了重复的列，仅本次列查询生效，" +
+                            "重复的字段名：" + fieldName
+                            + "，遗弃的参数：" + remove);
+                }
+            }
+            final SelectParam selectParam = new SelectParam();
+            selectParam.setTableName(tableInfo.getTableName());
+            selectParam.setCustomColumn(false);
+            selectParam.setTableColumnInfo(tableColumnInfo);
+            selectParam.setFunctions(functions);
+            selectParam.setPriority(Integer.MIN_VALUE);
+            selectParamMap.put(alias, selectParam);
             return selectBuilder;
         }
 
@@ -289,9 +380,8 @@ public class Select<R> {
          *
          * @return 当前自定义字段对象
          */
-        public CustomColumn<R> abs() {
-            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
-            SelectHelper.putSelectParam(selectParamMap, fieldName, "abs");
+        public QueryColumn<R, E> abs() {
+            functions.add(Function.builder().func("abs").build());
             return this;
         }
 
@@ -302,9 +392,8 @@ public class Select<R> {
          *
          * @return 当前自定义字段对象
          */
-        public CustomColumn<R> lower() {
-            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
-            SelectHelper.putSelectParam(selectParamMap, fieldName, "lower");
+        public QueryColumn<R, E> lower() {
+            functions.add(Function.builder().func("lower").build());
             return this;
         }
 
@@ -315,9 +404,8 @@ public class Select<R> {
          *
          * @return 当前自定义字段对象
          */
-        public CustomColumn<R> upper() {
-            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
-            SelectHelper.putSelectParam(selectParamMap, fieldName, "upper");
+        public QueryColumn<R, E> upper() {
+            functions.add(Function.builder().func("upper").build());
             return this;
         }
 
@@ -329,9 +417,10 @@ public class Select<R> {
          * @param len 保留从长度
          * @return 当前自定义字段对象
          */
-        public CustomColumn<R> left(int len) {
-            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
-            SelectHelper.putSelectParam(selectParamMap, fieldName, "left", len);
+        public QueryColumn<R, E> left(int len) {
+//            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
+//            SelectHelper.putSelectParam(selectParamMap, fieldName, "left", len);
+            functions.add(Function.builder().func("left").param(len).build());
             return this;
         }
 
@@ -344,9 +433,8 @@ public class Select<R> {
          * @param filling 填充的内容
          * @return 当前自定义字段对象
          */
-        public CustomColumn<R> lPad(int len, String filling) {
-            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
-            SelectHelper.putSelectParam(selectParamMap, fieldName, "lpad", len, filling);
+        public QueryColumn<R, E> lPad(int len, String filling) {
+            functions.add(Function.builder().func("lpad").param(filling).build());
             return this;
         }
 
@@ -359,9 +447,8 @@ public class Select<R> {
          * @param filling 填充的内容
          * @return 当前自定义字段对象
          */
-        public CustomColumn<R> rPad(int len, String filling) {
-            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
-            SelectHelper.putSelectParam(selectParamMap, fieldName, "rpad", len, filling);
+        public QueryColumn<R, E> rPad(int len, String filling) {
+            functions.add(Function.builder().func("rpad").param(len, filling).build());
             return this;
         }
 
@@ -372,9 +459,8 @@ public class Select<R> {
          *
          * @return 当前自定义字段对象
          */
-        public CustomColumn<R> trim() {
-            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
-            SelectHelper.putSelectParam(selectParamMap, fieldName, "trim");
+        public QueryColumn<R, E> trim() {
+            functions.add(Function.builder().func("trim").build());
             return this;
         }
 
@@ -385,9 +471,8 @@ public class Select<R> {
          *
          * @return 当前自定义字段对象
          */
-        public CustomColumn<R> lTrim() {
-            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
-            SelectHelper.putSelectParam(selectParamMap, fieldName, "ltrim");
+        public QueryColumn<R, E> lTrim() {
+            functions.add(Function.builder().func("ltrim").build());
             return this;
         }
 
@@ -398,9 +483,8 @@ public class Select<R> {
          *
          * @return 当前自定义字段对象
          */
-        public CustomColumn<R> rTrim() {
-            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
-            SelectHelper.putSelectParam(selectParamMap, fieldName, "rtrim");
+        public QueryColumn<R, E> rTrim() {
+            functions.add(Function.builder().func("rtrim").build());
             return this;
         }
 
@@ -412,9 +496,8 @@ public class Select<R> {
          * @param num 重复生成的次数
          * @return 当前自定义字段对象
          */
-        public CustomColumn<R> repeat(int num) {
-            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
-            SelectHelper.putSelectParam(selectParamMap, fieldName, "repeat", num);
+        public QueryColumn<R, E> repeat(int num) {
+            functions.add(Function.builder().func("repeat").param(num).build());
             return this;
         }
 
@@ -427,9 +510,8 @@ public class Select<R> {
          * @param newStr 新值
          * @return 当前自定义字段对象
          */
-        public CustomColumn<R> replace(String oldStr, String newStr) {
-            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
-            SelectHelper.putSelectParam(selectParamMap, fieldName, "replace", oldStr, newStr);
+        public QueryColumn<R, E> replace(String oldStr, String newStr) {
+            functions.add(Function.builder().func("replace").param(oldStr, newStr).build());
             return this;
         }
 
@@ -442,9 +524,8 @@ public class Select<R> {
          * @param endIndex   结束下标
          * @return 当前自定义字段对象
          */
-        public CustomColumn<R> subString(int startIndex, int endIndex) {
-            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
-            SelectHelper.putSelectParam(selectParamMap, fieldName, "substring", startIndex, endIndex);
+        public QueryColumn<R, E> subString(int startIndex, int endIndex) {
+            functions.add(Function.builder().func("substring").param(startIndex, endIndex).build());
             return this;
         }
 
@@ -455,9 +536,8 @@ public class Select<R> {
          *
          * @return 当前自定义字段对象
          */
-        public CustomColumn<R> reverse() {
-            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
-            SelectHelper.putSelectParam(selectParamMap, fieldName, "reverse");
+        public QueryColumn<R, E> reverse() {
+            functions.add(Function.builder().func("reverse").build());
             return this;
         }
 
@@ -468,9 +548,8 @@ public class Select<R> {
          *
          * @return 当前自定义字段对象
          */
-        public CustomColumn<R> sin() {
-            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
-            SelectHelper.putSelectParam(selectParamMap, fieldName, "sin");
+        public QueryColumn<R, E> sin() {
+            functions.add(Function.builder().func("sin").build());
             return this;
         }
 
@@ -481,9 +560,8 @@ public class Select<R> {
          *
          * @return 当前自定义字段对象
          */
-        public CustomColumn<R> asin() {
-            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
-            SelectHelper.putSelectParam(selectParamMap, fieldName, "asin");
+        public QueryColumn<R, E> asin() {
+            functions.add(Function.builder().func("asin").build());
             return this;
         }
 
@@ -494,9 +572,8 @@ public class Select<R> {
          *
          * @return 当前自定义字段对象
          */
-        public CustomColumn<R> cos() {
-            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
-            SelectHelper.putSelectParam(selectParamMap, fieldName, "cos");
+        public QueryColumn<R, E> cos() {
+            functions.add(Function.builder().func("cos").build());
             return this;
         }
 
@@ -507,9 +584,8 @@ public class Select<R> {
          *
          * @return 当前自定义字段对象
          */
-        public CustomColumn<R> acos() {
-            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
-            SelectHelper.putSelectParam(selectParamMap, fieldName, "acos");
+        public QueryColumn<R, E> acos() {
+            functions.add(Function.builder().func("acos").build());
             return this;
         }
 
@@ -520,9 +596,8 @@ public class Select<R> {
          *
          * @return 当前自定义字段对象
          */
-        public CustomColumn<R> dayName() {
-            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
-            SelectHelper.putSelectParam(selectParamMap, fieldName, "dayname");
+        public QueryColumn<R, E> dayName() {
+            functions.add(Function.builder().func("dayname").build());
             return this;
         }
 
@@ -533,9 +608,8 @@ public class Select<R> {
          *
          * @return 当前自定义字段对象
          */
-        public CustomColumn<R> dayOfWeek() {
-            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
-            SelectHelper.putSelectParam(selectParamMap, fieldName, "dayofweek");
+        public QueryColumn<R, E> dayOfWeek() {
+            functions.add(Function.builder().func("dayofweek").build());
             return this;
         }
 
@@ -546,9 +620,8 @@ public class Select<R> {
          *
          * @return 当前自定义字段对象
          */
-        public CustomColumn<R> weekDay() {
-            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
-            SelectHelper.putSelectParam(selectParamMap, fieldName, "weekday");
+        public QueryColumn<R, E> weekDay() {
+            functions.add(Function.builder().func("weekday").build());
             return this;
         }
 
@@ -559,9 +632,8 @@ public class Select<R> {
          *
          * @return 当前自定义字段对象
          */
-        public CustomColumn<R> week() {
-            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
-            SelectHelper.putSelectParam(selectParamMap, fieldName, "week");
+        public QueryColumn<R, E> week() {
+            functions.add(Function.builder().func("week").build());
             return this;
         }
 
@@ -572,9 +644,8 @@ public class Select<R> {
          *
          * @return 当前自定义字段对象
          */
-        public CustomColumn<R> weekOfYear() {
-            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
-            SelectHelper.putSelectParam(selectParamMap, fieldName, "weekofyear");
+        public QueryColumn<R, E> weekOfYear() {
+            functions.add(Function.builder().func("weekofyear").build());
             return this;
         }
 
@@ -585,9 +656,8 @@ public class Select<R> {
          *
          * @return 当前自定义字段对象
          */
-        public CustomColumn<R> dayOfYear() {
-            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
-            SelectHelper.putSelectParam(selectParamMap, fieldName, "dayofyear");
+        public QueryColumn<R, E> dayOfYear() {
+            functions.add(Function.builder().func("dayofyear").build());
             return this;
         }
 
@@ -598,9 +668,8 @@ public class Select<R> {
          *
          * @return 当前自定义字段对象
          */
-        public CustomColumn<R> dayOfMonth() {
-            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
-            SelectHelper.putSelectParam(selectParamMap, fieldName, "dayofmonth");
+        public QueryColumn<R, E> dayOfMonth() {
+            functions.add(Function.builder().func("dayofmonth").build());
             return this;
         }
 
@@ -611,9 +680,8 @@ public class Select<R> {
          *
          * @return 当前自定义字段对象
          */
-        public CustomColumn<R> year() {
-            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
-            SelectHelper.putSelectParam(selectParamMap, fieldName, "year");
+        public QueryColumn<R, E> year() {
+            functions.add(Function.builder().func("year").build());
             return this;
         }
 
@@ -624,9 +692,8 @@ public class Select<R> {
          *
          * @return 当前自定义字段对象
          */
-        public CustomColumn<R> quarter() {
-            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
-            SelectHelper.putSelectParam(selectParamMap, fieldName, "quarter");
+        public QueryColumn<R, E> quarter() {
+            functions.add(Function.builder().func("quarter").build());
             return this;
         }
 
@@ -637,9 +704,8 @@ public class Select<R> {
          *
          * @return 当前自定义字段对象
          */
-        public CustomColumn<R> minute() {
-            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
-            SelectHelper.putSelectParam(selectParamMap, fieldName, "minute");
+        public QueryColumn<R, E> minute() {
+            functions.add(Function.builder().func("minute").build());
             return this;
         }
 
@@ -650,9 +716,8 @@ public class Select<R> {
          *
          * @return 当前自定义字段对象
          */
-        public CustomColumn<R> second() {
-            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
-            SelectHelper.putSelectParam(selectParamMap, fieldName, "second");
+        public QueryColumn<R, E> second() {
+            functions.add(Function.builder().func("second").build());
             return this;
         }
 
@@ -663,9 +728,8 @@ public class Select<R> {
          *
          * @return 当前自定义字段对象
          */
-        public CustomColumn<R> max() {
-            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
-            SelectHelper.putSelectParam(selectParamMap, fieldName, "max");
+        public QueryColumn<R, E> max() {
+            functions.add(Function.builder().func("max").build());
             return this;
         }
 
@@ -676,9 +740,8 @@ public class Select<R> {
          *
          * @return 当前自定义字段对象
          */
-        public CustomColumn<R> min() {
-            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
-            SelectHelper.putSelectParam(selectParamMap, fieldName, "min");
+        public QueryColumn<R, E> min() {
+            functions.add(Function.builder().func("min").build());
             return this;
         }
 
@@ -689,9 +752,8 @@ public class Select<R> {
          *
          * @return 当前自定义字段对象
          */
-        public CustomColumn<R> count() {
-            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
-            SelectHelper.putSelectParam(selectParamMap, fieldName, "count");
+        public QueryColumn<R, E> count() {
+            functions.add(Function.builder().func("count").build());
             return this;
         }
 
@@ -702,9 +764,8 @@ public class Select<R> {
          *
          * @return 当前自定义字段对象
          */
-        public CustomColumn<R> sum() {
-            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
-            SelectHelper.putSelectParam(selectParamMap, fieldName, "sum");
+        public QueryColumn<R, E> sum() {
+            functions.add(Function.builder().func("sum").build());
             return this;
         }
 
@@ -715,9 +776,8 @@ public class Select<R> {
          *
          * @return 当前自定义字段对象
          */
-        public CustomColumn<R> avg() {
-            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
-            SelectHelper.putSelectParam(selectParamMap, fieldName, "avg");
+        public QueryColumn<R, E> avg() {
+            functions.add(Function.builder().func("avg").build());
             return this;
         }
 
@@ -729,16 +789,18 @@ public class Select<R> {
          * @param other 其他值
          * @return 当前自定义字段对象
          */
-        public CustomColumn<R> ifNull(Object other) {
-            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
-            SelectHelper.putSelectParam(selectParamMap, fieldName, "ifnull", other);
+        public QueryColumn<R, E> ifNull(Object other) {
+            functions.add(Function.builder().func("ifnull").build());
             return this;
         }
 
-        public SelectBuilder<R> getSelectBuilder() {
+        protected SelectBuilder<R> getSelectBuilder() {
             return selectBuilder;
         }
 
+        protected String getAlias() {
+            return alias;
+        }
     }
 
 }

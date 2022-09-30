@@ -1,5 +1,8 @@
 package com.pengwz.dynamic.model;
 
+import com.pengwz.dynamic.utils.CollectionUtils;
+import com.pengwz.dynamic.utils.StringUtils;
+
 import java.util.List;
 
 public class TableInfo {
@@ -32,6 +35,13 @@ public class TableInfo {
         return tableColumnInfos;
     }
 
+    public TableColumnInfo getTableColumnInfoByFieldName(String fieldName) {
+        if (CollectionUtils.isEmpty(tableColumnInfos) || StringUtils.isEmpty(fieldName)) {
+            return null;
+        }
+        return tableColumnInfos.stream().filter(ci -> ci.getField().getName().equalsIgnoreCase(fieldName)).findFirst().orElse(null);
+    }
+
     public void setTableColumnInfos(List<TableColumnInfo> tableColumnInfos) {
         this.tableColumnInfos = tableColumnInfos;
     }
@@ -53,4 +63,6 @@ public class TableInfo {
                 ", tableColumnInfos=" + tableColumnInfos +
                 '}';
     }
+
+
 }

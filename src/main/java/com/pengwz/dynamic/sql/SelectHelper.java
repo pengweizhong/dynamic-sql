@@ -6,48 +6,20 @@ import com.pengwz.dynamic.model.DbType;
 import com.pengwz.dynamic.model.SelectParam;
 import com.pengwz.dynamic.model.TableColumnInfo;
 import com.pengwz.dynamic.model.TableInfo;
-import com.pengwz.dynamic.utils.StringUtils;
+import com.pengwz.dynamic.utils.ReflectUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import java.util.*;
+import java.lang.reflect.Field;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class SelectHelper {
     private static final Log log = LogFactory.getLog(SelectHelper.class);
 
     private SelectHelper() {
-    }
-
-    /**
-     * 向集合中丢入查询列
-     *
-     * @param selectParamMap 历史缓存列Map
-     * @param fieldName      缓存key
-     * @param func           函数，若此项为空，说明为自定义列
-     * @param param          预编译的参数
-     */
-    public static void putSelectParam(Map<String, SelectParam> selectParamMap, String fieldName, String func, Object... param) {
-        final SelectParam selectParam = selectParamMap.get(fieldName);//NOSONAR
-        if (selectParam == null) {
-            final SelectParam.Function function = SelectParam.functionBuilder().func(func).param(param).build();
-            final SelectParam selectParam1 = new SelectParam();
-            selectParam1.setFieldName(fieldName);
-            final ArrayList<SelectParam.Function> functions = new ArrayList<>();
-            functions.add(function);
-            selectParam1.setFunctions(functions);
-            selectParamMap.put(fieldName, selectParam1);
-            return;
-        }
-        final List<SelectParam.Function> functions = Optional.ofNullable(selectParam.getFunctions()).orElseGet(ArrayList::new);
-        functions.add(SelectParam.functionBuilder().func(func).param(param).build());
-        selectParam.setFunctions(functions);
-    }
-
-    public static void putSelectParam(Map<String, SelectParam> selectParamMap, String fieldName, SelectParam selectParam) {
-        if (selectParamMap.get(fieldName) != null) {
-            selectParamMap.remove(fieldName);
-        }
-        selectParamMap.put(fieldName, selectParam);
     }
 
     public static void assembleQueryStatement(Select<?> select) {
@@ -56,13 +28,14 @@ public class SelectHelper {
         final Map<String, SelectParam> selectParamMap = select.getSelectParamMap();
         final Set<String> queryColumns = selectParamMap.keySet();
         final TableInfo tableInfo = Check.getBuilderTableInfo(select.getResultClass());
-//        assertTableInfoResult(tableInfo);
+        final Field[] resultFields = ReflectUtils.getAllDeclaredFields(select.getResultClass());
+
         final LinkedHashSet<String> queryAllFieldNames = new LinkedHashSet<>();
         //先处理用户自定义的查询列
         for (String fieldName : queryColumns) {
             final TableColumnInfo tableColumnInfo = tableInfo.getTableColumnInfos().stream().filter(tci -> tci.getField().getName().equals(fieldName))
                     .findFirst().orElseGet(() -> {
-                        final String columnName = getColumn(fieldName);
+                        final String columnName = getColumnAliasName(fieldName);
                         //加入限定符，与集合中tableInfo进行比较
                         final String splicingColumnName = splicingName(tableInfo.getDataSourceName(), columnName);
                         final TableColumnInfo matchTableColumnInfo = tableInfo.getTableColumnInfos().stream().filter(bti -> bti.getColumn().equalsIgnoreCase(splicingColumnName)).findAny()
@@ -76,13 +49,13 @@ public class SelectHelper {
                         return matchTableColumnInfo;
                     });
             queryAllFieldNames.add(tableColumnInfo.getField().getName());
-            if (StringUtils.isEmpty(tableColumnInfo.getTableAlias())) {
-                throw new BraveException("多表查询时需要指定字段别名");
-            }
+//            if (StringUtils.isEmpty(tableColumnInfo.getTableAlias())) {
+//                throw new BraveException("多表查询时需要指定字段别名");
+//            }
             final SelectParam selectParam = selectParamMap.get(fieldName);
             //赋值自定义列
             if (selectParam.isCustomColumn()) {
-                selectBuilder.append(selectParam.getFieldName()).append(", ");
+//                selectBuilder.append(selectParam.getFieldName()).append(", ");
             }
             //赋值带有函数的列
             else if (selectParam.getFunctions() != null) {
@@ -122,17 +95,14 @@ public class SelectHelper {
 //    }
 
     /**
-     * 校验用户自定义查询列表达式
+     * 检索出用户指定的列的别名，这里的列名是未经校验的
      *
-     * @return 检索出的列名
+     * @return 检索出的列的别名
      */
-    public static String getColumn(String expr) {
+    public static String getColumnAliasName(String expr) {
         //判断自定义表达式
         final String trim = expr.trim();
         final String columnName = trim.substring(trim.lastIndexOf(" ") + 1);
-        if (columnName.isEmpty()) {
-            throw new BraveException("自定义查询列：" + expr + " 未指定别名");
-        }
         return Check.unSplicingName(columnName);
     }
 
@@ -153,7 +123,7 @@ public class SelectHelper {
                 setColumnName(tableColumnInfo, prefixBuilder, datasource);
             }
             suffixBuilder.append(")");
-            for (int i1 = 0; i1 < function.getParam().length; i1++) {
+            for (int i1 = 0; i1 < function.getParams().length; i1++) {
                 suffixBuilder.append("?,");
             }
         }
@@ -170,7 +140,7 @@ public class SelectHelper {
      */
     private static StringBuilder assignmentRegular(final TableColumnInfo tableColumnInfo, String datasource) {
         final StringBuilder columnBuilder = new StringBuilder();
-        columnBuilder.append(splicingName(datasource, tableColumnInfo.getTableAlias())).append(".");
+        columnBuilder.append(splicingName(datasource, "tableColumnInfo.getTableAlias()")).append(".");
         columnBuilder.append(tableColumnInfo.getColumn());
         columnBuilder.append(", ");
         return columnBuilder;
@@ -178,12 +148,12 @@ public class SelectHelper {
 
 
     private static void setColumnName(final TableColumnInfo tableColumnInfo, final StringBuilder columnBuilder, String datasource) {
-        final String tableAlias = tableColumnInfo.getTableAlias();
-        if (StringUtils.isEmpty(tableAlias)) {
-            throw new BraveException("使用Select查询时，必须指定表别名");
-        }
-        final String alias = splicingName(datasource, tableAlias);
-        columnBuilder.append(alias).append(".");
+//        final String tableAlias = tableColumnInfo.getTableAlias();
+//        if (StringUtils.isEmpty(tableAlias)) {
+//            throw new BraveException("使用Select查询时，必须指定表别名");
+//        }
+//        final String alias = splicingName(datasource, tableAlias);
+//        columnBuilder.append(alias).append(".");
         columnBuilder.append(tableColumnInfo.getColumn());
     }
 

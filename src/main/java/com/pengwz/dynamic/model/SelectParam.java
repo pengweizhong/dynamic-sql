@@ -1,13 +1,15 @@
 package com.pengwz.dynamic.model;
 
+import com.pengwz.dynamic.utils.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
+
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 public class SelectParam {
-    /**
-     * 字段名
-     */
-    private String fieldName;
+    private String tableName;
+    private TableColumnInfo tableColumnInfo;
     /**
      * 是否为自定义列
      */
@@ -16,6 +18,11 @@ public class SelectParam {
      * 该字段对应的列表函数
      */
     private List<Function> functions;
+    /**
+     * 当前查询列的优先级，同样重复查询的情况下，优先级低的将被覆盖；
+     * 按照惯例，数值越低优先级越高。取值参考范围在{@code Integer.MIN_VALUE} - {@code Integer.MAX_VALUE}
+     */
+    private int priority;
 
     public static class Function {
         /**
@@ -25,36 +32,55 @@ public class SelectParam {
         /**
          * 入参值
          */
-        private Object[] param;
+        private Object[] params;
 
         public String getFunc() {
             return func;
         }
 
-        public Object[] getParam() {
-            return param;
+        public Object[] getParams() {
+            return params;
+        }
+
+        public static FunctionBuilder builder() {
+            return new FunctionBuilder(new Function());
+        }
+
+        public static class FunctionBuilder {
+
+            private final Function function;
+
+            private FunctionBuilder(Function function) {
+                this.function = function;
+            }
+
+            public FunctionBuilder func(String func) {
+                function.func = func;
+                return this;
+            }
+
+            public FunctionBuilder param(Object... params) {
+                function.params = params;
+                return this;
+            }
+
+            public Function build() {
+                return function;
+            }
         }
 
         @Override
         public String toString() {
-            return "Function{" +
+            return "{" +
                     "func='" + func + '\'' +
-                    ", param=" + Arrays.toString(param) +
+                    ", params=" + Arrays.toString(params) +
                     '}';
         }
     }
 
 
-    public String getFieldName() {
-        return fieldName;
-    }
-
     public List<Function> getFunctions() {
         return functions;
-    }
-
-    public void setFieldName(String fieldName) {
-        this.fieldName = fieldName;
     }
 
     public void setFunctions(List<Function> functions) {
@@ -69,39 +95,48 @@ public class SelectParam {
         isCustomColumn = customColumn;
     }
 
+    public TableColumnInfo getTableColumnInfo() {
+        return tableColumnInfo;
+    }
+
+    public void setTableColumnInfo(TableColumnInfo tableColumnInfo) {
+        this.tableColumnInfo = tableColumnInfo;
+    }
+
+    public int getPriority() {
+        return priority;
+    }
+
+    public void setPriority(int priority) {
+        this.priority = priority;
+    }
+
+    public String getTableName() {
+        return tableName;
+    }
+
+    public void setTableName(String tableName) {
+        this.tableName = tableName;
+    }
+
     @Override
     public String toString() {
-        return "SelectParam{" +
-                "fieldName='" + fieldName + '\'' +
-                ", isCustomColumn=" + isCustomColumn +
-                ", functions=" + functions +
-                '}';
-    }
-
-    public static FunctionBuilder functionBuilder() {
-        return new FunctionBuilder(new Function());
-    }
-
-    public static class FunctionBuilder {
-
-        private final Function function;
-
-        private FunctionBuilder(Function function) {
-            this.function = function;
+        final StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append("{");
+        final ArrayList<String> strings = new ArrayList<>();
+        if (StringUtils.isNotBlank(tableName)) {
+            strings.add("tableName=" + tableName);
         }
-
-        public FunctionBuilder func(String func) {
-            function.func = func;
-            return this;
+        if (tableColumnInfo != null) {
+            strings.add("columnName=" + tableColumnInfo.getColumn());
         }
-
-        public FunctionBuilder param(Object[] param) {
-            function.param = param;
-            return this;
+        if (CollectionUtils.isNotEmpty(functions)) {
+            strings.add("usedFunctions=" + StringUtils.join(functions, ","));
         }
-
-        public Function build() {
-            return function;
+        if (!strings.isEmpty()) {
+            stringBuilder.append(StringUtils.join(strings, ","));
         }
+        stringBuilder.append("}");
+        return stringBuilder.toString();
     }
 }

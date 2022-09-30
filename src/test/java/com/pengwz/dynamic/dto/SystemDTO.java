@@ -10,18 +10,18 @@ import lombok.*;
 @ToString(callSuper = true)
 //@Table(isCache = false)
 public class SystemDTO extends BaseDTO {
+
+    private Integer systemRoleUserEntityId;
+    private Integer systemRoleEntityId;
     /**
      * 姓名
      */
-//    @Column(dependentTableClass = SystemUserEntity.class)
     private String nickName;
     /**
      * 手机号
      */
-//    @Column(dependentTableClass = SystemUserEntity.class)
     private String phone;
 
-    //    @Column(value = "id", dependentTableClass = SystemUserEntity.class)
     private Integer userId;
 
     /**

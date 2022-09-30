@@ -218,17 +218,21 @@ public class MultiBraveSqlTest {
      * 1 结果集映射规则。根据注解找到字段名，然后根据字段名匹配结果集对象字段名
      * 2 函数需要支持传入其他字段,如ifnull
      * 3 加入limit
+     * 4 使用聚合函数时，接收对象不是自定义对象的 问题
      */
     @Test
     public void test6() {
         final Select.SelectBuilder<SystemDTO> selectBuilder = Select.builder(SystemDTO.class)
-                .column(SystemRoleEntity::getRoleName).end()
                 .column(SystemRoleEntity::getRoleName).left(1).repeat(2).subString(10, 99).dayName().lPad(1, "212121").end()
+                .column(SystemRoleEntity::getRoleName).end()
                 .column(SystemRoleEntity::getRoleDesc).trim().end()
-                .column(SystemRoleUserEntity::getRoleId).end()
-                .customColumn("   id  ").end()
-                .customColumn("t_system_role_user.id +1  id  ").end();
-        selectBuilder.removeColumn(SystemRoleEntity::getRoleDesc).end();
+                .column(SystemRoleUserEntity::getId).alias(SystemDTO::getSystemRoleUserEntityId).end()
+                .column(SystemRoleUserEntity::getCreateId).alias(SystemDTO::getSystemRoleUserEntityId).end()
+                .column(SystemRoleEntity::getId).alias(SystemDTO::getSystemRoleEntityId).end()
+                .column("   id  ").end()
+                .column("t_system_role_user.id +1  id  ").end()
+                .allColumn(SystemRoleUserEntity.class).end();
+        selectBuilder.ignoreColumn(SystemRoleEntity::getRoleName).end();
         final Select<SystemDTO> select = selectBuilder.build();
 
 //        final Select.SelectBuilder<SystemDTO> builder = Select.builder(SystemDTO.class);

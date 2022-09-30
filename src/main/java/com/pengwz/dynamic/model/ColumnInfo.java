@@ -8,10 +8,10 @@ public class ColumnInfo {
      */
     private String value;
 
-    /**
-     * 此字段从属表，它将还在多表join时使用
-     */
-    private TableInfo dependentTableInfo;
+//    /**
+//     * 此字段从属表，它将还在多表join时使用
+//     */
+//    private TableInfo dependentTableInfo;
 
     /**
      * JSON转换时所使用的序列化模式，默认值不会序列化null值 ，为null表名该字段不需要转JSON
@@ -34,11 +34,11 @@ public class ColumnInfo {
         this.jsonMode = jsonMode;
     }
 
-    public TableInfo getDependentTableInfo() {
-        return dependentTableInfo;
-    }
-
-    public void setDependentTableInfo(TableInfo dependentTableInfo) {
-        this.dependentTableInfo = dependentTableInfo;
-    }
+//    public TableInfo getDependentTableInfo() {
+//        return dependentTableInfo;
+//    }
+//
+//    public void setDependentTableInfo(TableInfo dependentTableInfo) {
+//        this.dependentTableInfo = dependentTableInfo;
+//    }
 }

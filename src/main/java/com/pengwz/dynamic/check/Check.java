@@ -122,23 +122,23 @@ public class Check {
             final ColumnInfo columnInfo = getFixColumnInfo(field, dataSource);
             tableColumnInfo.setColumn(columnInfo.getValue());
             tableColumnInfo.setJsonMode(columnInfo.getJsonMode());
-            final TableInfo dependentTableInfo = columnInfo.getDependentTableInfo();
-            if (dependentTableInfo != null) {
-                tableColumnInfo.setTableAlias(dependentTableInfo.getTableName());
-                final String dataSourceName = dependentTableInfo.getDataSourceName();
-                joinDataSourceNameSet.add(dataSourceName);
-            }
+//            final TableInfo dependentTableInfo = columnInfo.getDependentTableInfo();
+//            if (dependentTableInfo != null) {
+//                tableColumnInfo.setTableAlias(dependentTableInfo.getTableName());
+//                final String dataSourceName = dependentTableInfo.getDataSourceName();
+//                joinDataSourceNameSet.add(dataSourceName);
+//            }
             tableColumnInfos.add(tableColumnInfo);
         }
         //为null时，走多表查询，当前对象为结果集对象，并非表对象
         //如果数据源集合不为空，则需要校验
-        if (dataSource == null && !joinDataSourceNameSet.isEmpty()) {
-            if (joinDataSourceNameSet.size() > 1) {
-                throw new BraveException("多表操作时，不可以跨数据源！发生错误的类：" + currentClass.getCanonicalName());
-            }
-            //给定多表查询的数据源
-            dataSource = joinDataSourceNameSet.iterator().next();
-        }
+//        if (dataSource == null && !joinDataSourceNameSet.isEmpty()) {
+//            if (joinDataSourceNameSet.size() > 1) {
+//                throw new BraveException("多表操作时，不可以跨数据源！发生错误的类：" + currentClass.getCanonicalName());
+//            }
+//            //给定多表查询的数据源
+//            dataSource = joinDataSourceNameSet.iterator().next();
+//        }
         tableInfo.setDataSourceName(dataSource);
         DataSourceInfo dataSourceInfo = ContextApplication.getDataSourceInfo(dataSource);
         tableInfo.setTableName(getTableName(tableName, dataSourceInfo.getDbType()));
@@ -186,7 +186,7 @@ public class Check {
                 columnInfo.setValue(columnAnno.value().replace(" ", ""));
             }
             final TableInfo dependentTableInfo = getDependentTableInfo(columnAnno);
-            columnInfo.setDependentTableInfo(dependentTableInfo);
+//            columnInfo.setDependentTableInfo(dependentTableInfo);
             return columnInfo;
         }
         ColumnJson columnJson = field.getAnnotation(ColumnJson.class);
@@ -197,7 +197,7 @@ public class Check {
                 columnInfo.setValue(columnJson.value().replace(" ", ""));
             }
             final TableInfo dependentTableInfo = getDependentTableInfo(columnJson);
-            columnInfo.setDependentTableInfo(dependentTableInfo);
+//            columnInfo.setDependentTableInfo(dependentTableInfo);
         } else {
             columnInfo.setValue(com.pengwz.dynamic.utils.StringUtils.caseField(field.getName()));
         }
