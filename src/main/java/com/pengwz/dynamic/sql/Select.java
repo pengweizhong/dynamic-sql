@@ -4,6 +4,7 @@ import com.pengwz.dynamic.anno.Table;
 import com.pengwz.dynamic.constant.Constant;
 import com.pengwz.dynamic.exception.BraveException;
 import com.pengwz.dynamic.model.End;
+import com.pengwz.dynamic.model.End.DefaultEnd;
 import com.pengwz.dynamic.model.SelectParam;
 import com.pengwz.dynamic.model.SelectParam.Function;
 import com.pengwz.dynamic.model.TableColumnInfo;
@@ -25,8 +26,6 @@ public class Select<R> {
     private final Class<R> resultClass;
     //查询的SQL语句
     private final StringBuilder selectSql;
-    //是否查询全部列，该属性暂未启用
-    private boolean isSelectAll;
     //查询参数集合，在SQL执行时将会替代占位符，防止SQL注入
     private final List<Object> params = new ArrayList<>();
     //查询的列MAP  key是(结果成员属性的字段名)
@@ -80,10 +79,6 @@ public class Select<R> {
 
     protected Map<String, SelectParam> getSelectParamMap() {
         return selectParamMap;
-    }
-
-    public boolean isSelectAll() {
-        return isSelectAll;
     }
 
     protected List<Object> getParams() {
@@ -148,7 +143,8 @@ public class Select<R> {
         }
 
         /**
-         * 自定义查询列，键入的查询列在结束时必须指定别名，该别名要求必须真实存在于结果集中，并且与字段名保持一致，否则查询结果会无法映射到具体的字段上。<br>
+         * 自定义查询列，键入的查询列在结束时必须指定别名，该别名要求必须真实存在于结果集中，并且与字段名保持一致，
+         * 否则查询结果会无法映射到具体的字段上。<br>
          * 查询字段的格式为：表名+列名 + 具体语句
          *
          * <p>
@@ -190,8 +186,7 @@ public class Select<R> {
          * @see Table
          */
         public <E> End<SelectBuilder<R>> allColumn(Class<E> tableClass) {
-            getSelect().isSelectAll = true;
-            return new End<>(this);
+            return new SelectBuilderEnd<>(this, tableClass);
         }
 
 
@@ -221,7 +216,7 @@ public class Select<R> {
                     selectParamMap.remove(fieldName);
                 }
             }
-            return new End<>(this);
+            return new DefaultEnd<>(this);
         }
 
 
@@ -240,6 +235,47 @@ public class Select<R> {
             return select;
         }
 
+        private static class SelectBuilderEnd<R, E> extends End<SelectBuilder<R>> {
+
+            private final Class<E> tableClass;
+
+            protected SelectBuilderEnd(SelectBuilder<R> r, Class<E> tableClass) {
+                super(r);
+                super.register(this);
+                this.tableClass = tableClass;
+            }
+
+            @Override
+            protected End<SelectBuilder<R>> doEnd() {
+                TableInfo tableInfo = ContextApplication.getTableInfo(tableClass);
+                SelectBuilder<R> selectBuilder = this.get();
+                Map<String, SelectParam> selectParamMap = selectBuilder.getSelect().getSelectParamMap();
+                for (TableColumnInfo tableColumnInfo : tableInfo.getTableColumnInfos()) {
+                    String fieldName = tableColumnInfo.getField().getName();
+                    SelectParam selectParam = selectParamMap.get(fieldName);
+                    int currentPriority = 0;
+                    if (selectParam == null) {
+                        selectParam = new SelectParam();
+                        selectParam.setTableName(tableInfo.getTableName());
+                        selectParam.setTableColumnInfo(tableColumnInfo);
+                        selectParam.setPriority(currentPriority);
+                        selectParamMap.put(fieldName, selectParam);
+                    } else {
+                        int priority = selectParam.getPriority();
+                        //将数值大的覆盖
+                        if (priority > currentPriority) {
+                            selectParamMap.remove(fieldName);
+                            SelectParam param = new SelectParam();
+                            param.setTableName(tableInfo.getTableName());
+                            param.setTableColumnInfo(tableColumnInfo);
+                            param.setPriority(currentPriority);
+                            selectParamMap.put(fieldName, param);
+                        }
+                    }
+                }
+                return this;
+            }
+        }
     }
 
     public static class RemoveColumn<R> {
@@ -285,17 +321,15 @@ public class Select<R> {
             final Map<String, SelectParam> selectParamMap = selectBuilder.getSelect().getSelectParamMap();
             if (selectParamMap.get(aliasName) != null) {
                 if (log.isDebugEnabled()) {
-                    log.debug("查询了重复的列，仅本次列查询生效，查询重复的字段名：" + aliasName);
+                    log.debug("查询结果指向了重复的列，仅本次列查询生效，查询重复的字段名：" + aliasName);
                 }
                 selectParamMap.remove(aliasName);
             }
             final SelectParam selectParam = new SelectParam();
-            selectParam.setCustomColumn(true);
+            selectParam.setCustomColumn(expr);
             selectParam.setPriority(Integer.MIN_VALUE);
             List<Function> functions = new ArrayList<>();
-            if (params != null) {
-                functions.add(Function.builder().func(null).param(params).build());
-            }
+            functions.add(Function.builder().func(null).params(params).build());
             selectParam.setFunctions(functions);
             selectParamMap.put(aliasName, selectParam);
             return selectBuilder;
@@ -344,10 +378,9 @@ public class Select<R> {
         /**
          * 结束当前对象的构建，并将select查询对象返回
          *
-         * @return SelectBuilder
+         * @return End<SelectBuilder < R>> end
          */
-        @Override
-        public SelectBuilder<R> end() {
+        protected End<SelectBuilder<R>> doEnd() {
             final String tableClassname = ReflectUtils.getImplClassname(queryColumnFn);
             final Class<?> tableClass = ReflectUtils.forName(tableClassname);
             final TableInfo tableInfo = ContextApplication.getTableInfo(tableClass);
@@ -358,20 +391,20 @@ public class Select<R> {
             if (selectParamMap.get(alias) != null) {
                 final SelectParam remove = selectParamMap.remove(alias);
                 if (log.isDebugEnabled()) {
-                    log.debug("查询了重复的列，仅本次列查询生效，" +
-                            "重复的字段名：" + fieldName
+                    log.debug("查询结果指向了重复的列，仅本次列查询生效，" +
+                            "查询重复的字段名：" + fieldName
                             + "，遗弃的参数：" + remove);
                 }
             }
             final SelectParam selectParam = new SelectParam();
             selectParam.setTableName(tableInfo.getTableName());
-            selectParam.setCustomColumn(false);
             selectParam.setTableColumnInfo(tableColumnInfo);
             selectParam.setFunctions(functions);
             selectParam.setPriority(Integer.MIN_VALUE);
             selectParamMap.put(alias, selectParam);
-            return selectBuilder;
+            return this;
         }
+
 
         /**
          * 计算该字段的绝对值
@@ -418,9 +451,7 @@ public class Select<R> {
          * @return 当前自定义字段对象
          */
         public QueryColumn<R, E> left(int len) {
-//            final Map<String, SelectParam> selectParamMap = getSelectBuilder().getSelect().getSelectParamMap();
-//            SelectHelper.putSelectParam(selectParamMap, fieldName, "left", len);
-            functions.add(Function.builder().func("left").param(len).build());
+            functions.add(Function.builder().func("left").params(len).build());
             return this;
         }
 
@@ -434,7 +465,7 @@ public class Select<R> {
          * @return 当前自定义字段对象
          */
         public QueryColumn<R, E> lPad(int len, String filling) {
-            functions.add(Function.builder().func("lpad").param(filling).build());
+            functions.add(Function.builder().func("lpad").params(len, filling).build());
             return this;
         }
 
@@ -448,7 +479,7 @@ public class Select<R> {
          * @return 当前自定义字段对象
          */
         public QueryColumn<R, E> rPad(int len, String filling) {
-            functions.add(Function.builder().func("rpad").param(len, filling).build());
+            functions.add(Function.builder().func("rpad").params(len, filling).build());
             return this;
         }
 
@@ -497,7 +528,7 @@ public class Select<R> {
          * @return 当前自定义字段对象
          */
         public QueryColumn<R, E> repeat(int num) {
-            functions.add(Function.builder().func("repeat").param(num).build());
+            functions.add(Function.builder().func("repeat").params(num).build());
             return this;
         }
 
@@ -511,7 +542,7 @@ public class Select<R> {
          * @return 当前自定义字段对象
          */
         public QueryColumn<R, E> replace(String oldStr, String newStr) {
-            functions.add(Function.builder().func("replace").param(oldStr, newStr).build());
+            functions.add(Function.builder().func("replace").params(oldStr, newStr).build());
             return this;
         }
 
@@ -525,7 +556,7 @@ public class Select<R> {
          * @return 当前自定义字段对象
          */
         public QueryColumn<R, E> subString(int startIndex, int endIndex) {
-            functions.add(Function.builder().func("substring").param(startIndex, endIndex).build());
+            functions.add(Function.builder().func("substring").params(startIndex, endIndex).build());
             return this;
         }
 
@@ -614,7 +645,7 @@ public class Select<R> {
         }
 
         /**
-         * 返回对应的工作日索引，0表示周一，1表示周二...6表示周日
+         * 返回对应的工作日索引，通常0表示周一，1表示周二...6表示周日
          * <p>
          * example select weekday(column)
          *
@@ -790,7 +821,7 @@ public class Select<R> {
          * @return 当前自定义字段对象
          */
         public QueryColumn<R, E> ifNull(Object other) {
-            functions.add(Function.builder().func("ifnull").build());
+            functions.add(Function.builder().func("ifnull").params(other).build());
             return this;
         }
 

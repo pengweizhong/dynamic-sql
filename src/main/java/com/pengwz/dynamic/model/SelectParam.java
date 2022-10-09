@@ -8,12 +8,13 @@ import java.util.Arrays;
 import java.util.List;
 
 public class SelectParam {
+    private String dataSourceName;
     private String tableName;
     private TableColumnInfo tableColumnInfo;
     /**
-     * 是否为自定义列
+     * 自定义列
      */
-    private boolean isCustomColumn;
+    private String customColumn;
     /**
      * 该字段对应的列表函数
      */
@@ -59,7 +60,7 @@ public class SelectParam {
                 return this;
             }
 
-            public FunctionBuilder param(Object... params) {
+            public FunctionBuilder params(Object... params) {
                 function.params = params;
                 return this;
             }
@@ -87,14 +88,6 @@ public class SelectParam {
         this.functions = functions;
     }
 
-    public boolean isCustomColumn() {
-        return isCustomColumn;
-    }
-
-    public void setCustomColumn(boolean customColumn) {
-        isCustomColumn = customColumn;
-    }
-
     public TableColumnInfo getTableColumnInfo() {
         return tableColumnInfo;
     }
@@ -119,6 +112,22 @@ public class SelectParam {
         this.tableName = tableName;
     }
 
+    public String getDataSourceName() {
+        return dataSourceName;
+    }
+
+    public void setDataSourceName(String dataSourceName) {
+        this.dataSourceName = dataSourceName;
+    }
+
+    public String getCustomColumn() {
+        return customColumn;
+    }
+
+    public void setCustomColumn(String customColumn) {
+        this.customColumn = customColumn;
+    }
+
     @Override
     public String toString() {
         final StringBuilder stringBuilder = new StringBuilder();
@@ -129,6 +138,8 @@ public class SelectParam {
         }
         if (tableColumnInfo != null) {
             strings.add("columnName=" + tableColumnInfo.getColumn());
+        } else if (StringUtils.isNotBlank(customColumn)) {
+            strings.add("columnName=" + customColumn);
         }
         if (CollectionUtils.isNotEmpty(functions)) {
             strings.add("usedFunctions=" + StringUtils.join(functions, ","));

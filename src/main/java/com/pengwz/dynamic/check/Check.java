@@ -65,7 +65,7 @@ public class Check {
     public static TableInfo builderTableInfo(Class<?> currentClass) {
         Table table = currentClass.getAnnotation(Table.class);
         if (table == null) {
-            throw new BraveException("实体类必须指定Table注解，发生在类：" + currentClass.getCanonicalName());
+            throw new BraveException("表实体类必须指定Table注解，发生在类：" + currentClass.getCanonicalName());
         }
         String tableName = table.value().trim();
         if (StringUtils.isEmpty(tableName)) {

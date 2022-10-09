@@ -223,14 +223,16 @@ public class MultiBraveSqlTest {
     @Test
     public void test6() {
         final Select.SelectBuilder<SystemDTO> selectBuilder = Select.builder(SystemDTO.class)
-                .column(SystemRoleEntity::getRoleName).left(1).repeat(2).subString(10, 99).dayName().lPad(1, "212121").end()
                 .column(SystemRoleEntity::getRoleName).end()
-                .column(SystemRoleEntity::getRoleDesc).trim().end()
+                .column(SystemRoleEntity::getRoleName).left(1).repeat(2).subString(10, 99).dayName().lPad(1, "212121").end()
+//                .column(SystemRoleEntity::getRoleDesc).trim().end()
                 .column(SystemRoleUserEntity::getId).alias(SystemDTO::getSystemRoleUserEntityId).end()
-                .column(SystemRoleUserEntity::getCreateId).alias(SystemDTO::getSystemRoleUserEntityId).end()
-                .column(SystemRoleEntity::getId).alias(SystemDTO::getSystemRoleEntityId).end()
+//                .column(SystemRoleUserEntity::getCreateId).alias(SystemDTO::getSystemRoleUserEntityId).end()
+//                .column(SystemRoleEntity::getId).alias(SystemDTO::getSystemRoleEntityId).end()
+                .column(SystemRoleEntity::getId).end()
                 .column("   id  ").end()
-                .column("t_system_role_user.id +1  id  ").end()
+                .column("t_system_role_user.id +1  `id`  ").end()
+                .allColumn(SystemRoleUserEntity.class).end()
                 .allColumn(SystemRoleUserEntity.class).end();
         selectBuilder.ignoreColumn(SystemRoleEntity::getRoleName).end();
         final Select<SystemDTO> select = selectBuilder.build();
