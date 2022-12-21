@@ -26,8 +26,8 @@ public class Select<R> {
     private final Class<R> resultClass;
     //查询的SQL语句
     private final StringBuilder selectSql;
-    //查询参数集合，在SQL执行时将会替代占位符，防止SQL注入
-    private final List<Object> params = new ArrayList<>();
+    //查询参数集合，在SQL执行时将会替代占位符，防止SQL注入,是查询的别名
+    private final Map<String, List<Object>> paramsMap = new LinkedHashMap<>();
     //查询的列MAP  key是(结果成员属性的字段名)
     private final Map<String, SelectParam> selectParamMap = new LinkedHashMap<>();
 
@@ -81,8 +81,8 @@ public class Select<R> {
         return selectParamMap;
     }
 
-    protected List<Object> getParams() {
-        return params;
+    protected Map<String, List<Object>> getParamsMap() {
+        return paramsMap;
     }
 
     public String getSelectSql() {
@@ -132,7 +132,9 @@ public class Select<R> {
          * </pre>
          * <p>
          * 注意，如果查询了相同的列，那么只有最后一次查询才会生效。
-         * 此方法优先级与{@link this#column(String, Object...)} 等同，查询的结果以最后一次声明的为准。
+         * 此方法优先级与{@link this#column(String, Object...)} 等同，查询的结果以最后一次声明的为准。<br>
+         * 当此方法与{@link this#allColumn(Class)}同时使用时，通常情况下，应当让{@code allColumn}在前，
+         * {@code column}在后，以免自定义的查询列被覆盖。
          *
          * @param fn  列名
          * @param <E> 其他表实体类
@@ -259,6 +261,7 @@ public class Select<R> {
                         selectParam.setTableName(tableInfo.getTableName());
                         selectParam.setTableColumnInfo(tableColumnInfo);
                         selectParam.setPriority(currentPriority);
+                        selectParam.setDataSourceName(tableInfo.getDataSourceName());
                         selectParamMap.put(fieldName, selectParam);
                     } else {
                         int priority = selectParam.getPriority();
@@ -269,6 +272,7 @@ public class Select<R> {
                             param.setTableName(tableInfo.getTableName());
                             param.setTableColumnInfo(tableColumnInfo);
                             param.setPriority(currentPriority);
+                            param.setDataSourceName(tableInfo.getDataSourceName());
                             selectParamMap.put(fieldName, param);
                         }
                     }
@@ -299,7 +303,7 @@ public class Select<R> {
         }
     }
 
-    public static class CustomQueryColumn<R> {
+    public static class CustomQueryColumn<R> extends End<SelectBuilder<R>> {
         //查询构建者
         private final SelectBuilder<R> selectBuilder;
         //用户键入的自定义查询语句
@@ -308,12 +312,15 @@ public class Select<R> {
         private final Object[] params;
 
         public CustomQueryColumn(SelectBuilder<R> selectBuilder, String expr, Object[] params) {
+            super(selectBuilder);
+            super.register(this);
             this.selectBuilder = selectBuilder;
             this.expr = expr;
             this.params = params;
         }
 
-        public SelectBuilder<R> end() {
+        @Override
+        protected End<SelectBuilder<R>> doEnd() {
             if (StringUtils.isEmpty(expr)) {
                 throw new BraveException("查询自定义列不可为空");
             }
@@ -332,7 +339,7 @@ public class Select<R> {
             functions.add(Function.builder().func(null).params(params).build());
             selectParam.setFunctions(functions);
             selectParamMap.put(aliasName, selectParam);
-            return selectBuilder;
+            return this;
         }
     }
 
@@ -401,7 +408,14 @@ public class Select<R> {
             selectParam.setTableColumnInfo(tableColumnInfo);
             selectParam.setFunctions(functions);
             selectParam.setPriority(Integer.MIN_VALUE);
+            selectParam.setDataSourceName(tableInfo.getDataSourceName());
             selectParamMap.put(alias, selectParam);
+            for (Function function : functions) {
+                final Object[] params = function.getParams();
+                if (params != null) {
+                    //TODO   汪Map中添加参数
+                }
+            }
             return this;
         }
 
