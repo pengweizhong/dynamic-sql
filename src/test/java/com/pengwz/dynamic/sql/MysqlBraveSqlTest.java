@@ -380,9 +380,10 @@ public class MysqlBraveSqlTest {
     public void testBrackets() {
         final DynamicSql<UserEntity> dynamicSql = DynamicSql.createDynamicSql();
         dynamicSql.andEqualTo(UserEntity::getIsDelete, Boolean.FALSE);
+        dynamicSql.andEqualTo(UserEntity::getEmail, "pengwz@hotmail.com");
 //        dynamicSql.andBetween(UserEntity::getId, 1, 111111);
         dynamicSql.startBrackets();
-        dynamicSql.andEqualTo(UserEntity::getAccountNo, "peng");
+        dynamicSql.orEqualTo(UserEntity::getAccountNo, "peng");
         dynamicSql.endBrackets();
         final List<UserEntity> select = BraveSql.build(dynamicSql, UserEntity.class).select();
         System.out.println(select);
