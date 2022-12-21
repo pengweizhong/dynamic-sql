@@ -7,8 +7,7 @@ import com.pengwz.dynamic.entity.UserEntity;
 import com.pengwz.dynamic.entity.UserRoleEntity;
 import com.pengwz.dynamic.entity.oracle.ActEvtLogEntity;
 import com.pengwz.dynamic.exception.BraveException;
-import com.pengwz.dynamic.utils.ConverterUtils;
-import com.pengwz.dynamic.utils.convert.ConverterAdapter;
+import com.sun.org.apache.xpath.internal.SourceTree;
 import org.apache.commons.lang3.RandomUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -92,7 +91,7 @@ public class MysqlBraveSqlTest {
             userEntity.setAccountNo("account_" + i);
             userEntity.setUsername(USER_NAME_LIST.get(RandomUtils.nextInt(0, USER_NAME_LIST.size() - 1)));
             userEntity.setBirthday(LocalDate.now().minusDays(RandomUtils.nextLong(100, 3000)));
-            userEntity.setDelete(RandomUtils.nextBoolean());
+            userEntity.setIsDelete(RandomUtils.nextBoolean());
             userEntity.setCreateDate(LocalDateTime.now());
             userEntity.setUpdateDate(LocalDateTime.now());
             userEntity.setDesc("　　锦瑟无端五十弦，一弦一柱思华年。\n" +
@@ -346,11 +345,51 @@ public class MysqlBraveSqlTest {
         System.out.println(integer);
     }
 
+    @Test
     public void testInsertActive() {
+        final UserEntity userEntity = new UserEntity();
+        userEntity.setAccountNo("peng");
+        long id = 111111L;
+        userEntity.setId(id);
+        BraveSql.build(UserEntity.class).insertActive(userEntity);
+        System.out.println(userEntity);
+        System.out.println(BraveSql.build(UserEntity.class).selectByPrimaryKey(id));
     }
 
+    @Test
     public void testBatchInsert() {
+        BraveSql.build(UserEntity.class).delete();
+        final ArrayList<UserEntity> objects = new ArrayList<>();
+        for (long i = 0; i < 10; i++) {
+            final UserEntity userEntity = new UserEntity();
+            userEntity.setAccountNo("peng" + i);
+            if (i == 5) {
+                userEntity.setId(null);
+            } else {
+                userEntity.setId(i);
+            }
+            objects.add(userEntity);
+        }
+        System.out.println(objects);
+        BraveSql.build(UserEntity.class).batchInsert(objects);
+        System.out.println(objects);
+
     }
+
+    @Test
+    public void testBrackets() {
+        final DynamicSql<UserEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.andEqualTo(UserEntity::getIsDelete, Boolean.FALSE);
+        dynamicSql.andEqualTo(UserEntity::getEmail, "pengwz@hotmail.com");
+//        dynamicSql.andBetween(UserEntity::getId, 1, 111111);
+        dynamicSql.startBrackets();
+        dynamicSql.orEqualTo(UserEntity::getAccountNo, "peng");
+        dynamicSql.endBrackets();
+        final List<UserEntity> select = BraveSql.build(dynamicSql, UserEntity.class).select();
+        System.out.println(select);
+
+    }
+
 
     public void testInsertOrUpdate() {
     }
@@ -542,7 +581,7 @@ public class MysqlBraveSqlTest {
         assertNull(jobUserEntity1);
     }
 
-//    @Test
+    //    @Test
     public void testSQLInjection_selectSingle2() {
         BraveSql.build(ActEvtLogEntity.class).delete();
 

@@ -486,7 +486,12 @@ public class SqlImpl<T> implements Sqls<T> {
             } else {
                 object = generatedKeys.getObject(RETURN_GENERATED_KEYS, tableColumnInfoPrimaryKey.getField().getType());
             }
-            ReflectUtils.setFieldValue(tableColumnInfoPrimaryKey.getField(), next, object);
+            final Object pkValue = ReflectUtils.getFieldValue(tableInfoPrimaryKey.getField(), next);
+            //如果用户没有给定主键值，那么就将系统返回的主键赋值到当前对象上
+            //修改成的0，可以存在,新添加的0，不允许存在，会根据行号改变，所以这里用户赋值0的话，主键要进行重新赋值
+            if (pkValue == null || (pkValue instanceof Number && ((Number) pkValue).doubleValue() == 0)) {
+                ReflectUtils.setFieldValue(tableInfoPrimaryKey.getField(), next, object);
+            }
         }
         return successCount;
     }

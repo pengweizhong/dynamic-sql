@@ -96,11 +96,11 @@ public class UserEntity {
         this.birthday = birthday;
     }
 
-    public Boolean getDelete() {
+    public Boolean getIsDelete() {
         return isDelete;
     }
 
-    public void setDelete(Boolean delete) {
+    public void setIsDelete(Boolean delete) {
         isDelete = delete;
     }
 
