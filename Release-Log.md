@@ -1,6 +1,8 @@
 
-# release/2.1.6 发行说明
+# release/2.1.6 发行说明  
 
+- starter，，没有默认数据源报错的问题
+- ID有值插入时  自增值仍然覆盖的问题
 
 # release/2.1.5.hotfix 发行说明
 
