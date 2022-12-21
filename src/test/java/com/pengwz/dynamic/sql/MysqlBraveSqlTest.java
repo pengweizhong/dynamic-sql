@@ -7,8 +7,6 @@ import com.pengwz.dynamic.entity.UserEntity;
 import com.pengwz.dynamic.entity.UserRoleEntity;
 import com.pengwz.dynamic.entity.oracle.ActEvtLogEntity;
 import com.pengwz.dynamic.exception.BraveException;
-import com.pengwz.dynamic.utils.ConverterUtils;
-import com.pengwz.dynamic.utils.convert.ConverterAdapter;
 import org.apache.commons.lang3.RandomUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -346,10 +344,35 @@ public class MysqlBraveSqlTest {
         System.out.println(integer);
     }
 
+    @Test
     public void testInsertActive() {
+        final UserEntity userEntity = new UserEntity();
+        userEntity.setAccountNo("peng");
+        long id = 111111L;
+        userEntity.setId(id);
+        BraveSql.build(UserEntity.class).insertActive(userEntity);
+        System.out.println(userEntity);
+        System.out.println(BraveSql.build(UserEntity.class).selectByPrimaryKey(id));
     }
 
+    @Test
     public void testBatchInsert() {
+        BraveSql.build(UserEntity.class).delete();
+        final ArrayList<UserEntity> objects = new ArrayList<>();
+        for (long i = 0; i < 10; i++) {
+            final UserEntity userEntity = new UserEntity();
+            userEntity.setAccountNo("peng" + i);
+            if (i == 5) {
+                userEntity.setId(null);
+            } else {
+                userEntity.setId(i);
+            }
+            objects.add(userEntity);
+        }
+        System.out.println(objects);
+        BraveSql.build(UserEntity.class).batchInsert(objects);
+        System.out.println(objects);
+
     }
 
     public void testInsertOrUpdate() {
@@ -542,7 +565,7 @@ public class MysqlBraveSqlTest {
         assertNull(jobUserEntity1);
     }
 
-//    @Test
+    //    @Test
     public void testSQLInjection_selectSingle2() {
         BraveSql.build(ActEvtLogEntity.class).delete();
 
