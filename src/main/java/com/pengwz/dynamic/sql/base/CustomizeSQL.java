@@ -138,12 +138,44 @@ public class CustomizeSQL<T> {
         return ts.isEmpty() ? null : ts.get(0);
     }
 
+    @SuppressWarnings("all")
     public List<T> executeQuery() {
-        if (target.getClassLoader() == null) {
+        if (Map.class.isAssignableFrom(target)) {
+            return (List<T>) executeQueryForMap();
+        } else if (target.getClassLoader() == null) {
             return executeQueryForObject();
         } else {
             return executeQueryForCompoundObject();
         }
+    }
+
+    private List<Map<String, Object>> executeQueryForMap() {
+        if (log.isDebugEnabled()) {
+            log.debug(sql);
+        }
+        PreparedStatement preparedStatement = null;
+        try {
+            preparedStatement = connection.prepareStatement(sql);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            ResultSetMetaData metaData = resultSet.getMetaData();
+            int columnCount = metaData.getColumnCount();
+            List<Map<String, Object>> resultList = new ArrayList<>();
+            while (resultSet.next()) {
+                LinkedHashMap<String, Object> linkedHashMap = new LinkedHashMap<>();
+                for (int i = 1; i <= columnCount; i++) {
+                    String columnName = metaData.getColumnName(i);
+                    Object val = resultSet.getObject(columnName);
+                    linkedHashMap.put(columnName, val);
+                }
+                resultList.add(linkedHashMap);
+            }
+            return resultList;
+        } catch (SQLException | BraveException | ConversionException e) {
+            ExceptionUtils.boxingAndThrowBraveException(e, sql);
+        } finally {
+            DataSourceManagement.close(dataSourceName, null, preparedStatement, connection);
+        }
+        return Collections.emptyList();
     }
 
     /**
