@@ -16,7 +16,11 @@ public class LocalDateConverterAdapter implements ConverterAdapter<LocalDate> {
             return Instant.ofEpochSecond(((Number) columnValue).longValue()).atZone(ZoneId.systemDefault()).toLocalDate();
         }
         if (LocalDate.class.isAssignableFrom(fieldClass)) {
-            return transferString(fieldClass);
+//            if (columnValue instanceof java.sql.Date) {
+//                java.sql.Date date = (java.sql.Date) columnValue;
+//                return date.toLocalDate();
+//            }
+            return transferString(columnValue);
         }
         return null;
     }
