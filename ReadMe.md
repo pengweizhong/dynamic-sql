@@ -226,7 +226,7 @@ public class UserRoleEntity {
         System.out.println(insert);
     }
 ```
-执行结果：
+执行结果：  
 [![gkU3LT.png](https://z3.ax1x.com/2021/04/29/gkU3LT.png)](https://imgtu.com/i/gkU3LT)
 也可以对`UserEntity`原始对象进行输出，其自增ID已经映射到该实体类中，方便在业务中进行其他操作。此处便不再打印输出结果。  
 ### 3.2 <span id="insertByChoose"/>有选择的新增
@@ -241,7 +241,7 @@ public class UserRoleEntity {
         System.out.println(insert);
     }
 ```
-执行结果：
+执行结果：  
 [![gkaPk4.png](https://z3.ax1x.com/2021/04/29/gkaPk4.png)](https://imgtu.com/i/gkaPk4)
 `BraveSql.build(UserEntity.class).insert(entity)`和`BraveSql.build(UserEntity.class).insertActive(entity)`区别在于`insert`插入值时，如果该属性为null，则插入null; `insertActive`插入值时，如果该属性为null，则使用数据库默认值。
 ### 3.3 <span id="insertBatch"/>新增多条记录
@@ -263,7 +263,7 @@ public class UserRoleEntity {
         System.out.println(insert);
     }
 ```
-执行结果：
+执行结果：  
 [![gkdkVS.png](https://z3.ax1x.com/2021/04/29/gkdkVS.png)](https://imgtu.com/i/gkdkVS)
 ### 3.4 <span id="insertOrUpdate"/>新增或更新
 新增或更新，主要场景用于数据新增时，不确定数据是否存在，可以使用`insertOrUpdate`方法，避免插入前还需要查询数据是否存在。
@@ -282,7 +282,7 @@ public class UserRoleEntity {
         System.out.println(insert);
     }
 ```
-执行结果：
+执行结果：  
 [![gkw3OP.png](https://z3.ax1x.com/2021/04/29/gkw3OP.png)](https://imgtu.com/i/gkw3OP)
 
 
