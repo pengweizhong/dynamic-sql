@@ -1,11 +1,15 @@
 package com.pengwz.dynamic;
 
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import com.pengwz.dynamic.sql.PageInfo;
 import com.pengwz.dynamic.sql.base.Sqls;
 import com.pengwz.dynamic.sql.base.enumerate.FunctionEnum;
 import org.junit.Test;
 
+import java.lang.reflect.Type;
 import java.util.List;
+import java.util.Map;
 
 public class SimpleTest {
 
@@ -90,6 +94,39 @@ public class SimpleTest {
         @Override
         public Object selectAggregateFunction(String property, FunctionEnum functionEnum, Class returnType) {
             return null;
+        }
+    }
+
+    @Test
+    public void testGeneric() {
+        // 创建一个 Gson 实例
+        Gson gson = new Gson();
+
+        // 创建一个复杂对象
+        ComplexObject complexObject = new ComplexObject("Alice", 30);
+
+        // 使用 TypeToken 来获取复杂类型的 Type
+        Type type = new TypeToken<ComplexObject>() {
+        }.getType();
+
+        // 将复杂对象转换为 JSON 字符串
+        String json = gson.toJson(complexObject, type);
+
+        // 将 JSON 字符串转换为 Map
+        Map<String, Object> resultMap = gson.fromJson(json, new TypeToken<Map<Integer, Object>>() {
+        }.getType());
+
+        // 打印转换后的 Map
+        System.out.println(resultMap);
+    }
+
+    static class ComplexObject {
+        private String name;
+        private int age;
+
+        public ComplexObject(String name, int age) {
+            this.name = name;
+            this.age = age;
         }
     }
 }
