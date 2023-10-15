@@ -1,12 +1,3 @@
-
-# 致谢
-   本项目是受到 `abel533`大神的启发，了解了他很多优秀的项目，其中也有我很感兴趣的单表动态增删改查，于是我在闲暇之余，借鉴了该项目，基于`JDBC`开发了`dynamic-sql`。虽功能不及`tk-mybatis`强大，但是凭借个人爱好和对大佬的膜拜，写下本项目，也算是在平常工作或学习中做了一些小小的总结吧~
-
-> tk-mybatis地址：
-> https://gitee.com/free/Mapper/wikis/Home?sort_id=14104
-
----
-
 # 项目说明
 1. 单表动态增删改查
 2. 不依赖其他框架环境，可单独启动
@@ -24,14 +15,14 @@
 	<dependency>
 	    <groupId>com.pengwz</groupId>
 	    <artifactId>dynamic-sql</artifactId>
-	    <version>2.1.5</version>
+	    <version>2.1.6</version>
 	</dependency>
 	
 	<-- springBoot项目，已集成dynamic-sql -->
 	<dependency>
 	    <groupId>com.pengwz</groupId>
 	    <artifactId>dynamic-sql-spring-boot-starter</artifactId>
-	    <version>2.1.5</version>
+	    <version>2.1.6</version>
 	</dependency>
 
 ```
