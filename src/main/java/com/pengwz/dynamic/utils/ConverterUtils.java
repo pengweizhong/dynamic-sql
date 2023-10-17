@@ -145,6 +145,9 @@ public class ConverterUtils {
         if (Objects.isNull(value) || Objects.isNull(targetType)) {
             return null;
         }
+        if (Enum.class.isAssignableFrom(targetType)) {
+            return (T) innerMappedEnum(value, value, targetType);
+        }
         targetType = (Class<T>) basicTypeRepackaging(targetType);
         Object convert;
         try {
