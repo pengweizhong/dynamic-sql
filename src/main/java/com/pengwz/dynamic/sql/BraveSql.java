@@ -670,9 +670,9 @@ public class BraveSql<T> {
         String defalutDataSource = DataSourceManagement.initDataSourceConfig(table.dataSourceClass(), tableName);
         Check.checkPageInfo(pageInfo);
         List<Object> params = new ArrayList<>();
-        String whereSql = ParseSql.parse(currentClass, table, defalutDataSource, dynamicSql.getDeclarations(), orderByMap, params);
         //调正where子句的sql顺序 ，将来把它单独抽出来  作为组件
-        //whereSql = ParseSql.fixWhereSql(whereSql);
+        String whereSql = ParseSql.parse(currentClass, table, defalutDataSource, dynamicSql.getDeclarations(), orderByMap, params);
+        whereSql = ParseSql.ifAppendLimit(dynamicSql.getLimit(), whereSql);
         SqlImpl<T> sqls = new SqlImpl<>();
         sqls.init(currentClass, pageInfo, data, dynamicSql.getUpdateNullProperties(),
                 Check.getTableName(tableName, defalutDataSource), defalutDataSource, whereSql, params);

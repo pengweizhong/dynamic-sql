@@ -241,4 +241,11 @@ public class ParseSql {
         return sql;
     }
 
+    public static String ifAppendLimit(Limit limit, String whereSql) {
+        //判断是否有limit
+        if (limit != null) {
+            return whereSql.concat(" limit " + limit.getStartIndex()).concat(", ").concat(limit.getEndIndex() + "");
+        }
+        return whereSql;
+    }
 }

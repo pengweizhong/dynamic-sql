@@ -28,12 +28,18 @@ public class DynamicSql<T> {
 
     private OrderByMode<T> orderByMode = new OrderByMode<T>(declarations);
 
+    private Limit limit;
+
     public List<Declaration> getDeclarations() {
         return declarations;
     }
 
     public List<String> getUpdateNullProperties() {
         return updateNullProperties;
+    }
+
+    public Limit getLimit() {
+        return limit;
     }
 
     /**
@@ -498,4 +504,11 @@ public class DynamicSql<T> {
         return orderByMode;
     }
 
+    public void limit(int endIndex) {
+        limit(0, endIndex);
+    }
+
+    public void limit(int startIndex, int endIndex) {
+        limit = new Limit(startIndex, endIndex);
+    }
 }
