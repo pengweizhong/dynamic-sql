@@ -66,6 +66,10 @@ public class ParseSql {
                 whereSql.append(ContextApplication.getColumnByField(dataSource, tableName, declaration.getProperty())).append(SPACE);
                 whereSql.append(declaration.getCondition()).append(SPACE);
                 whereSql.append("null").append(SPACE);
+            } else if (declaration.getCondition().equals(FIND_IN_SET)) {
+                whereSql.append(declaration.getAndOr()).append(SPACE);
+                whereSql.append(declaration.getCondition()).append("(?,").append(ContextApplication.getColumnByField(dataSource, tableName, declaration.getProperty())).append(")").append(SPACE);
+                params.add(matchFixValue(declaration.getValue(), dataSource, tableName, declaration.getProperty()));
             } else {
                 whereSql.append(declaration.getAndOr()).append(SPACE);
                 whereSql.append(ContextApplication.getColumnByField(dataSource, tableName, declaration.getProperty())).append(SPACE);

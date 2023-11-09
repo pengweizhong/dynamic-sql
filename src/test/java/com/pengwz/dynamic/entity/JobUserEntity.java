@@ -21,6 +21,7 @@ public class JobUserEntity implements Serializable {
     private String username;
     private String password;
     private String role;
+    private String hobby;
     @ColumnJson(value = "permission")
     private JobUserEntity permission;
     private LocalTime times;
@@ -81,6 +82,14 @@ public class JobUserEntity implements Serializable {
         this.permission = permission;
     }
 
+    public String getHobby() {
+        return hobby;
+    }
+
+    public void setHobby(String hobby) {
+        this.hobby = hobby;
+    }
+
     @Override
     public String toString() {
         return "JobUserEntity{" +
@@ -88,6 +97,7 @@ public class JobUserEntity implements Serializable {
                 ", username='" + username + '\'' +
                 ", password='" + password + '\'' +
                 ", role='" + role + '\'' +
+                ", hobby='" + hobby + '\'' +
                 ", permission=" + permission +
                 ", times=" + times +
                 '}';

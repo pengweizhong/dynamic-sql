@@ -38,6 +38,7 @@ public class Constant {
     public static final String BY = "by";
     public static final String LIKE = "like";
     public static final String NOT_LIKE = "not like";
+    public static final String FIND_IN_SET = "find_in_set";
     public static final String MIN = "min";
     public static final String MAX = "max";
 

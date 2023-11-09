@@ -7,7 +7,6 @@ import com.pengwz.dynamic.entity.UserEntity;
 import com.pengwz.dynamic.entity.UserRoleEntity;
 import com.pengwz.dynamic.entity.oracle.ActEvtLogEntity;
 import com.pengwz.dynamic.exception.BraveException;
-import com.sun.org.apache.xpath.internal.SourceTree;
 import org.apache.commons.lang3.RandomUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -66,6 +65,7 @@ public class MysqlBraveSqlTest {
             "  `id` int NOT NULL AUTO_INCREMENT,\n" +
             "  `username` varchar(100) DEFAULT NULL,\n" +
             "  `password` varchar(100) DEFAULT NULL,\n" +
+            "  `hobby` varchar(100) DEFAULT NULL,\n" +
             "  `role` varchar(100) DEFAULT NULL,\n" +
             "  `permission` varchar(700) DEFAULT NULL,\n" +
             "   `times` time DEFAULT NULL,\n" +
@@ -597,6 +597,22 @@ public class MysqlBraveSqlTest {
         dynamicSql.andEqualTo(ActEvtLogEntity::getTaskId, "任务1'");
         final List<ActEvtLogEntity> select1 = BraveSql.build(dynamicSql, ActEvtLogEntity.class).select();
         System.out.println("select1 = =" + select1);
+
+    }
+
+    @Test
+    public void testFindInSet() {
+        JobUserEntity jobUserEntity = new JobUserEntity();
+        jobUserEntity.setUsername("pengwz");
+        jobUserEntity.setHobby("吃,喝,玩,乐");
+        BraveSql.build(JobUserEntity.class).insertActive(jobUserEntity);
+        DynamicSql<JobUserEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.andFindInSet(JobUserEntity::getHobby, "吃");
+        dynamicSql.orFindInSet(JobUserEntity::getHobby, "吃");
+        dynamicSql.andEqualTo(JobUserEntity::getUsername, "pengwz");
+        List<JobUserEntity> select = BraveSql.build(dynamicSql, JobUserEntity.class).select();
+        log.info("查询到的数量：" + select.size());
+        select.forEach(System.out::println);
 
     }
 

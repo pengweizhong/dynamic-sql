@@ -340,6 +340,24 @@ public class DynamicSql<T> {
         return this.andNotLike(ReflectUtils.fnToFieldName(fn), value);
     }
 
+    public DynamicSql<T> orFindInSet(String property, Object value) {
+        this.getDeclarations().add(Declaration.buildDeclaration(OR, property, FIND_IN_SET, value));
+        return this;
+    }
+
+    public DynamicSql<T> orFindInSet(Fn<T, Object> fn, Object value) {
+        return this.orFindInSet(ReflectUtils.fnToFieldName(fn), value);
+    }
+
+    public DynamicSql<T> andFindInSet(String property, Object value) {
+        this.getDeclarations().add(Declaration.buildDeclaration(AND, property, FIND_IN_SET, value));
+        return this;
+    }
+
+    public DynamicSql<T> andFindInSet(Fn<T, Object> fn, Object value) {
+        return this.andFindInSet(ReflectUtils.fnToFieldName(fn), value);
+    }
+
     /**
      * 该方法不支持传入 where 条件
      *
