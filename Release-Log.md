@@ -3,6 +3,7 @@
 - 新增limit()函数
 - 新增 find_in_set()函数
 - 修复查询数据时偶尔日期转换失败的问题
+- 修复ColumnJson注解value值必传的问题
 
 # release/2.1.6 发行说明  
 

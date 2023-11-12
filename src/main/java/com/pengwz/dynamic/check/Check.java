@@ -88,7 +88,7 @@ public class Check {
             }
             tableInfo.setField(field);
 
-            tableInfo.setColumn(getColumnName(field, tableName, dataSource));
+            tableInfo.setColumn(getColumnName(field, dataSource));
 
             tableInfo.setJsonMode(getJsonMode(field));
 
@@ -126,8 +126,8 @@ public class Check {
         return columnJson.jsonMode();
     }
 
-    public static String getColumnName(Field field, String tableName, String dataSource) {
-        String column = getColumnName(field, tableName);
+    public static String getColumnName(Field field, String dataSource) {
+        String column = getColumnName(field);
         if (StringUtils.isNotBlank(dataSource)) {
             DataSourceInfo dataSourceInfo = ContextApplication.getDataSourceInfo(dataSource);
             return splicingName(dataSourceInfo.getDbType(), column);
@@ -136,26 +136,16 @@ public class Check {
     }
 
 
-    public static String getColumnName(Field field, String tableName) {
+    public static String getColumnName(Field field) {
         Column columnAnno = field.getAnnotation(Column.class);
-        String column;
-        if (Objects.nonNull(columnAnno)) {
-            if (StringUtils.isEmpty(columnAnno.value())) {
-                throw new BraveException("Column列名不可以为空，字段名：" + field.getName() + "，发生在表：" + tableName);
-            }
-            column = columnAnno.value().replace(" ", "");
-        } else {
-            ColumnJson columnJson = field.getAnnotation(ColumnJson.class);
-            if (Objects.nonNull(columnJson)) {
-                if (StringUtils.isEmpty(columnJson.value())) {
-                    throw new BraveException("ColumnJson列名不可以为空，字段名：" + field.getName() + "，发生在表：" + tableName);
-                }
-                column = columnJson.value().replace(" ", "");
-            } else {
-                column = com.pengwz.dynamic.utils.StringUtils.caseField(field.getName());
-            }
+        if (Objects.nonNull(columnAnno) && StringUtils.isNotEmpty(columnAnno.value())) {
+            return columnAnno.value().replace(" ", "");
         }
-        return column;
+        ColumnJson columnJson = field.getAnnotation(ColumnJson.class);
+        if (Objects.nonNull(columnJson) && StringUtils.isNotEmpty(columnJson.value())) {
+            return columnJson.value().replace(" ", "");
+        }
+        return com.pengwz.dynamic.utils.StringUtils.caseField(field.getName());
     }
 
     public static String getTableName(String tableName, String dataSource) {

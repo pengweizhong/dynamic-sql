@@ -22,7 +22,7 @@ public class JobUserEntity implements Serializable {
     private String password;
     private String role;
     private String hobby;
-    @ColumnJson(value = "permission")
+    @ColumnJson
     private JobUserEntity permission;
     private LocalTime times;
 
