@@ -1,6 +1,9 @@
 package com.pengwz.dynamic.sql;
 
 
+import com.alibaba.druid.support.json.JSONUtils;
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 import com.pengwz.dynamic.config.DatabaseConfig;
 import com.pengwz.dynamic.entity.JobUserEntity;
 import com.pengwz.dynamic.entity.UserEntity;
@@ -69,6 +72,7 @@ public class MysqlBraveSqlTest {
             "  `role` varchar(100) DEFAULT NULL,\n" +
             "  `permission` varchar(700) DEFAULT NULL,\n" +
             "   `times` time DEFAULT NULL,\n" +
+            "   `json` json DEFAULT NULL,"+
             "  PRIMARY KEY (`id`)\n" +
             ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci";
 
@@ -605,11 +609,18 @@ public class MysqlBraveSqlTest {
         JobUserEntity jobUserEntity = new JobUserEntity();
         jobUserEntity.setUsername("pengwz");
         jobUserEntity.setHobby("吃,喝,玩,乐");
+        Gson gson = new Gson();
+        String jsonString = gson.toJson(jobUserEntity);
+//        jobUserEntity.setJson(gson.fromJson(jsonString, JobUserEntity.class));
+//        jobUserEntity.setJson(jobUserEntity);
+        jobUserEntity.setJson(gson.fromJson(jsonString, JsonObject.class));
+
         BraveSql.build(JobUserEntity.class).insertActive(jobUserEntity);
         DynamicSql<JobUserEntity> dynamicSql = DynamicSql.createDynamicSql();
         dynamicSql.andFindInSet(JobUserEntity::getHobby, "吃");
         dynamicSql.orFindInSet(JobUserEntity::getHobby, "吃");
         dynamicSql.andEqualTo(JobUserEntity::getUsername, "pengwz");
+
         List<JobUserEntity> select = BraveSql.build(dynamicSql, JobUserEntity.class).select();
         log.info("查询到的数量：" + select.size());
         select.forEach(System.out::println);
