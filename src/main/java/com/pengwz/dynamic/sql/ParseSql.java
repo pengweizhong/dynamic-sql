@@ -24,7 +24,7 @@ public class ParseSql {
     public static String parse(Class<?> currentClass, Table table, String dataSource, List<Declaration> declarationList,
                                Map<String, List<String>> orderByMap, List<Object> params) {
         String tableName = Check.getTableName(table.value(), dataSource);
-        checkAndSave(currentClass, table, dataSource);
+        checkAndSave(currentClass, dataSource, tableName, table.isCache());
         StringBuilder whereSql = new StringBuilder();
         for (Declaration declaration : declarationList) {
             if (Objects.nonNull(declaration.getBrackets())) {

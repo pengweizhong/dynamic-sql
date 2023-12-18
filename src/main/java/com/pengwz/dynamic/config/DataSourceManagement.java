@@ -55,7 +55,7 @@ public final class DataSourceManagement {
                 throw new BraveException("在不存在默认数据源的情况下，须显式指定数据源；非spring环境必须明确指定数据源；表名：" + tableName);
             }
         } else {
-            dataSourceName = dataSourceClass.getName();
+            dataSourceName = dataSourceClass.getCanonicalName();
             if (!ContextApplication.existsDataSouce(dataSourceName)) {
                 try {
                     DataSourceConfig dataSourceConfig = (DataSourceConfig) dataSourceClass.newInstance();

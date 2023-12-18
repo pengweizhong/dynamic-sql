@@ -23,9 +23,12 @@ public class Check {
 
     private static final Log log = LogFactory.getLog(Check.class);
 
-    public static void checkAndSave(Class<?> currentClass, Table table, String dataSource) {
-        String tableName = table.value().trim();
-        if (table.isCache() && ContextApplication.existsTable(tableName, dataSource)) {
+    public static void checkAndSave(Class<?> currentClass, String dataSource, String tableName) {
+        checkAndSave(currentClass, dataSource, tableName, true);
+    }
+
+    public static void checkAndSave(Class<?> currentClass, String dataSource, String tableName, boolean tableIsCache) {
+        if (tableIsCache && ContextApplication.existsTable(tableName, dataSource)) {
             return;
         }
         List<Field> allFiledList = new ArrayList<>();
