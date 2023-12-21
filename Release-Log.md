@@ -5,6 +5,7 @@
 - 修复查询数据时偶尔日期转换失败的问题
 - 修复ColumnJson注解value值必传的问题
 - 修复ContextApplication Api调用异常的问题
+- 修复InsertOrUpdate带主键插入时的`Illegal operation on empty result set.`问题
 
 # release/2.1.6 发行说明  
 

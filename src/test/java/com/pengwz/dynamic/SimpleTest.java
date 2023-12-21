@@ -10,6 +10,7 @@ import org.junit.Test;
 import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class SimpleTest {
 
@@ -17,6 +18,10 @@ public class SimpleTest {
     @Test
     public void test1() {
         System.out.println(SimpleTest.class.getCanonicalName());
+        Object object = "12";
+        Object object2 = 12;
+        System.out.println(object instanceof Number);
+        System.out.println(object2 instanceof Number);
     }
 
     public class SqlsImpl2 implements Sqls {

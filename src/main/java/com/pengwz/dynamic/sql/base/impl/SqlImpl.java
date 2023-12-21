@@ -486,6 +486,11 @@ public class SqlImpl<T> implements Sqls<T> {
         ResultSet generatedKeys = preparedStatement.getGeneratedKeys();
         while (resultIterator.hasNext()) {
             T next = resultIterator.next();
+            final Object pkValue = ReflectUtils.getFieldValue(tableInfoPrimaryKey.getField(), next);
+            //如果是带主键进行操作的  那么就不需要再次设置值了
+            if (pkValue != null) {
+                continue;
+            }
             generatedKeys.next();
             Object object;
             if (dataSourceInfo.getDbType().equals(DbType.ORACLE)) {
@@ -493,10 +498,9 @@ public class SqlImpl<T> implements Sqls<T> {
             } else {
                 object = generatedKeys.getObject(RETURN_GENERATED_KEYS, tableInfoPrimaryKey.getField().getType());
             }
-            final Object pkValue = ReflectUtils.getFieldValue(tableInfoPrimaryKey.getField(), next);
             //如果用户没有给定主键值，那么就将系统返回的主键赋值到当前对象上
             //修改成的0，可以存在,新添加的0，不允许存在，会根据行号改变，所以这里用户赋值0的话，主键要进行重新赋值
-            if (pkValue == null || (pkValue instanceof Number && ((Number) pkValue).doubleValue() == 0)) {
+            if (pkValue instanceof Number && ((Number) pkValue).doubleValue() == 0) {
                 ReflectUtils.setFieldValue(tableInfoPrimaryKey.getField(), next, object);
             }
         }
