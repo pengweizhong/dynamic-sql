@@ -47,13 +47,37 @@ public final class DataSourceManagement {
         return null;
     }
 
+    @SuppressWarnings("all")
     public static String initDataSourceConfig(Class<?> dataSourceClass, String tableName) {
+        String dataSourceName;
+        int checkWaitTime = 20 * 1000;
+        long limitTime = System.currentTimeMillis() + checkWaitTime;
+        while (true) {
+            dataSourceName = getDataSourceName(dataSourceClass);
+            if (dataSourceName != null) {
+                break;
+            }
+            //20秒内循环获取
+            if (limitTime <= System.currentTimeMillis()) {
+                break;
+            }
+            try {
+                //半秒检查一下
+                Thread.sleep(500);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+        if (Objects.isNull(dataSourceName)) {
+            throw new BraveException("在不存在默认数据源的情况下，须显式指定数据源；非spring环境必须明确指定数据源；表名：" + tableName);
+        }
+        return dataSourceName;
+    }
+
+    private static String getDataSourceName(Class<?> dataSourceClass) {
         String dataSourceName;
         if (dataSourceClass.equals(DataSourceConfig.class)) {
             dataSourceName = ContextApplication.getDefalutDataSourceName();
-            if (Objects.isNull(dataSourceName)) {
-                throw new BraveException("在不存在默认数据源的情况下，须显式指定数据源；非spring环境必须明确指定数据源；表名：" + tableName);
-            }
         } else {
             dataSourceName = dataSourceClass.getCanonicalName();
             if (!ContextApplication.existsDataSouce(dataSourceName)) {
