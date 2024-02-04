@@ -662,6 +662,7 @@ public class BraveSql<T> {
 
     /**
      * 其实开启链接和关闭链接应该交由一处管理，而不应该渗透到SQL交互层面，下个版本优化它！
+     *
      * @return
      */
     private Sqls<T> mustShare() {

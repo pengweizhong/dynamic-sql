@@ -11,7 +11,6 @@ import com.pengwz.dynamic.utils.ReflectUtils;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 import static com.pengwz.dynamic.constant.Constant.*;
@@ -42,8 +41,6 @@ public class DynamicSql<T> {
     private Limit limit;
 
     private List<Complex<T>> complexes;
-
-    private volatile AtomicInteger index = new AtomicInteger();
 
     public List<Declaration> getDeclarations() {
         return declarations;
@@ -88,7 +85,7 @@ public class DynamicSql<T> {
     }
 
     /**
-     * 创建一个携带括号的复合查询条件
+     * 创建一个携带括号的复合查询条件，并用and连接
      *
      * @return this
      */
@@ -102,7 +99,7 @@ public class DynamicSql<T> {
 
 
     /**
-     * 创建一个携带括号的查询条件
+     * 创建一个携带括号的复合查询条件，并用or连接
      *
      * @return this
      */
