@@ -1,8 +1,10 @@
 package com.pengwz.dynamic.utils;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Supplier;
 
 public class CollectionUtils {
 
@@ -28,4 +30,15 @@ public class CollectionUtils {
     public static boolean isNotEmpty(Map map) {
         return !isEmpty(map);
     }
+
+//    public static <T, C extends Collection<T>> void addElement(Collection<T> coll, T element) {
+//        addElement(coll, element, ArrayList::new);
+//    }
+//
+//    public static <T, C extends Collection<T>> void addElement(Collection<T> coll, T element, Supplier<C> mapFactory) {
+//        if (coll == null) {
+//            coll = mapFactory.get();
+//        }
+//        coll.add(element);
+//    }
 }

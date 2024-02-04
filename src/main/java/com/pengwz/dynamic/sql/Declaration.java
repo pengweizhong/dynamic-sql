@@ -17,9 +17,12 @@ public class Declaration {
     //函数
     private HandleFunction handleFunction;
     //括号
+    @Deprecated
     private String brackets;
 
     private String sortMode;
+    //是否为复合查询
+    private boolean isComplex;
 
     public Declaration(String andOr, String property, String condition, Object value, Object value2, HandleFunction handleFunction, String brackets, String sortMode) {
         this.andOr = andOr;
@@ -32,32 +35,40 @@ public class Declaration {
         this.sortMode = sortMode;
     }
 
+    public Declaration(boolean isComplex) {
+        this.isComplex = isComplex;
+    }
+
     public static Declaration buildDeclaration(String andOr, String property, String condition, Object value, Object value2) {
-        return new Declaration(andOr, property, condition, value, value2, null, null,null);
+        return new Declaration(andOr, property, condition, value, value2, null, null, null);
     }
 
     public static Declaration buildDeclaration(String andOr, String property, String condition, Object value) {
-        return new Declaration(andOr, property, condition, value, null, null, null,null);
+        return new Declaration(andOr, property, condition, value, null, null, null, null);
     }
 
     public static Declaration buildDeclaration(String andOr, String property, String condition) {
-        return new Declaration(andOr, property, condition, null, null, null, null,null);
+        return new Declaration(andOr, property, condition, null, null, null, null, null);
     }
 
     public static Declaration buildDeclaration(String property, String condition) {
-        return new Declaration(null, property, condition, null, null, null, null,null);
+        return new Declaration(null, property, condition, null, null, null, null, null);
     }
 
     public static Declaration buildDeclaration(String property, HandleFunction handleFunction) {
-        return new Declaration(null, property, null, null, null, handleFunction, null,null);
+        return new Declaration(null, property, null, null, null, handleFunction, null, null);
     }
 
     public static Declaration buildDeclaration(String andOr, String property, HandleFunction handleFunction) {
-        return new Declaration(andOr, property, null, null, null, handleFunction, null,null);
+        return new Declaration(andOr, property, null, null, null, handleFunction, null, null);
     }
 
     public static Declaration buildDeclaration(String brackets) {
-        return new Declaration(null, null, null, null, null, null, brackets,null);
+        return new Declaration(null, null, null, null, null, null, brackets, null);
+    }
+
+    public static Declaration buildComplex(boolean isComplex) {
+        return new Declaration(isComplex);
     }
 
     public String getProperty() {
@@ -124,6 +135,15 @@ public class Declaration {
         this.sortMode = sortMode;
     }
 
+
+    public boolean isComplex() {
+        return isComplex;
+    }
+
+    public void setComplex(boolean complex) {
+        isComplex = complex;
+    }
+
     @Override
     public String toString() {
         return "Declaration{" +
@@ -132,6 +152,10 @@ public class Declaration {
                 ", condition='" + condition + '\'' +
                 ", value=" + value +
                 ", value2=" + value2 +
+                ", handleFunction=" + handleFunction +
+                ", brackets='" + brackets + '\'' +
+                ", sortMode='" + sortMode + '\'' +
+                ", isComplex=" + isComplex +
                 '}';
     }
 }

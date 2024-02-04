@@ -1,5 +1,6 @@
 package com.pengwz.dynamic.entity;
 
+import com.google.gson.JsonObject;
 import com.pengwz.dynamic.anno.ColumnJson;
 import com.pengwz.dynamic.anno.GeneratedValue;
 import com.pengwz.dynamic.anno.Id;
@@ -21,9 +22,15 @@ public class JobUserEntity implements Serializable {
     private String username;
     private String password;
     private String role;
-    @ColumnJson(value = "permission")
+    private String hobby;
+    @ColumnJson
     private JobUserEntity permission;
     private LocalTime times;
+//    @ColumnJson
+//    private String json;
+//    private JobUserEntity json;
+    @ColumnJson
+    private JsonObject json;
 
     public Log getLog() {
         return log;
@@ -81,6 +88,22 @@ public class JobUserEntity implements Serializable {
         this.permission = permission;
     }
 
+    public String getHobby() {
+        return hobby;
+    }
+
+    public void setHobby(String hobby) {
+        this.hobby = hobby;
+    }
+
+    public JsonObject getJson() {
+        return json;
+    }
+
+    public void setJson(JsonObject json) {
+        this.json = json;
+    }
+
     @Override
     public String toString() {
         return "JobUserEntity{" +
@@ -88,8 +111,10 @@ public class JobUserEntity implements Serializable {
                 ", username='" + username + '\'' +
                 ", password='" + password + '\'' +
                 ", role='" + role + '\'' +
+                ", hobby='" + hobby + '\'' +
                 ", permission=" + permission +
                 ", times=" + times +
+                ", json='" + json + '\'' +
                 '}';
     }
 }

@@ -1,19 +1,18 @@
 package com.pengwz.dynamic.sql;
 
 
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 import com.pengwz.dynamic.config.DatabaseConfig;
 import com.pengwz.dynamic.entity.JobUserEntity;
 import com.pengwz.dynamic.entity.UserEntity;
 import com.pengwz.dynamic.entity.UserRoleEntity;
 import com.pengwz.dynamic.entity.oracle.ActEvtLogEntity;
 import com.pengwz.dynamic.exception.BraveException;
-import com.sun.org.apache.xpath.internal.SourceTree;
 import org.apache.commons.lang3.RandomUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.math.BigDecimal;
@@ -66,16 +65,18 @@ public class MysqlBraveSqlTest {
             "  `id` int NOT NULL AUTO_INCREMENT,\n" +
             "  `username` varchar(100) DEFAULT NULL,\n" +
             "  `password` varchar(100) DEFAULT NULL,\n" +
+            "  `hobby` varchar(100) DEFAULT NULL,\n" +
             "  `role` varchar(100) DEFAULT NULL,\n" +
             "  `permission` varchar(700) DEFAULT NULL,\n" +
             "   `times` time DEFAULT NULL,\n" +
+            "   `json` json DEFAULT NULL," +
             "  PRIMARY KEY (`id`)\n" +
             ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci";
 
     /**
      * 每次 整体 测试前 建表、 插入数据
      */
-    @BeforeClass
+//    @BeforeClass
     public static void doBeforeClass() {
         BraveSql.build(Void.class).executeSql(dropUserRoleTable, DatabaseConfig.class);
         BraveSql.build(Void.class).executeSql(createUserRoleTable, DatabaseConfig.class);
@@ -122,12 +123,12 @@ public class MysqlBraveSqlTest {
     /**
      * 测试结束后删表
      */
-    @AfterClass
+//    @AfterClass
     public static void doAfterClass() {
-//        BraveSql.build(Void.class).executeSql(dropUserRoleTable, DatabaseConfig.class);
-//        BraveSql.build(Void.class).executeSql(dropUserTable, DatabaseConfig.class);
-//        BraveSql.build(Void.class).executeSql(dropUserTable, DatabaseConfig.class);
-//        BraveSql.build(Void.class).executeSql(dropJobUser1Table, DatabaseConfig.class);
+        BraveSql.build(Void.class).executeSql(dropUserRoleTable, DatabaseConfig.class);
+        BraveSql.build(Void.class).executeSql(dropUserTable, DatabaseConfig.class);
+        BraveSql.build(Void.class).executeSql(dropUserTable, DatabaseConfig.class);
+        BraveSql.build(Void.class).executeSql(dropJobUser1Table, DatabaseConfig.class);
     }
 
     /**
@@ -598,6 +599,72 @@ public class MysqlBraveSqlTest {
         final List<ActEvtLogEntity> select1 = BraveSql.build(dynamicSql, ActEvtLogEntity.class).select();
         System.out.println("select1 = =" + select1);
 
+    }
+
+    @Test
+    public void testFindInSet() {
+        JobUserEntity jobUserEntity = new JobUserEntity();
+        jobUserEntity.setUsername("pengwz");
+        jobUserEntity.setHobby("吃,喝,玩,乐");
+        Gson gson = new Gson();
+        String jsonString = gson.toJson(jobUserEntity);
+//        jobUserEntity.setJson(gson.fromJson(jsonString, JobUserEntity.class));
+//        jobUserEntity.setJson(jobUserEntity);
+        jobUserEntity.setJson(gson.fromJson(jsonString, JsonObject.class));
+
+        BraveSql.build(JobUserEntity.class).insertActive(jobUserEntity);
+        DynamicSql<JobUserEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.andFindInSet(JobUserEntity::getHobby, "吃");
+        dynamicSql.orFindInSet(JobUserEntity::getHobby, "吃");
+        dynamicSql.andEqualTo(JobUserEntity::getUsername, "pengwz");
+
+        List<JobUserEntity> select = BraveSql.build(dynamicSql, JobUserEntity.class).select();
+        log.info("查询到的数量：" + select.size());
+        select.forEach(System.out::println);
+
+    }
+
+    @Test
+    public void brackets() {
+        //2024-02-04 09:55:22 DEBUG PreparedSql:109 - Preparing: select `id`,`account_no`,`username`,`password`,`email`,`desc`,`birthday`,`is_delete`,`create_date`,`update_date` from `t_user`
+        //where `username` in (? )( and `id` = ? or `account_no` is not null ) and `password` = ? and `is_delete` <> ?
+        DynamicSql<UserEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.andIn(UserEntity::getUsername, Arrays.asList("貂蝉"));
+        dynamicSql.startBrackets();
+        dynamicSql.andEqualTo(UserEntity::getId, 3);
+        //发起点的状态也会为空
+        dynamicSql.orIsNotNull(UserEntity::getAccountNo);
+        dynamicSql.endBrackets();
+        dynamicSql.andEqualTo(UserEntity::getPassword, "54447133");
+        dynamicSql.andNotEqualTo(UserEntity::getIsDelete, Boolean.FALSE);
+        System.out.println(BraveSql.build(dynamicSql, UserEntity.class).select());
+    }
+
+    @Test
+    public void complex() {
+        DynamicSql<UserEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.andEqualTo(UserEntity::getId, 2)
+                .andComplex(sql -> sql.andEqualTo(UserEntity::getUsername, "貂蝉")
+                        .andEqualTo(UserEntity::getPassword, "54447133")
+                        .andComplex(sql2 -> sql2.andEqualTo(UserEntity::getEmail, "pengwz@hotmail.com")));
+        dynamicSql.orComplex(sql -> sql.andEqualTo(UserEntity::getUsername, "貂蝉")
+                .andEqualTo(UserEntity::getPassword, "54447133")
+                .andComplex(sql2 -> sql2.andEqualTo(UserEntity::getEmail, "pengwz@hotmail.com")));
+        System.out.println(BraveSql.build(dynamicSql, UserEntity.class).select());
+    }
+
+    @Test
+    public void complex2() {
+        DynamicSql<UserEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.andIn(UserEntity::getUsername, Arrays.asList("貂蝉"))
+//                .andEqualTo(UserEntity::getId, 2)
+                .andComplex(sql -> sql.andEqualTo(UserEntity::getUsername, "貂蝉")
+                        .andEqualTo(UserEntity::getPassword, "54447133")
+                        .andComplex(sql2 -> sql2.andEqualTo(UserEntity::getEmail, "pengwz@hotmail.com")));
+        dynamicSql.orComplex(sql -> sql.andEqualTo(UserEntity::getUsername, "貂蝉")
+                .andEqualTo(UserEntity::getPassword, "54447133")
+                .andComplex(sql2 -> sql2.andEqualTo(UserEntity::getEmail, "pengwz@hotmail.com")));
+        System.out.println(BraveSql.build(dynamicSql, UserEntity.class).select());
     }
 
 }

@@ -3,11 +3,14 @@ package com.pengwz.dynamic.sql;
 import com.pengwz.dynamic.anno.Table;
 import com.pengwz.dynamic.check.Check;
 import com.pengwz.dynamic.exception.BraveException;
+import com.pengwz.dynamic.model.Complex;
+import com.pengwz.dynamic.model.RelationEnum;
 import com.pengwz.dynamic.model.TableInfo;
 import com.pengwz.dynamic.sql.base.HandleFunction;
 import com.pengwz.dynamic.sql.base.impl.Count;
 import com.pengwz.dynamic.sql.base.impl.GroupBy;
 import com.pengwz.dynamic.sql.base.impl.OrderBy;
+import com.pengwz.dynamic.utils.CollectionUtils;
 import com.pengwz.dynamic.utils.ConverterUtils;
 import com.pengwz.dynamic.utils.StringUtils;
 
@@ -21,11 +24,19 @@ import static com.pengwz.dynamic.check.Check.checkAndSave;
 import static com.pengwz.dynamic.constant.Constant.*;
 
 public class ParseSql {
-    public static String parse(Class<?> currentClass, Table table, String dataSource, List<Declaration> declarationList,
+    /**
+     * 这里应该使用策略模式优化ta
+     */
+    public static String parse(Class<?> currentClass, Table table, String dataSource, DynamicSql dynamicSql,
                                Map<String, List<String>> orderByMap, List<Object> params) {
         String tableName = Check.getTableName(table.value(), dataSource);
-        checkAndSave(currentClass, table, dataSource);
+        checkAndSave(currentClass, dataSource, tableName, table.isCache());
+        List<Declaration> declarationList = dynamicSql.getDeclarations();
         StringBuilder whereSql = new StringBuilder();
+        Iterator<Complex> iterator = null;
+        if (CollectionUtils.isNotEmpty(dynamicSql.getComplexes())) {
+            iterator = dynamicSql.getComplexes().iterator();
+        }
         for (Declaration declaration : declarationList) {
             if (Objects.nonNull(declaration.getBrackets())) {
                 whereSql.append(declaration.getBrackets()).append(SPACE);
@@ -52,6 +63,19 @@ public class ParseSql {
                     continue;
                 }
                 whereSql.append(declaration.getHandleFunction().execute(dataSource, tableName, declaration)).append(SPACE);
+            } else if (declaration.isComplex()) {
+                if (iterator == null) {
+                    throw new BraveException("不是正确的复合查询，未发现组合中的SQL体");
+                }
+                Complex complex = iterator.next();
+                if (complex.getRelationEnum().equals(RelationEnum.AND)) {
+                    whereSql.append(SPACE).append(AND);
+                } else {
+                    whereSql.append(SPACE).append(OR);
+                }
+                whereSql.append(SPACE).append(LEFT_BRACKETS).append(SPACE);
+                whereSql.append(parse(currentClass, table, dataSource, complex.getDynamicSql(), orderByMap, params));
+                whereSql.append(SPACE).append(RIGHT_BRACKETS).append(SPACE);
             } else if (declaration.getCondition().equals(BETWEEN) || declaration.getCondition().equals(NOT_BETWEEN)) {
                 whereSql.append(declaration.getAndOr()).append(SPACE);
                 whereSql.append(ContextApplication.getColumnByField(dataSource, tableName, declaration.getProperty())).append(SPACE);
@@ -66,6 +90,10 @@ public class ParseSql {
                 whereSql.append(ContextApplication.getColumnByField(dataSource, tableName, declaration.getProperty())).append(SPACE);
                 whereSql.append(declaration.getCondition()).append(SPACE);
                 whereSql.append("null").append(SPACE);
+            } else if (declaration.getCondition().equals(FIND_IN_SET)) {
+                whereSql.append(declaration.getAndOr()).append(SPACE);
+                whereSql.append(declaration.getCondition()).append("(?,").append(ContextApplication.getColumnByField(dataSource, tableName, declaration.getProperty())).append(")").append(SPACE);
+                params.add(matchFixValue(declaration.getValue(), dataSource, tableName, declaration.getProperty()));
             } else {
                 whereSql.append(declaration.getAndOr()).append(SPACE);
                 whereSql.append(ContextApplication.getColumnByField(dataSource, tableName, declaration.getProperty())).append(SPACE);

@@ -1,12 +1,18 @@
 # release/2.1.7 发行说明
 
-- 新增limit函数
+- 新增limit()函数
+- 新增find_in_set()函数
 - 修复查询数据时偶尔日期转换失败的问题
+- 修复ColumnJson注解value值必传的问题
+- 修复ContextApplication Api调用异常的问题
+- 修复InsertOrUpdate带主键插入时的`Illegal operation on empty result set.`问题
+- 创建一个允许嵌套括号的查询条件,并将旧的方法过时
+- 优化了一些方法
 
-# release/2.1.6 发行说明  
+# release/2.1.6 发行说明
 
 - starter，，没有默认数据源报错的问题
-- ID有值插入时  自增值仍然覆盖的问题
+- ID有值插入时 自增值仍然覆盖的问题
 
 # release/2.1.5.hotfix 发行说明
 

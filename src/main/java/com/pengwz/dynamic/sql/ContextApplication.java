@@ -1,5 +1,8 @@
 package com.pengwz.dynamic.sql;
 
+import com.pengwz.dynamic.anno.Table;
+import com.pengwz.dynamic.check.Check;
+import com.pengwz.dynamic.config.DataSourceConfig;
 import com.pengwz.dynamic.exception.BraveException;
 import com.pengwz.dynamic.model.DataSourceInfo;
 import com.pengwz.dynamic.model.TableInfo;
@@ -100,7 +103,7 @@ public class ContextApplication {
     }
 
     public static List<String> getAllColumnList(Class<?> dataSourceClass, String tableName) {
-        return getAllColumnList(dataSourceClass.getName(), tableName);
+        return getAllColumnList(dataSourceClass.getCanonicalName(), tableName);
     }
 
     public static List<String> getAllColumnList(String dataSourceName, String tableName) {
@@ -124,19 +127,61 @@ public class ContextApplication {
     }
 
     public static List<TableInfo> getTableInfos(Class<?> dataSourceClass, String tableName) {
-        return getTableInfos(dataSourceClass.getName(), tableName);
+        return getTableInfos(dataSourceClass.getCanonicalName(), tableName);
     }
 
     public static List<TableInfo> getTableInfos(String dataSourceName, String tableName) {
         Map<String, List<TableInfo>> tableMap = dataBaseMap.get(dataSourceName);
         if (tableMap != null) {
-            return tableMap.get(tableName);
+            List<TableInfo> tableInfosCache = tableMap.get(tableName);
+            if (tableInfosCache != null) {
+                return tableInfosCache;
+            }
         }
-        throw new BraveException("无法根据数据源" + dataSourceName + "获取表" + tableName + "信息");
+        return null;
+//        throw new BraveException("无法根据数据源" + dataSourceName + "获取表" + tableName + "信息");
+//        synchronized (ContextApplication.class) {
+//            List<TableInfo> tableInfos = tableMap.get(tableName);
+//            if (CollectionUtils.isNotEmpty(tableInfos)) {
+//                return tableInfos;
+//            }
+//            try {
+//                Class<?> currentClass = Class.forName(dataSourceName);
+//                Table table = currentClass.getAnnotation(Table.class);
+//                if (table == null) {
+//                    throw new BraveException("缺失注解 @Table For " + dataSourceName);
+//                }
+//                Check.checkAndSave(currentClass, table, dataSourceName);
+//                return tableMap.get(tableName);
+//            } catch (Exception e) {
+//                throw new BraveException(e);
+//            }
+//        }
+    }
+
+    public static List<TableInfo> getTableInfos(Class<?> tableClass) {
+        Table table = tableClass.getAnnotation(Table.class);
+        if (table == null) {
+            return null;
+        }
+        Class<? extends DataSourceConfig> aClass = table.dataSourceClass();
+        String dataSourceName;
+        if (aClass.equals(DataSourceConfig.class)) {
+            dataSourceName = getDefalutDataSourceName();
+        } else {
+            dataSourceName = aClass.getCanonicalName();
+        }
+        String tableName = Check.getTableName(table.value(), dataSourceName);
+        List<TableInfo> tableInfos = getTableInfos(dataSourceName, tableName);
+        if (CollectionUtils.isNotEmpty(tableInfos)) {
+            return tableInfos;
+        }
+        Check.checkAndSave(tableClass, dataSourceName, tableName);
+        return getTableInfos(dataSourceName, tableName);
     }
 
     public static String getColumnByField(Class<?> dataSourceClass, String tableName, String fieldName) {
-        return getColumnByField(dataSourceClass.getName(), tableName, fieldName);
+        return getColumnByField(dataSourceClass.getCanonicalName(), tableName, fieldName);
     }
 
     public static String getColumnByField(String dataSourceName, String tableName, String fieldName) {
@@ -151,7 +196,7 @@ public class ContextApplication {
     }
 
     public static String getPrimaryKey(Class<?> dataSourceClass, String tableName) {
-        return getPrimaryKey(dataSourceClass.getName(), tableName);
+        return getPrimaryKey(dataSourceClass.getCanonicalName(), tableName);
     }
 
     public static String getPrimaryKey(String dataSourceName, String tableName) {
@@ -166,7 +211,7 @@ public class ContextApplication {
     }
 
     public static TableInfo getTableInfoPrimaryKey(Class<?> dataSourceClass, String tableName) {
-        return getTableInfoPrimaryKey(dataSourceClass.getName(), tableName);
+        return getTableInfoPrimaryKey(dataSourceClass.getCanonicalName(), tableName);
     }
 
     public static TableInfo getTableInfoPrimaryKey(String dataSourceName, String tableName) {
@@ -185,7 +230,7 @@ public class ContextApplication {
     }
 
     public static synchronized void saveTable(Class<?> dataSourceClass, String tableName, List<TableInfo> tableInfos) {
-        saveTable(dataSourceClass.getName(), tableName, tableInfos);
+        saveTable(dataSourceClass.getCanonicalName(), tableName, tableInfos);
     }
 
     public static synchronized void saveTable(String dataSourceName, String tableName, List<TableInfo> tableInfos) {
