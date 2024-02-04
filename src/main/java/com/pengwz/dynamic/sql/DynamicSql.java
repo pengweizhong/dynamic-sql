@@ -1,5 +1,7 @@
 package com.pengwz.dynamic.sql;
 
+import com.pengwz.dynamic.model.Complex;
+import com.pengwz.dynamic.model.RelationEnum;
 import com.pengwz.dynamic.sql.base.Fn;
 import com.pengwz.dynamic.sql.base.impl.GroupBy;
 import com.pengwz.dynamic.sql.base.impl.Max;
@@ -9,6 +11,8 @@ import com.pengwz.dynamic.utils.ReflectUtils;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 
 import static com.pengwz.dynamic.constant.Constant.*;
 
@@ -22,6 +26,13 @@ public class DynamicSql<T> {
     private DynamicSql() {
     }
 
+    /**
+     * 提供创建where子句的入口  比如查询，更新等
+     */
+    public static <T> DynamicSql<T> createDynamicSql() {
+        return new DynamicSql<>();
+    }
+
     private List<Declaration> declarations = new ArrayList<>();
 
     private List<String> updateNullProperties = new ArrayList<>();
@@ -29,6 +40,10 @@ public class DynamicSql<T> {
     private OrderByMode<T> orderByMode = new OrderByMode<T>(declarations);
 
     private Limit limit;
+
+    private List<Complex<T>> complexes;
+
+    private volatile AtomicInteger index = new AtomicInteger();
 
     public List<Declaration> getDeclarations() {
         return declarations;
@@ -42,18 +57,18 @@ public class DynamicSql<T> {
         return limit;
     }
 
-    /**
-     * 提供创建where子句的入口  比如查询，更新等
-     */
-    public static <T> DynamicSql<T> createDynamicSql() {
-        return new DynamicSql<>();
+    public List<Complex<T>> getComplexes() {
+        return complexes;
     }
 
     /**
      * 创建一个左括号，用于创建复杂的查询
      *
      * @return this
+     * @see this#andComplex(Consumer)
+     * @see this#orComplex(Consumer)
      */
+    @Deprecated
     public DynamicSql<T> startBrackets() {
         this.getDeclarations().add(Declaration.buildDeclaration(LEFT_BRACKETS));
         return this;
@@ -63,9 +78,39 @@ public class DynamicSql<T> {
      * 创建一个右括号，用于创建复杂的查询
      *
      * @return this
+     * @see this#andComplex(Consumer)
+     * @see this#orComplex(Consumer)
      */
+    @Deprecated
     public DynamicSql<T> endBrackets() {
         this.getDeclarations().add(Declaration.buildDeclaration(RIGHT_BRACKETS));
+        return this;
+    }
+
+    /**
+     * 创建一个携带括号的复合查询条件
+     *
+     * @return this
+     */
+    public DynamicSql<T> andComplex(Consumer<DynamicSql<T>> andConsumer) {
+        Complex<T> instance = Complex.instance(RelationEnum.AND);
+        andConsumer.accept(instance.getDynamicSql());
+        this.addComplex(instance);
+        this.getDeclarations().add(Declaration.buildComplex(true));
+        return this;
+    }
+
+
+    /**
+     * 创建一个携带括号的查询条件
+     *
+     * @return this
+     */
+    public DynamicSql<T> orComplex(Consumer<DynamicSql<T>> orConsumer) {
+        Complex<T> instance = Complex.instance(RelationEnum.OR);
+        orConsumer.accept(instance.getDynamicSql());
+        this.addComplex(instance);
+        this.getDeclarations().add(Declaration.buildComplex(true));
         return this;
     }
 
@@ -528,5 +573,12 @@ public class DynamicSql<T> {
 
     public void limit(int startIndex, int endIndex) {
         limit = new Limit(startIndex, endIndex);
+    }
+
+    private void addComplex(Complex<T> complex) {
+        if (complexes == null) {
+            complexes = new ArrayList<>();
+        }
+        complexes.add(complex);
     }
 }

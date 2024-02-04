@@ -660,6 +660,10 @@ public class BraveSql<T> {
         return this;
     }
 
+    /**
+     * 其实开启链接和关闭链接应该交由一处管理，而不应该渗透到SQL交互层面，下个版本优化它！
+     * @return
+     */
     private Sqls<T> mustShare() {
         // 解析where语句
         Table table = currentClass.getAnnotation(Table.class);
@@ -671,7 +675,7 @@ public class BraveSql<T> {
         Check.checkPageInfo(pageInfo);
         List<Object> params = new ArrayList<>();
         //调正where子句的sql顺序 ，将来把它单独抽出来  作为组件
-        String whereSql = ParseSql.parse(currentClass, table, defalutDataSource, dynamicSql.getDeclarations(), orderByMap, params);
+        String whereSql = ParseSql.parse(currentClass, table, defalutDataSource, dynamicSql, orderByMap, params);
         whereSql = ParseSql.ifAppendLimit(dynamicSql.getLimit(), whereSql);
         SqlImpl<T> sqls = new SqlImpl<>();
         sqls.init(currentClass, pageInfo, data, dynamicSql.getUpdateNullProperties(),
