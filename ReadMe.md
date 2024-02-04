@@ -5,7 +5,7 @@
 4. 支持事务（目前仅spring环境）
 5. 支持直接执行自定义SQL语句
 6. 支持`mysql`,`oracle`
-7. 提供了`spring-boot`环境的版本
+7. 提供了`spring-boot-starter`用于快速启动
 
 # maven版本
 
@@ -15,14 +15,14 @@
 	<dependency>
 	    <groupId>com.pengwz</groupId>
 	    <artifactId>dynamic-sql</artifactId>
-	    <version>2.1.5</version>
+	    <version>2.1.7</version>
 	</dependency>
 	
 	<-- springBoot项目，已集成dynamic-sql -->
 	<dependency>
 	    <groupId>com.pengwz</groupId>
 	    <artifactId>dynamic-sql-spring-boot-starter</artifactId>
-	    <version>2.1.5</version>
+	    <version>2.1.7</version>
 	</dependency>
 
 ```
