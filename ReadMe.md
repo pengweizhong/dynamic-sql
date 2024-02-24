@@ -1,16 +1,19 @@
 # 项目说明
+动态SQL基于JDBC，旨在简化开发人员在数据库访问层面的工作。基于此背景打造的低耦合的最小化依赖。  
+同时解决贴合项目中的自定义映射、字段解析、SQL拦截、自定义ID自增功能，可完美结合各个项目中的底层通用包使用而不依赖spring环境。  
+还可以根据不同的条件动态生成语句，更便捷的对数据库单表的增删改查，使得开发人员只需注重业务，提高代码的灵活性和可维护性。    
+  
+**主要特性：**
 1. 单表动态增删改查
 2. 不依赖其他框架环境，可单独启动
 3. 支持多数据源
 4. 支持事务（目前仅spring环境）
 5. 支持直接执行自定义SQL语句
-6. 支持`mysql`,`oracle`
+6. 支持`Mysql`,`Oracle`
 7. 提供了`spring-boot-starter`用于快速启动
-
-# maven版本
-
+# 资源引入
+## Maven
 ``` xml
-
 	<-- 单体项目 -->
 	<dependency>
 	    <groupId>com.pengwz</groupId>
@@ -18,23 +21,25 @@
 	    <version>2.1.7</version>
 	</dependency>
 	
-	<-- springBoot项目，已集成dynamic-sql -->
+	<-- SpringBoot项目，已集成 Dynamic-SQL -->
 	<dependency>
 	    <groupId>com.pengwz</groupId>
 	    <artifactId>dynamic-sql-spring-boot-starter</artifactId>
 	    <version>2.1.7</version>
 	</dependency>
-
 ```
-
-- **如无特殊说明，请直接使用最新版本** ... ...
+## Gradle  
+```properties
+implementation group: 'com.pengwz', name: 'dynamic-sql', version: '2.1.7'
+```
 
 --- 
 
-# 目录
+# 快速开始
+> 以下案例均可以在`test/java/com.pengwz.demo`测试包下找到。
 1. 配置数据源  
 	1.1 [使用`JDBC`创建数据源](#jdbcCreate)  
-	1.2 [使用`druid`创建数据源](#druidCreate)  
+	1.2 使用`Druid`创建数据源  
 2. [配置实体类](#entityConfig)  
 3. 新增  
 	3.1 [新增单条记录](#insertSingle)  
@@ -137,7 +142,7 @@ public class DatabaseConfig implements DataSourceConfig {
     @Override
     public DataSource getDataSource() {
         DruidDataSource ds = new DruidDataSource();
-        ds.setUrl("jdbc:mysql://127.0.0.1:3306/project-demo?useOldAliasMetadataBehavior=true&useUnicode=true&rewriteBatchedStatements=true&serverTimezone=GMT%2B8&characterEncoding=utf-8");
+        ds.setUrl("jdbc:mysql://127.0.0.1:3306/dynamic?useOldAliasMetadataBehavior=true&useUnicode=true&rewriteBatchedStatements=true&serverTimezone=GMT%2B8&characterEncoding=utf-8");
         ds.setUsername("root");
         ds.setPassword("pengwz");
         ds.setDriverClassName("com.mysql.cj.jdbc.Driver");
@@ -159,16 +164,17 @@ public class DatabaseConfig implements DataSourceConfig {
 ## 2. <span id="entityConfig"/>配置实体类
 执行完上面的SQL后，随后在项目中分别创建对应的实体类
 ```java
+// 在spring环境下设置好默认数据源后，就无需在此处声明
 @Table(value = "t_user", dataSourceClass = DatabaseConfig.class)
 public class UserEntity {
-    @Id
-    @GeneratedValue
-    private Long id;
-    private String username;
-    private String password;
-    private LocalDateTime createDate;
-    @Column("update_date")
-    private LocalDateTime updateDate;
+	@Id
+	@GeneratedValue
+	private Long id;
+	private String username;
+	private String password;
+	private LocalDateTime createDate;
+	@Column("update_date")
+	private LocalDateTime updateDate;
 	/** getter and setter **/
 	/** toString() **/
 }
@@ -218,7 +224,7 @@ public class UserRoleEntity {
     }
 ```
 执行结果：  
-[![gkU3LT.png](https://z3.ax1x.com/2021/04/29/gkU3LT.png)](https://imgtu.com/i/gkU3LT)
+[![gkU3LT.png](https://z3.ax1x.com/2021/04/29/gkU3LT.png)](https://imgtu.com/i/gkU3LT)  
 也可以对`UserEntity`原始对象进行输出，其自增ID已经映射到该实体类中，方便在业务中进行其他操作。此处便不再打印输出结果。  
 ### 3.2 <span id="insertByChoose"/>有选择的新增
 ```java
@@ -279,33 +285,130 @@ public class UserRoleEntity {
 
  
 ## 4. 查询 
-### 4.1 <span id="selectByFunction"/>使用简单函数查询总数量
-> TODO
+### 4.1 <span id="selectByFunction"/>使用简单函数查询
+```java
+    @Test
+    public void test1() {
+        //查询总数量
+        Integer count = BraveSql.build(UserEntity.class).selectCount();
+        System.out.println(count);
+        //对所有ID求和
+        BigDecimal sum = BraveSql.build(UserEntity.class).selectSum(UserEntity::getId);
+        System.out.println(sum);
+        // ......
+    }
+ ```
 ### 4.2 <span id="selectByPrimaryKey"/>根据主键查询
-> TODO
+```java
+    @Test
+    public void test2() {
+        UserEntity userEntity = BraveSql.build(UserEntity.class).selectByPrimaryKey(1);
+        System.out.println(userEntity);
+    }
+ ```
 ### 4.3 根据条件查询
 #### 4.3.1 <span id="selectByCondition"/>一般条件查询
-> TODO
+```java
+    @Test
+    public void test3() {
+        //查询用户名=jerry的数据
+        DynamicSql<UserEntity> dynamicSql = DynamicSql.createDynamicSql();
+        //可以直接使用字段名进行查询，但是i推荐使用表达式
+        //dynamicSql.andEqualTo("username","jerry");
+        dynamicSql.andEqualTo(UserEntity::getUsername, "jerry");
+        List<UserEntity> entities = BraveSql.build(dynamicSql, UserEntity.class).select();
+        System.out.println(entities);
+    }
+ ```
 #### 4.3.2 <span id="selectByPages"/>分页查询
-> TODO
-#### 4.3.3 <span id="selectHard"/>复杂查询
-> TODO
+```java
+    @Test
+    public void test4() {
+        //按5个为一组分页，取第一页
+        PageInfo<UserEntity> pageInfo = BraveSql.build(UserEntity.class).selectPageInfo(1, 5);
+        Assert.assertEquals(1, (int) pageInfo.getPageIndex());
+        Assert.assertEquals(5, (int) pageInfo.getPageSize());
+        Assert.assertEquals(5, pageInfo.getResultList().size());
+    }
+ ```
+#### 4.3.3 <span id="selectHard"/>复杂查询（创建带括号的查询）
+```java
+    @Test
+    public void test5() {
+        //查询用户名为jerry的用户，或者Id等于5或者50的数据
+        //ID=50是不存在的，所以只会查询出2条数据
+        DynamicSql<UserEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.andEqualTo(UserEntity::getUsername, "jerry");
+        //使用此方法创建组查询，此方法可以根据业务无线嵌套
+        dynamicSql.orComplex(sql -> sql.andEqualTo(UserEntity::getId, 5).orEqualTo(UserEntity::getId, 50)//.orComplex()：这里扔可以选择嵌套括号组
+        );
+        List<UserEntity> entities = BraveSql.build(dynamicSql, UserEntity.class).select();
+        System.out.println(entities);
+        System.out.println(entities.size());
+    }
+ ```
 
 ## 5. 更新
 ### 5.1 <span id="updateByCondition"/>根据条件更新
-> TODO
+```java
+    @Test
+    public void test1() {
+        //将用户名 list_0 改为 tom
+        UserEntity userEntity = new UserEntity();
+        userEntity.setUsername("tom");
+        DynamicSql<UserEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.andEqualTo(UserEntity::getUsername, "list_0");
+        //这里会生成语句： update `t_user` set `username` = ? where `username` = ?
+        int updated = BraveSql.build(dynamicSql, UserEntity.class).updateActive(userEntity);
+        Assert.assertEquals(updated, 1);
+    }
+ ```
 ### 5.2 <span id="updateByPrimaryKey"/>根据主键更新
-> TODO
-### 5.3 <span id="updateByChoose"/>有选择的更新
-> TODO
-### 5.4 <span id="updateBatch"/>批量更新
-> TODO
+```java  
+    @Test
+    public void test2() {
+		//将ID=3的用户名改为duck
+		UserEntity userEntity = new UserEntity();
+		userEntity.setUsername("duck");
+		//设置主键值
+		userEntity.setId(3L);
+		userEntity.setCreateDate(LocalDateTime.now());
+		userEntity.setUpdateDate(LocalDateTime.now());
+		int updated = BraveSql.build(UserEntity.class).updateByPrimaryKey(userEntity);
+		Assert.assertEquals(updated, 1);
+    }  
+```  
+### 5.3 <span id="updateByChoose"/>批量更新
+```java
+    @Test
+    public void test3() {
+		//将所有用户的密码改为 123@abc
+		UserEntity userEntity = new UserEntity();
+		userEntity.setPassword("123@abc");
+		BraveSql.build(UserEntity.class).updateActive(userEntity);
+	}
+```
 
 ## 6. 删除
 ### 6.1 <span id="deleteByCondition"/>根据条件删除
-> TODO
+```java
+    @Test
+    public void test1() {
+        //删除ID等于7、8、9的用户
+        DynamicSql<UserEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.andIn(UserEntity::getId, Arrays.asList(7, 8, 9));
+        BraveSql.build(dynamicSql, UserEntity.class).delete();
+    }
+```
 ### 6.2 <span id="deleteByPrimaryKey"/>根据主键删除
-> TODO
+```java
+    @Test
+    public void test2() {
+        //删除ID等于 10的用户
+        Integer deleted = BraveSql.build(UserEntity.class).deleteByPrimaryKey(10);
+        Assert.assertTrue(deleted == 1);
+    }
+```
 
 
 
