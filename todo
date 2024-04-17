@@ -1,3 +1,6 @@
-1、括号条件拼接的问题
-2、starter，，没有默认数据源报错的问题
-3、ID有值插入时  自增值仍然覆盖的问题
+20240417 计划在version.2.1.8 更新的内容
+1、新增根据自定义方法匹配枚举，可能长这样： @Column(value = "xxxEnum", enumMappingMethod = XxxEnum::mathValue)
+2、优化申请数据库连接和销毁
+3、优化整体结构
+4、优化实体类托管池，用面向对象新增XXXX，销毁 ContextApplication
+5、加入多查询的支持
