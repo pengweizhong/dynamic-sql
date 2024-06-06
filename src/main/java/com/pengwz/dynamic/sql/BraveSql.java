@@ -327,6 +327,9 @@ public class BraveSql<T> {
         return this.selectMin(ReflectUtils.fnToFieldName(fn), targetClass);
     }
 
+    public <K, R> Map<K, R> selectMin(String valueProperty, Class<K> keyClass, Class<R> valueClass, String keyProperty) {
+        return doExecute(() -> mustShare().selectAggregateFunction(valueProperty.trim(), FunctionEnum.MIN, keyClass, valueClass, keyProperty));
+    }
 
     /**
      * 对指定字段求最小值
@@ -340,6 +343,14 @@ public class BraveSql<T> {
     }
 
     /**
+     * @see this#selectMax(Fn, Fn)
+     */
+    public <K, R> Map<K, R> selectMin(Fn<T, Object> fn, Fn<T, K> groupKey) {
+        return selectMin(ReflectUtils.fnToFieldName(fn), ReflectUtils.getReturnTypeFromSignature(groupKey),
+                ReflectUtils.getReturnTypeFromSignature(fn), ReflectUtils.fnToFieldName(groupKey));
+    }
+
+    /**
      * 对指定字段求最大值
      *
      * @param fn 实体类字段名，通常是Get方法
@@ -348,6 +359,7 @@ public class BraveSql<T> {
     public BigDecimal selectMax(Fn<T, Object> fn) {
         return this.selectMax(ReflectUtils.fnToFieldName(fn), BigDecimal.class);
     }
+
 
     /**
      * 对指定字段求最大值
@@ -371,6 +383,29 @@ public class BraveSql<T> {
     }
 
     /**
+     * 搭配分组字段对指定字段求最大值，并将其组装为Map返回。<br>
+     * 比如：<br>
+     * <pre>
+     *         DynamicSql<UserEntity> dynamicSql = DynamicSql.createDynamicSql();
+     *         dynamicSql.andIn(UserEntity::getId, Arrays.asList(1, 2, 3, 4, 5));
+     *         dynamicSql.groupBy(UserEntity::getUsername);
+     *         Map<String, LocalDate> map = BraveSql.build(dynamicSql, UserEntity.class)
+     *                 .selectMax(UserEntity::getBirth, UserEntity::getUsername);
+     *         map.forEach((k, v) -> System.out.println(k + ":" + v));
+     * </pre>
+     *
+     * @param fn       对应分组中最大结果字段，作为Value使用
+     * @param groupKey 分组字段，作为K使用
+     * @param <K>
+     * @param <R>
+     * @return LinkedHashMap，若没有数据，则返回空Map
+     */
+    public <K, R> Map<K, R> selectMax(Fn<T, Object> fn, Fn<T, K> groupKey) {
+        return selectMax(ReflectUtils.fnToFieldName(fn), ReflectUtils.getReturnTypeFromSignature(groupKey),
+                ReflectUtils.getReturnTypeFromSignature(fn), ReflectUtils.fnToFieldName(groupKey));
+    }
+
+    /**
      * 对指定字段求最大值，并适用指定的数据类型接收结果值
      *
      * @param property    实体类字段名
@@ -379,6 +414,10 @@ public class BraveSql<T> {
      */
     public <R> R selectMax(String property, Class<R> targetClass) {
         return doExecute(() -> mustShare().selectAggregateFunction(property.trim(), FunctionEnum.MAX, targetClass));
+    }
+
+    public <K, R> Map<K, R> selectMax(String valueProperty, Class<K> keyClass, Class<R> valueClass, String keyProperty) {
+        return doExecute(() -> mustShare().selectAggregateFunction(valueProperty.trim(), FunctionEnum.MAX, keyClass, valueClass, keyProperty));
     }
 
     /**
@@ -467,6 +506,14 @@ public class BraveSql<T> {
         }
         this.data = Collections.singletonList(data);
         return batchInsertOrUpdate(this.data);
+    }
+
+    public Integer insertOrUpdateActive(T data) {
+        if (Objects.isNull(data)) {
+            return 0;
+        }
+        this.data = Collections.singletonList(data);
+        return doExecute(() -> mustShare().insertOrUpdateActive());
     }
 
     /**

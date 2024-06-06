@@ -29,7 +29,7 @@ public class UserEntity {
     private String desc;
     //    `birthday` datetime DEFAULT NULL COMMENT '生日',
     @Column("birthday")
-    private LocalDate birthday;
+    private LocalDate birth;
     //    `is_delete` tinyint(1)  DEFAULT NULL COMMENT '是否删除 true 已删除 false 未删除',
     @Column("is_delete")
     private Boolean isDelete;
@@ -88,12 +88,20 @@ public class UserEntity {
         this.desc = desc;
     }
 
-    public LocalDate getBirthday() {
-        return birthday;
+//    public LocalDate getBirthday() {
+//        return birthday;
+//    }
+//
+//    public void setBirthday(LocalDate birthday) {
+//        this.birthday = birthday;
+//    }
+
+    public LocalDate getBirth() {
+        return birth;
     }
 
-    public void setBirthday(LocalDate birthday) {
-        this.birthday = birthday;
+    public void setBirth(LocalDate birth) {
+        this.birth = birth;
     }
 
     public Boolean getIsDelete() {
@@ -129,7 +137,8 @@ public class UserEntity {
                 ", password='" + password + '\'' +
                 ", email='" + email + '\'' +
                 ", desc='" + desc + '\'' +
-                ", birthday=" + birthday +
+//                ", birthday=" + birthday +
+                ", birth=" + birth +
                 ", isDelete=" + isDelete +
                 ", createDate=" + createDate +
                 ", updateDate=" + updateDate +

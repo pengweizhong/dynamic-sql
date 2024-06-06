@@ -9,6 +9,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.List;
+import java.util.Map;
 
 public interface Sqls<T> {
     Log log = LogFactory.getLog(Sqls.class);
@@ -30,6 +31,8 @@ public interface Sqls<T> {
      */
     <R> R selectAggregateFunction(String property, FunctionEnum functionEnum, Class<R> returnType);
 
+    <K, R> Map<K, R> selectAggregateFunction(String valueProperty, FunctionEnum functionEnum, Class<K> keyClass, Class<R> valueClass, String keyProperty);
+
     PageInfo<T> selectPageInfo();
 
     Integer batchInsert();
@@ -37,6 +40,8 @@ public interface Sqls<T> {
     Integer insertActive();
 
     Integer insertOrUpdate();
+
+    Integer insertOrUpdateActive();
 
     Integer update();
 

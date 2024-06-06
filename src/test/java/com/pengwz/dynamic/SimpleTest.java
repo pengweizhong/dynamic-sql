@@ -8,7 +8,9 @@ import org.junit.Test;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 public class SimpleTest {
 
@@ -36,6 +38,11 @@ public class SimpleTest {
         }
 
         @Override
+        public Map selectAggregateFunction(String valueProperty, FunctionEnum functionEnum, Class keyClass, Class valueClass, String keyProperty) {
+            return Collections.emptyMap();
+        }
+
+        @Override
         public PageInfo selectPageInfo() {
             return null;
         }
@@ -53,6 +60,11 @@ public class SimpleTest {
         @Override
         public Integer insertOrUpdate() {
             return null;
+        }
+
+        @Override
+        public Integer insertOrUpdateActive() {
+            return 0;
         }
 
         @Override

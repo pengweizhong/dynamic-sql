@@ -15,6 +15,10 @@ public class LocalDateConverterAdapter implements ConverterAdapter<LocalDate> {
         if (columnValue instanceof Number) {
             return Instant.ofEpochSecond(((Number) columnValue).longValue()).atZone(ZoneId.systemDefault()).toLocalDate();
         }
+        if (columnValue instanceof java.sql.Timestamp) {
+            java.sql.Timestamp timestamp = (java.sql.Timestamp) columnValue;
+            return timestamp.toLocalDateTime().toLocalDate();
+        }
         if (LocalDate.class.isAssignableFrom(fieldClass)) {
             return transferString(fieldClass);
         }

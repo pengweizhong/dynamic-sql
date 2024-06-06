@@ -106,6 +106,37 @@ public class SqlImpl<T> implements Sqls<T> {
         return executeQueryCount(sql, returnType, true);
     }
 
+    @Override
+    public <K, R> Map<K, R> selectAggregateFunction(String valueProperty, FunctionEnum functionEnum, Class<K> keyClass, Class<R> valueClass, String keyProperty) {
+        String keyColumn = ContextApplication.getTableColumnInfo(currentClass, keyProperty).getColumn();
+        String valueColumn = ContextApplication.getTableColumnInfo(currentClass, valueProperty).getColumn();
+        String sql = SELECT + SPACE + keyColumn + COMMA + SPACE + splicingFunction(valueProperty, functionEnum) + " as " + valueColumn + SPACE + FROM + SPACE + tableName;
+        if (StringUtils.isNotEmpty(whereSql)) {
+            sql += SPACE + WHERE + SPACE + whereSql;
+        }
+        sql = ParseSql.parseSql(sql);
+        Exception exception = null;
+        LinkedHashMap<K, R> linkedHashMap = new LinkedHashMap<>();
+        try {
+            setPreparedStatementParam(sql, false);
+            if (interceptorHelper.transferBefore()) {
+                resultSet = preparedStatement.executeQuery();
+                while (resultSet.next()) {
+                    Object k = resultSet.getObject(Check.unSplicingName(keyColumn));
+                    Object v = resultSet.getObject(Check.unSplicingName(valueColumn));
+                    K convertK = ConverterUtils.convert(k, keyClass);
+                    R convertV = ConverterUtils.convert(v, valueClass);
+                    linkedHashMap.put(convertK, convertV);
+                }
+            }
+        } catch (Exception ex) {
+            exception = ex;
+        } finally {
+            interceptorHelper.transferAfter(exception, sql);
+        }
+        return linkedHashMap;
+    }
+
     private String splicingFunction(String property, FunctionEnum functionEnum) {
         String column;
         //这里，count时可能会传入1
@@ -519,6 +550,22 @@ public class SqlImpl<T> implements Sqls<T> {
     }
 
     @Override
+    public Integer insertOrUpdateActive() {
+        DataSourceInfo dataSourceInfo = ContextApplication.getDataSourceInfo(dataSourceName);
+        if (dataSourceInfo.getDbType().equals(DbType.ORACLE)) {
+            close(dataSourceName, resultSet, preparedStatement, connection);
+            interceptorHelper.transferAfter(new BraveException("Oracle 尚未支持 insertOrUpdate"), null);
+        }
+        List<TableColumnInfo> tableColumnInfos = ContextApplication.getTableColumnInfos(currentClass);
+        StringBuilder columnBuilder = new StringBuilder();
+        for (T next : data) {
+            updateSqlCheckSetNullProperties(columnBuilder, tableColumnInfos, next, false);
+        }
+        System.out.println(columnBuilder);
+        return null;
+    }
+
+    @Override
     public Integer update() {
         List<TableColumnInfo> tableColumnInfos = ContextApplication.getTableColumnInfos(currentClass);
         StringBuilder sql = new StringBuilder();
@@ -535,7 +582,7 @@ public class SqlImpl<T> implements Sqls<T> {
         StringBuilder sql = new StringBuilder();
         sql.append("update ").append(tableName).append(" set");
         for (T next : data) {
-            updateSqlCheckSetNullProperties(sql, tableColumnInfos, next);
+            updateSqlCheckSetNullProperties(sql, tableColumnInfos, next, true);
         }
         return baseUpdate(sql);
     }
@@ -626,7 +673,7 @@ public class SqlImpl<T> implements Sqls<T> {
         T next = data.iterator().next();
         StringBuilder sql = new StringBuilder();
         sql.append("update ").append(tableName).append(" set");
-        updateSqlCheckSetNullProperties(sql, tableInfos, next);
+        updateSqlCheckSetNullProperties(sql, tableInfos, next, true);
         return assertEndSet(tableInfoPrimaryKey, sql, next);
     }
 
@@ -696,7 +743,8 @@ public class SqlImpl<T> implements Sqls<T> {
         return -1;
     }
 
-    private void updateSqlCheckSetNullProperties(StringBuilder sql, List<TableColumnInfo> tableColumnInfos, T nextObject) {
+    private void updateSqlCheckSetNullProperties(StringBuilder sql, List<TableColumnInfo> tableColumnInfos,
+                                                 T nextObject, boolean isPlaceholder) {
         int whereBeforeParamIndex = 0;
         for (TableColumnInfo tableColumnInfo : tableColumnInfos) {
             try {
@@ -704,9 +752,12 @@ public class SqlImpl<T> implements Sqls<T> {
                 if (Objects.isNull(invoke) && !updateNullProperties.contains(tableColumnInfo.getField().getName())) {
                     continue;
                 }
-                sql.append(SPACE).append(tableColumnInfo.getColumn()).append(SPACE).append(EQ).append(SPACE);
-                preparedSql.addParameter(whereBeforeParamIndex++, invoke);
-                sql.append(PLACEHOLDER).append(COMMA);
+                sql.append(SPACE).append(tableColumnInfo.getColumn());
+                if (isPlaceholder) {
+                    sql.append(SPACE).append(EQ).append(SPACE);
+                    preparedSql.addParameter(whereBeforeParamIndex++, invoke);
+                    sql.append(PLACEHOLDER).append(COMMA);
+                }
             } catch (Exception ex) {
                 JdbcUtils.closeConnection(connection);
                 throw new BraveException(ex.getMessage(), ex);

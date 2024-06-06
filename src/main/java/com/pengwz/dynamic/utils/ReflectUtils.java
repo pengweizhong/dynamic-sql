@@ -37,6 +37,28 @@ public class ReflectUtils {
         return Introspector.decapitalize(getter);
     }
 
+    public static <C> Class<C> getReturnTypeFromSignature(Fn fn) {
+        SerializedLambda serializedLambda = serializedLambda(fn);
+        String implMethodSignature = serializedLambda.getImplMethodSignature();
+        // Remove the parameter part, i.e., "()" ()代表无参构造器
+        String returnTypeDescriptor = implMethodSignature.substring(implMethodSignature.indexOf(')') + 1);
+        // Convert descriptor to class name
+        String className = descriptorToClassName(returnTypeDescriptor);
+        try {
+            return (Class<C>) Class.forName(className);
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException("Cannot find class for name: " + className, e);
+        }
+    }
+
+    private static String descriptorToClassName(String descriptor) {
+        if (descriptor.startsWith("L") && descriptor.endsWith(";")) {
+            // Object type, e.g., Ljava/time/LocalDate;
+            return descriptor.substring(1, descriptor.length() - 1).replace('/', '.');
+        }
+        throw new IllegalArgumentException("Unsupported descriptor: " + descriptor);
+    }
+
     public static String getImplClassname(Fn fn) {
         SerializedLambda serializedLambda = serializedLambda(fn);
         final String implClassname = serializedLambda.getImplClass();

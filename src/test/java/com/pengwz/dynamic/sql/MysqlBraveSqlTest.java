@@ -7,13 +7,11 @@ import com.pengwz.dynamic.entity.UserEntity;
 import com.pengwz.dynamic.entity.UserRoleEntity;
 import com.pengwz.dynamic.entity.oracle.ActEvtLogEntity;
 import com.pengwz.dynamic.exception.BraveException;
-import com.sun.org.apache.xpath.internal.SourceTree;
 import org.apache.commons.lang3.RandomUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.math.BigDecimal;
@@ -24,6 +22,7 @@ import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -75,7 +74,7 @@ public class MysqlBraveSqlTest {
     /**
      * 每次 整体 测试前 建表、 插入数据
      */
-    @BeforeClass
+//    @BeforeClass
     public static void doBeforeClass() {
         BraveSql.build(Void.class).executeSql(dropUserRoleTable, DatabaseConfig.class);
         BraveSql.build(Void.class).executeSql(createUserRoleTable, DatabaseConfig.class);
@@ -90,7 +89,8 @@ public class MysqlBraveSqlTest {
             UserEntity userEntity = new UserEntity();
             userEntity.setAccountNo("account_" + i);
             userEntity.setUsername(USER_NAME_LIST.get(RandomUtils.nextInt(0, USER_NAME_LIST.size() - 1)));
-            userEntity.setBirthday(LocalDate.now().minusDays(RandomUtils.nextLong(100, 3000)));
+//            userEntity.setBirthday(LocalDate.now().minusDays(RandomUtils.nextLong(100, 3000)));
+            userEntity.setBirth(LocalDate.now().minusDays(RandomUtils.nextLong(100, 3000)));
             userEntity.setIsDelete(RandomUtils.nextBoolean());
             userEntity.setCreateDate(LocalDateTime.now());
             userEntity.setUpdateDate(LocalDateTime.now());
@@ -390,8 +390,21 @@ public class MysqlBraveSqlTest {
 
     }
 
-
+    @Test
     public void testInsertOrUpdate() {
+        UserEntity userEntity = new UserEntity();
+        userEntity.setId(49L);
+        userEntity.setAccountNo("大大");
+//        userEntity.setAccountNo("小小");
+        BraveSql.build(UserEntity.class).insertOrUpdate(userEntity);
+    }
+    @Test
+    public void testInsertOrUpdateActive() {
+        UserEntity userEntity = new UserEntity();
+        userEntity.setId(49L);
+        userEntity.setAccountNo("大大");
+//        userEntity.setAccountNo("小小");
+        BraveSql.build(UserEntity.class).insertOrUpdateActive(userEntity);
     }
 
     public void testBatchInsertOrUpdate() {
@@ -528,6 +541,29 @@ public class MysqlBraveSqlTest {
         log.info("selectAvg(JobUserEntity::getTimes) = " + LocalDate);
     }
 
+    @Test
+    public void testSelectMax() {
+//        final LocalDateTime value = BraveSql.build(UserEntity.class).selectMax(UserEntity::getBirthday, LocalDateTime.class);
+//        System.out.println(value);
+        DynamicSql<UserEntity> dynamicSql = DynamicSql.createDynamicSql();
+//        dynamicSql.andIn(UserEntity::getId, Arrays.asList(90000, 90001, 90002, 90003, 90004, 90005, 90006));
+        dynamicSql.groupBy(UserEntity::getUsername);
+        Map<String, LocalDate> map = BraveSql.build(dynamicSql, UserEntity.class)
+                .selectMax(UserEntity::getBirth, UserEntity::getUsername);
+        map.forEach((k, v) -> System.out.println(k + ":" + v));
+    }
+
+    @Test
+    public void testSelectMin() {
+//        final LocalDateTime value = BraveSql.build(UserEntity.class).selectMax(UserEntity::getBirthday, LocalDateTime.class);
+//        System.out.println(value);
+        DynamicSql<UserEntity> dynamicSql = DynamicSql.createDynamicSql();
+//        dynamicSql.andIn(UserEntity::getId, Arrays.asList(90000, 90001, 90002, 90003, 90004, 90005, 90006));
+        dynamicSql.groupBy(UserEntity::getUsername);
+        Map<String, LocalDate> map = BraveSql.build(dynamicSql, UserEntity.class)
+                .selectMin(UserEntity::getBirth, UserEntity::getUsername);
+        map.forEach((k, v) -> System.out.println(k + ":" + v));
+    }
 //    public static class LocalTimeConverterAdapter implements ConverterAdapter<LocalTime> {
 //
 //        @Override
