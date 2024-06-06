@@ -6,7 +6,7 @@ import com.pengwz.dynamic.anno.JsonMode;
 import java.lang.reflect.Field;
 
 public class TableColumnInfo {
-    //数据库字段名
+    //数据库字段名 默认被限定符包围
     private String column;
     //是否为主键
     private boolean isPrimary;

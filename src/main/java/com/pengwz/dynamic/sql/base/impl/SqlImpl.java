@@ -28,6 +28,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static com.pengwz.dynamic.anno.GenerationType.AUTO;
@@ -508,21 +509,30 @@ public class SqlImpl<T> implements Sqls<T> {
         //使用数据库机制的，接收返回值并且对返回对象赋值
         Iterator<T> resultIterator = data.iterator();
         ResultSet generatedKeys = preparedStatement.getGeneratedKeys();
+        //判断结果是否为空
+        if (!generatedKeys.isBeforeFirst()) {
+            return successCount;
+        }
         while (resultIterator.hasNext()) {
             T next = resultIterator.next();
             generatedKeys.next();
             Object object;
+            final Object pkValue = ReflectUtils.getFieldValue(tableColumnInfoPrimaryKey.getField(), next);
+            //如果本身已经携带了主键值  那就是那么也不做
+            if (pkValue != null) {
+                continue;
+            }
             if (dataSourceInfo.getDbType().equals(DbType.ORACLE)) {
                 object = generatedKeys.getObject(Check.unSplicingName(tableColumnInfoPrimaryKey.getColumn()), tableColumnInfoPrimaryKey.getField().getType());
             } else {
                 object = generatedKeys.getObject(RETURN_GENERATED_KEYS, tableColumnInfoPrimaryKey.getField().getType());
             }
-            final Object pkValue = ReflectUtils.getFieldValue(tableColumnInfoPrimaryKey.getField(), next);
             //如果用户没有给定主键值，那么就将系统返回的主键赋值到当前对象上
             //修改成的0，可以存在,新添加的0，不允许存在，会根据行号改变，所以这里用户赋值0的话，主键要进行重新赋值
-            if (pkValue == null || (pkValue instanceof Number && ((Number) pkValue).doubleValue() == 0)) {
-                ReflectUtils.setFieldValue(tableColumnInfoPrimaryKey.getField(), next, object);
-            }
+            ReflectUtils.setFieldValue(tableColumnInfoPrimaryKey.getField(), next, object);
+//            if ((pkValue instanceof Number && ((Number) pkValue).doubleValue() == 0)) {
+//                ReflectUtils.setFieldValue(tableColumnInfoPrimaryKey.getField(), next, object);
+//            }
         }
         return successCount;
     }
@@ -556,13 +566,24 @@ public class SqlImpl<T> implements Sqls<T> {
             close(dataSourceName, resultSet, preparedStatement, connection);
             interceptorHelper.transferAfter(new BraveException("Oracle 尚未支持 insertOrUpdate"), null);
         }
-        List<TableColumnInfo> tableColumnInfos = ContextApplication.getTableColumnInfos(currentClass);
-        StringBuilder columnBuilder = new StringBuilder();
-        for (T next : data) {
-            updateSqlCheckSetNullProperties(columnBuilder, tableColumnInfos, next, false);
+        //这里只会存在一个对象
+        T next = data.iterator().next();
+        List<TableColumnInfo> filterList = updateSqlCheckNullReturnColumns(next);
+        if (filterList.isEmpty()) {
+            throw new BraveException("没有需要新增或更新的字段");
         }
-        System.out.println(columnBuilder);
-        return null;
+        String columns = filterList.stream().map(TableColumnInfo::getColumn).collect(Collectors.joining(", "));
+        StringBuilder sql = new StringBuilder();
+        sql.append("insert into ").append(tableName).append(" ( ").append(columns).append(" ) values ( ");
+        List<String> duplicateKeys = new ArrayList<>();
+        filterList.forEach(tableInfo -> {
+            sql.append(" " + PLACEHOLDER + " ,");
+            duplicateKeys.add(tableInfo.getColumn() + " = values(" + tableInfo.getColumn() + ")");
+        });
+        String prepareSql = sql.substring(0, sql.length() - 1) + ")";
+        String join = String.join(",", duplicateKeys);
+        prepareSql = prepareSql.concat(" on duplicate key update ").concat(join);
+        return setValuesExecuteSql(prepareSql, filterList);
     }
 
     @Override
@@ -582,7 +603,7 @@ public class SqlImpl<T> implements Sqls<T> {
         StringBuilder sql = new StringBuilder();
         sql.append("update ").append(tableName).append(" set");
         for (T next : data) {
-            updateSqlCheckSetNullProperties(sql, tableColumnInfos, next, true);
+            updateSqlCheckSetNullProperties(sql, tableColumnInfos, next);
         }
         return baseUpdate(sql);
     }
@@ -673,7 +694,7 @@ public class SqlImpl<T> implements Sqls<T> {
         T next = data.iterator().next();
         StringBuilder sql = new StringBuilder();
         sql.append("update ").append(tableName).append(" set");
-        updateSqlCheckSetNullProperties(sql, tableInfos, next, true);
+        updateSqlCheckSetNullProperties(sql, tableInfos, next);
         return assertEndSet(tableInfoPrimaryKey, sql, next);
     }
 
@@ -743,8 +764,9 @@ public class SqlImpl<T> implements Sqls<T> {
         return -1;
     }
 
-    private void updateSqlCheckSetNullProperties(StringBuilder sql, List<TableColumnInfo> tableColumnInfos,
-                                                 T nextObject, boolean isPlaceholder) {
+    private void updateSqlCheckSetNullProperties(StringBuilder sql,
+                                                 List<TableColumnInfo> tableColumnInfos,
+                                                 T nextObject) {
         int whereBeforeParamIndex = 0;
         for (TableColumnInfo tableColumnInfo : tableColumnInfos) {
             try {
@@ -753,16 +775,32 @@ public class SqlImpl<T> implements Sqls<T> {
                     continue;
                 }
                 sql.append(SPACE).append(tableColumnInfo.getColumn());
-                if (isPlaceholder) {
-                    sql.append(SPACE).append(EQ).append(SPACE);
-                    preparedSql.addParameter(whereBeforeParamIndex++, invoke);
-                    sql.append(PLACEHOLDER).append(COMMA);
-                }
+                sql.append(SPACE).append(EQ).append(SPACE);
+                preparedSql.addParameter(whereBeforeParamIndex++, invoke);
+                sql.append(PLACEHOLDER).append(COMMA);
             } catch (Exception ex) {
                 JdbcUtils.closeConnection(connection);
                 throw new BraveException(ex.getMessage(), ex);
             }
         }
+    }
+
+    private List<TableColumnInfo> updateSqlCheckNullReturnColumns(T nextObject) {
+        List<TableColumnInfo> tableColumnInfos = ContextApplication.getTableColumnInfos(currentClass);
+        List<TableColumnInfo> filterList = new ArrayList<>();
+        for (TableColumnInfo tableColumnInfo : tableColumnInfos) {
+            try {
+                Object invoke = getTableFieldValue(tableColumnInfo, nextObject, false);
+                if (Objects.isNull(invoke) && !updateNullProperties.contains(tableColumnInfo.getField().getName())) {
+                    continue;
+                }
+                filterList.add(tableColumnInfo);
+            } catch (Exception ex) {
+                JdbcUtils.closeConnection(connection);
+                throw new BraveException(ex.getMessage(), ex);
+            }
+        }
+        return filterList;
     }
 
 

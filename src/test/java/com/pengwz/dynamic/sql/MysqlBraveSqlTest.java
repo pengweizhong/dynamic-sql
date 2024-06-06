@@ -398,13 +398,59 @@ public class MysqlBraveSqlTest {
 //        userEntity.setAccountNo("小小");
         BraveSql.build(UserEntity.class).insertOrUpdate(userEntity);
     }
+
+    @Test
+    public void testInsertOrUpdate2() {
+        UserEntity userEntity = new UserEntity();
+        BraveSql.build(UserEntity.class).insertOrUpdate(userEntity);
+    }
+
     @Test
     public void testInsertOrUpdateActive() {
         UserEntity userEntity = new UserEntity();
         userEntity.setId(49L);
-        userEntity.setAccountNo("大大");
-//        userEntity.setAccountNo("小小");
+//        userEntity.setAccountNo("大大");
+        userEntity.setAccountNo("小小");
         BraveSql.build(UserEntity.class).insertOrUpdateActive(userEntity);
+    }
+
+    @Test(expected = BraveException.class)
+    public void testInsertOrUpdateActive2() {
+        //测试空属性
+        UserEntity userEntity = new UserEntity();
+        BraveSql.build(UserEntity.class).insertOrUpdateActive(userEntity);
+    }
+
+    @Test
+    public void testInsertOrUpdateActive3() {
+        UserEntity userEntity = new UserEntity();
+        userEntity.setAccountNo("小小");
+        userEntity.setUsername("Lalalalala");
+        BraveSql.build(UserEntity.class).insertOrUpdateActive(userEntity);
+        System.out.println(userEntity);
+    }
+
+    @Test
+    public void testInsertOrUpdateActive4() {
+        UserEntity userEntity = new UserEntity();
+        userEntity.setAccountNo("小小");
+        userEntity.setUsername("Lalalalala");
+        DynamicSql<UserEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.setNullColumnByUpdateActive(UserEntity::getDesc);
+        BraveSql.build(dynamicSql, UserEntity.class).insertOrUpdateActive(userEntity);
+        System.out.println(userEntity);
+    }
+
+    @Test
+    public void testInsertOrUpdateActive5() {
+        UserEntity userEntity = new UserEntity();
+        userEntity.setAccountNo("小小");
+        userEntity.setUsername("Lalalalala");
+        userEntity.setDesc("新的描述");
+        DynamicSql<UserEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.setNullColumnByUpdateActive(UserEntity::getDesc);
+        BraveSql.build(dynamicSql, UserEntity.class).insertOrUpdateActive(userEntity);
+        System.out.println(userEntity);
     }
 
     public void testBatchInsertOrUpdate() {

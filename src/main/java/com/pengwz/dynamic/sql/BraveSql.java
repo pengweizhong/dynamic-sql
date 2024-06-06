@@ -497,7 +497,7 @@ public class BraveSql<T> {
      * 注意，oracle尚未支持该函数。
      * </strong>
      *
-     * @param data 待插入的数据
+     * @param data 待插入或更新的数据
      * @return 操作成功的数量
      */
     public Integer insertOrUpdate(T data) {
@@ -508,6 +508,14 @@ public class BraveSql<T> {
         return batchInsertOrUpdate(this.data);
     }
 
+    /**
+     * 根据唯一约束、主键等判断表中记录是否存在。
+     * 若表中记录存在，进行更新操作，否则插入。
+     * 若属性为null，则会被忽略，除非指定了强制声明
+     *
+     * @param data 待插入或更新的数据
+     * @return 操作成功的数量
+     */
     public Integer insertOrUpdateActive(T data) {
         if (Objects.isNull(data)) {
             return 0;
