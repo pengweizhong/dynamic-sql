@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.pengwz</groupId>
     <artifactId>dynamic-sql</artifactId>
-    <version>2.1.7</version>
+    <version>2.1.8</version>
     <name>pengwz-dynamic-sql</name>
 
     <inceptionYear>2020</inceptionYear>
