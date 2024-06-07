@@ -27,6 +27,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static com.pengwz.dynamic.anno.GenerationType.AUTO;
@@ -104,6 +105,38 @@ public class SqlImpl<T> implements Sqls<T> {
         sql = ParseSql.parseSql(sql);
         return executeQueryCount(sql, returnType, true);
     }
+
+    @Override
+    public <K, R> Map<K, R> selectAggregateFunction(String valueProperty, FunctionEnum functionEnum, Class<K> keyClass, Class<R> valueClass, String keyProperty) {
+        String keyColumn = ContextApplication.getTableInfo(dataSourceName, tableName, keyProperty).getColumn();
+        String valueColumn = ContextApplication.getTableInfo(dataSourceName, tableName, valueProperty).getColumn();
+        String sql = SELECT + SPACE + keyColumn + COMMA + SPACE + splicingFunction(valueProperty, functionEnum) + " as " + valueColumn + SPACE + FROM + SPACE + tableName;
+        if (StringUtils.isNotEmpty(whereSql)) {
+            sql += SPACE + WHERE + SPACE + whereSql;
+        }
+        sql = ParseSql.parseSql(sql);
+        Exception exception = null;
+        LinkedHashMap<K, R> linkedHashMap = new LinkedHashMap<>();
+        try {
+            setPreparedStatementParam(sql, false);
+            if (interceptorHelper.transferBefore()) {
+                resultSet = preparedStatement.executeQuery();
+                while (resultSet.next()) {
+                    Object k = resultSet.getObject(Check.unSplicingName(keyColumn));
+                    Object v = resultSet.getObject(Check.unSplicingName(valueColumn));
+                    K convertK = ConverterUtils.convert(k, keyClass);
+                    R convertV = ConverterUtils.convert(v, valueClass);
+                    linkedHashMap.put(convertK, convertV);
+                }
+            }
+        } catch (Exception ex) {
+            exception = ex;
+        } finally {
+            interceptorHelper.transferAfter(exception, sql);
+        }
+        return linkedHashMap;
+    }
+
 
     private String splicingFunction(String property, FunctionEnum functionEnum) {
         String column;
@@ -530,6 +563,33 @@ public class SqlImpl<T> implements Sqls<T> {
     }
 
     @Override
+    public Integer insertOrUpdateActive() {
+        DataSourceInfo dataSourceInfo = ContextApplication.getDataSourceInfo(dataSourceName);
+        if (dataSourceInfo.getDbType().equals(DbType.ORACLE)) {
+            close(dataSourceName, resultSet, preparedStatement, connection);
+            interceptorHelper.transferAfter(new BraveException("Oracle 尚未支持 insertOrUpdate"), null);
+        }
+        //这里只会存在一个对象
+        T next = data.iterator().next();
+        List<TableInfo> filterList = updateSqlCheckNullReturnColumns(next);
+        if (filterList.isEmpty()) {
+            throw new BraveException("没有需要新增或更新的字段");
+        }
+        String columns = filterList.stream().map(TableInfo::getColumn).collect(Collectors.joining(", "));
+        StringBuilder sql = new StringBuilder();
+        sql.append("insert into ").append(tableName).append(" ( ").append(columns).append(" ) values ( ");
+        List<String> duplicateKeys = new ArrayList<>();
+        filterList.forEach(tableInfo -> {
+            sql.append(" " + PLACEHOLDER + " ,");
+            duplicateKeys.add(tableInfo.getColumn() + " = values(" + tableInfo.getColumn() + ")");
+        });
+        String prepareSql = sql.substring(0, sql.length() - 1) + ")";
+        String join = String.join(",", duplicateKeys);
+        prepareSql = prepareSql.concat(" on duplicate key update ").concat(join);
+        return setValuesExecuteSql(prepareSql, filterList);
+    }
+
+    @Override
     public Integer update() {
         List<TableInfo> tableInfos = ContextApplication.getTableInfos(dataSourceName, tableName);
         StringBuilder sql = new StringBuilder();
@@ -705,6 +765,24 @@ public class SqlImpl<T> implements Sqls<T> {
         }
     }
 
+    private List<TableInfo> updateSqlCheckNullReturnColumns(T nextObject) {
+        List<TableInfo> tableInfos = ContextApplication.getTableInfos(dataSourceName, tableName);
+        List<TableInfo> filterList = new ArrayList<>();
+        for (TableInfo tableColumnInfo : tableInfos) {
+            try {
+                Object invoke = getTableFieldValue(tableColumnInfo, nextObject, false);
+                if (Objects.isNull(invoke) && !updateNullProperties.contains(tableColumnInfo.getField().getName())) {
+                    continue;
+                }
+                filterList.add(tableColumnInfo);
+            } catch (Exception ex) {
+                JdbcUtils.closeConnection(connection);
+                throw new BraveException(ex.getMessage(), ex);
+            }
+        }
+        return filterList;
+    }
+
 
     private void buildPageInfo(PageInfo<T> pageInfo, List<T> list, Integer totalSize) {
         pageInfo.setTotalSize(totalSize);
@@ -732,6 +810,7 @@ public class SqlImpl<T> implements Sqls<T> {
         this.interceptorHelper = new InterceptorHelper(preparedSql);
     }
 
+    @Deprecated
     public void before() {
         connection = DataSourceManagement.initConnection(dataSourceName);
     }

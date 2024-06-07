@@ -509,7 +509,7 @@ public class DynamicSql<T> {
         this.getDeclarations().add(Declaration.buildDeclaration(GROUP, String.join(",", list), new GroupBy()));
     }
 
-    @Deprecated
+    //@Deprecated
     public void groupBy(Fn<T, Object> fn) {
         String s = ReflectUtils.fnToFieldName(fn);
         this.getDeclarations().add(Declaration.buildDeclaration(GROUP, s, new GroupBy()));

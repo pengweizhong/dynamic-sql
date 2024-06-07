@@ -4,6 +4,8 @@ import com.pengwz.dynamic.exception.BraveException;
 import com.pengwz.dynamic.model.DataSourceInfo;
 import com.pengwz.dynamic.model.DbType;
 import com.pengwz.dynamic.sql.ContextApplication;
+import com.pengwz.dynamic.sql.base.SqlSupplier;
+import com.pengwz.dynamic.sql.base.Sqls;
 import com.pengwz.dynamic.utils.ExceptionUtils;
 import org.springframework.jdbc.datasource.DataSourceUtils;
 import org.springframework.jdbc.support.JdbcUtils;
@@ -142,6 +144,10 @@ public final class DataSourceManagement {
         Method[] declaredMethods = dataSourceClass.getDeclaredMethods();
         methods.addAll(Arrays.asList(declaredMethods));
         getAllMethod(dataSourceClass.getSuperclass(), methods);
+    }
+
+    public static <T, R> void execute(Sqls<T> sqls, SqlSupplier<R> option) {
+
     }
 
 }

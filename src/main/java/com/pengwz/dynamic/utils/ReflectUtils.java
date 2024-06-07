@@ -23,27 +23,58 @@ public class ReflectUtils {
 
     private static final Field[] NO_FIELDS = {};
 
-    private static final Map<Class<?>, Method[]> declaredMethodsCache = new ConcurrentHashMap<Class<?>, Method[]>(256);
-    private static final Map<Class<?>, Field[]> declaredFieldsCache = new ConcurrentHashMap<Class<?>, Field[]>(256);
+    private static final Map<Class<?>, Method[]> declaredMethodsCache = new ConcurrentHashMap<>(256);
+    private static final Map<Class<?>, Field[]> declaredFieldsCache = new ConcurrentHashMap<>(256);
 
     public static String fnToFieldName(Fn fn) {
+        SerializedLambda serializedLambda = serializedLambda(fn);
+        String getter = serializedLambda.getImplMethodName();
+        if (GET_PATTERN.matcher(getter).matches()) {
+            getter = getter.substring(3);
+        } else if (IS_PATTERN.matcher(getter).matches()) {
+            getter = getter.substring(2);
+        }
+        return Introspector.decapitalize(getter);
+    }
+
+    public static <C> Class<C> getReturnTypeFromSignature(Fn fn) {
+        SerializedLambda serializedLambda = serializedLambda(fn);
+        String implMethodSignature = serializedLambda.getImplMethodSignature();
+        // Remove the parameter part, i.e., "()" ()代表无参构造器
+        String returnTypeDescriptor = implMethodSignature.substring(implMethodSignature.indexOf(')') + 1);
+        // Convert descriptor to class name
+        String className = descriptorToClassName(returnTypeDescriptor);
+        try {
+            return (Class<C>) Class.forName(className);
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException("Cannot find class for name: " + className, e);
+        }
+    }
+
+    private static String descriptorToClassName(String descriptor) {
+        if (descriptor.startsWith("L") && descriptor.endsWith(";")) {
+            // Object type, e.g., Ljava/time/LocalDate;
+            return descriptor.substring(1, descriptor.length() - 1).replace('/', '.');
+        }
+        throw new IllegalArgumentException("Unsupported descriptor: " + descriptor);
+    }
+
+    public static String getImplClassname(Fn fn) {
+        SerializedLambda serializedLambda = serializedLambda(fn);
+        final String implClassname = serializedLambda.getImplClass();
+        return implClassname.replace("/", ".");
+    }
+
+    private static SerializedLambda serializedLambda(Fn fn) {
         try {
             Method method = fn.getClass().getDeclaredMethod("writeReplace");
             method.setAccessible(Boolean.TRUE);
-            SerializedLambda serializedLambda = (SerializedLambda) method.invoke(fn);
-            String getter = serializedLambda.getImplMethodName();
-            if (GET_PATTERN.matcher(getter).matches()) {
-                getter = getter.substring(3);
-            } else if (IS_PATTERN.matcher(getter).matches()) {
-                getter = getter.substring(2);
-            }
-            return Introspector.decapitalize(getter);
+            return (SerializedLambda) method.invoke(fn);
         } catch (ReflectiveOperationException e) {
             log.warning(e.getMessage());
             throw new BraveException(e.getMessage());
         }
     }
-
 
     public static Method findMethod(Class<?> clazz, String name) {
         return findMethod(clazz, name, new Class<?>[0]);
@@ -70,7 +101,19 @@ public class ReflectUtils {
         return null;
     }
 
-    private static Method[] getDeclaredMethods(Class<?> clazz) {
+    public static Object invokeMethod(Method method, Object target) {
+        return invokeMethod(method, target, new Object[0]);
+    }
+
+    public static Object invokeMethod(Method method, Object target, Object... args) {
+        try {
+            return method.invoke(target, args);
+        } catch (Exception ex) {
+            throw new BraveException(ex.getMessage());
+        }
+    }
+
+    public static Method[] getDeclaredMethods(Class<?> clazz) {
         if (Objects.isNull(clazz)) {
             throw new BraveException("Class must not be null");
         }
@@ -94,6 +137,23 @@ public class ReflectUtils {
         return result;
     }
 
+    public static Method[] getAllDeclaredMethods(Class<?> clazz) {
+        if (Objects.isNull(clazz)) {
+            throw new BraveException("Class must not be null");
+        }
+        Method[] result = NO_METHODS;
+        Class<?> searchType = clazz;
+        while (Object.class != searchType) {
+            final Method[] declaredMethods = getDeclaredMethods(clazz);
+            //保留扩容前的原始长度
+            int oriLen = result.length;
+            result = Arrays.copyOf(result, result.length + declaredMethods.length);
+            System.arraycopy(declaredMethods, 0, result, oriLen, declaredMethods.length);
+            searchType = searchType.getSuperclass();
+        }
+        return result;
+    }
+
     private static List<Method> findConcreteMethodsOnInterfaces(Class<?> clazz) {
         List<Method> result = null;
         for (Class<?> ifc : clazz.getInterfaces()) {
@@ -111,38 +171,14 @@ public class ReflectUtils {
 
     public static void makeAccessible(Field field) {
         if ((!Modifier.isPublic(field.getModifiers()) ||
-                !Modifier.isPublic(field.getDeclaringClass().getModifiers()) ||
-                Modifier.isFinal(field.getModifiers())) && !field.isAccessible()) {
-            field.setAccessible(true);
+                !Modifier.isPublic(field.getDeclaringClass().getModifiers())
+                || Modifier.isFinal(field.getModifiers()))
+                && !field.isAccessible()) {
+            field.setAccessible(true);//NOSONAR
         }
     }
 
-    public static Field findField(Class<?> clazz, String name) {
-        return findField(clazz, name, null);
-    }
-
-    public static Field findField(Class<?> clazz, String name, Class<?> type) {
-        if (Objects.isNull(clazz)) {
-            throw new BraveException("Class must not be null");
-        }
-        if (Objects.isNull(name) || Objects.isNull(type)) {
-            throw new BraveException("Either name or type of the field must be specified");
-        }
-        Class<?> searchType = clazz;
-        while (Object.class != searchType && searchType != null) {
-            Field[] fields = getDeclaredFields(searchType);
-            for (Field field : fields) {
-                if ((name == null || name.equals(field.getName())) &&
-                        (type == null || type.equals(field.getType()))) {
-                    return field;
-                }
-            }
-            searchType = searchType.getSuperclass();
-        }
-        return null;
-    }
-
-    private static Field[] getDeclaredFields(Class<?> clazz) {
+    public static Field[] getDeclaredFields(Class<?> clazz) {
         if (Objects.isNull(clazz)) {
             throw new BraveException("Class must not be null");
         }
@@ -154,16 +190,46 @@ public class ReflectUtils {
         return result;
     }
 
-    public static Object invokeMethod(Method method, Object target) {
-        return invokeMethod(method, target, new Object[0]);
+    public static Field[] getAllDeclaredFields(Class<?> clazz) {
+        if (Objects.isNull(clazz)) {
+            throw new BraveException("Class must not be null");
+        }
+        Class<?> searchType = clazz;
+        Field[] result = NO_FIELDS;
+        while (Object.class != searchType) {
+            Field[] declaredFields = getDeclaredFields(searchType);
+            //保留扩容前的原始长度
+            int oriLen = result.length;
+            result = Arrays.copyOf(result, result.length + declaredFields.length);
+            System.arraycopy(declaredFields, 0, result, oriLen, declaredFields.length);
+            searchType = searchType.getSuperclass();
+        }
+        return result;
     }
 
-    public static Object invokeMethod(Method method, Object target, Object... args) {
-        try {
-            return method.invoke(target, args);
-        } catch (Exception ex) {
-            throw new BraveException(ex.getMessage());
+    public static Field findField(Class<?> clazz, String name) {
+        return findField(clazz, name, null);
+    }
+
+
+    public static Field findField(Class<?> clazz, String name, Class<?> type) {
+        if (Objects.isNull(clazz)) {
+            throw new BraveException("Class must not be null");
         }
+        if (Objects.isNull(name)) {
+            throw new BraveException("Either name of the field must be specified");
+        }
+        Class<?> searchType = clazz;
+        while (Object.class != searchType && searchType != null) {
+            Field[] fields = getDeclaredFields(searchType);
+            for (Field field : fields) {
+                if (name.equalsIgnoreCase(field.getName()) && (type == null || type.equals(field.getType()))) {
+                    return field;
+                }
+            }
+            searchType = searchType.getSuperclass();
+        }
+        return null;
     }
 
     public static Object getFieldValue(Field field, Object target) {
@@ -182,9 +248,31 @@ public class ReflectUtils {
             if (!Modifier.isPublic(field.getModifiers())) {
                 makeAccessible(field);
             }
-            field.set(target, value);
+            field.set(target, value);//NOSONAR
         } catch (IllegalAccessException ex) {
             throw new BraveException(ex.getMessage());
+        }
+    }
+
+    public static <T> T instance(Class<T> tClass) {
+        if (tClass == null) {
+            return null;
+        }
+        try {
+            return tClass.newInstance();
+        } catch (InstantiationException | IllegalAccessException e) {
+            throw new BraveException(e);
+        }
+    }
+
+    public static Class<?> forName(String className) {
+        if (StringUtils.isEmpty(className)) {
+            return null;
+        }
+        try {
+            return Class.forName(className);
+        } catch (ClassNotFoundException e) {
+            throw new BraveException(e);
         }
     }
 }

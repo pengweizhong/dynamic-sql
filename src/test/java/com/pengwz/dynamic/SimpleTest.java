@@ -8,6 +8,7 @@ import com.pengwz.dynamic.sql.base.enumerate.FunctionEnum;
 import org.junit.Test;
 
 import java.lang.reflect.Type;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -39,6 +40,11 @@ public class SimpleTest {
         @Override
         public List select() {
             return null;
+        }
+
+        @Override
+        public Map selectAggregateFunction(String valueProperty, FunctionEnum functionEnum, Class keyClass, Class valueClass, String keyProperty) {
+            return Collections.emptyMap();
         }
 
         @Override
@@ -74,6 +80,11 @@ public class SimpleTest {
         @Override
         public Integer updateActive() {
             return null;
+        }
+
+        @Override
+        public Integer insertOrUpdateActive() {
+            return 0;
         }
 
         @Override

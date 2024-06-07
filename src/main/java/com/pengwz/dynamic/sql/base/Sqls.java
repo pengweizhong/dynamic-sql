@@ -6,6 +6,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import java.util.List;
+import java.util.Map;
 
 public interface Sqls<T> {
     Log log = LogFactory.getLog(Sqls.class);
@@ -27,6 +28,8 @@ public interface Sqls<T> {
      */
     <R> R selectAggregateFunction(String property, FunctionEnum functionEnum, Class<R> returnType);
 
+    <K, R> Map<K, R> selectAggregateFunction(String valueProperty, FunctionEnum functionEnum, Class<K> keyClass, Class<R> valueClass, String keyProperty);
+
     List<T> selectAll();
 
     PageInfo<T> selectPageInfo();
@@ -36,6 +39,8 @@ public interface Sqls<T> {
     Integer insertActive();
 
     Integer insertOrUpdate();
+
+    Integer insertOrUpdateActive();
 
     Integer update();
 
@@ -56,6 +61,5 @@ public interface Sqls<T> {
             log.debug(sql);
         }
     }
-
 
 }

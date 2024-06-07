@@ -23,6 +23,7 @@ import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -91,7 +92,7 @@ public class MysqlBraveSqlTest {
             UserEntity userEntity = new UserEntity();
             userEntity.setAccountNo("account_" + i);
             userEntity.setUsername(USER_NAME_LIST.get(RandomUtils.nextInt(0, USER_NAME_LIST.size() - 1)));
-            userEntity.setBirthday(LocalDate.now().minusDays(RandomUtils.nextLong(100, 3000)));
+            userEntity.setBirth(LocalDate.now().minusDays(RandomUtils.nextLong(100, 3000)));
             userEntity.setIsDelete(RandomUtils.nextBoolean());
             userEntity.setCreateDate(LocalDateTime.now());
             userEntity.setUpdateDate(LocalDateTime.now());
@@ -392,25 +393,69 @@ public class MysqlBraveSqlTest {
     }
 
 
+    @Test
     public void testInsertOrUpdate() {
-    }
-
-    public void testBatchInsertOrUpdate() {
-    }
-
-    public void testUpdate() {
+        UserEntity userEntity = new UserEntity();
+        userEntity.setId(49L);
+        userEntity.setAccountNo("大大");
+//        userEntity.setAccountNo("小小");
+        BraveSql.build(UserEntity.class).insertOrUpdate(userEntity);
     }
 
     @Test
-    public void testUpdateActive() {
-        DynamicSql<JobUserEntity> dynamicSql = DynamicSql.createDynamicSql();
-        dynamicSql.andEqualTo(JobUserEntity::getId, 0);
-        JobUserEntity jobUserEntity = new JobUserEntity();
-        jobUserEntity.setId(0);
-        Integer integer = BraveSql.build(dynamicSql, JobUserEntity.class).updateActive(jobUserEntity);
-        System.out.println(integer);
-
+    public void testInsertOrUpdate2() {
+        UserEntity userEntity = new UserEntity();
+        BraveSql.build(UserEntity.class).insertOrUpdate(userEntity);
     }
+
+    @Test
+    public void testInsertOrUpdateActive() {
+        UserEntity userEntity = new UserEntity();
+        userEntity.setId(49L);
+        userEntity.setAccountNo("大大");
+//        userEntity.setAccountNo("小小");
+        BraveSql.build(UserEntity.class).insertOrUpdateActive(userEntity);
+    }
+
+    @Test(expected = BraveException.class)
+    public void testInsertOrUpdateActive2() {
+        //测试空属性
+        UserEntity userEntity = new UserEntity();
+        BraveSql.build(UserEntity.class).insertOrUpdateActive(userEntity);
+    }
+
+    @Test
+    public void testInsertOrUpdateActive3() {
+        UserEntity userEntity = new UserEntity();
+        userEntity.setAccountNo("小小");
+        userEntity.setUsername("Lalalalala");
+        BraveSql.build(UserEntity.class).insertOrUpdateActive(userEntity);
+        System.out.println(userEntity);
+    }
+
+    @Test
+    public void testInsertOrUpdateActive4() {
+        UserEntity userEntity = new UserEntity();
+        userEntity.setAccountNo("小小");
+        userEntity.setUsername("Lalalalala");
+        DynamicSql<UserEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.setNullColumnByUpdateActive(UserEntity::getDesc);
+        BraveSql.build(dynamicSql, UserEntity.class).insertOrUpdateActive(userEntity);
+        System.out.println(userEntity);
+    }
+
+    @Test
+    public void testInsertOrUpdateActive5() {
+        UserEntity userEntity = new UserEntity();
+        userEntity.setAccountNo("小小");
+        userEntity.setUsername("Lalalalala");
+        userEntity.setDesc("新的描述");
+        DynamicSql<UserEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.setNullColumnByUpdateActive(UserEntity::getDesc);
+        BraveSql.build(dynamicSql, UserEntity.class).insertOrUpdateActive(userEntity);
+        System.out.println(userEntity);
+    }
+
 
     public void testUpdateByPrimaryKey() {
     }
@@ -529,6 +574,29 @@ public class MysqlBraveSqlTest {
         log.info("selectAvg(JobUserEntity::getTimes) = " + LocalDate);
     }
 
+    @Test
+    public void testSelectMax() {
+//        final LocalDateTime value = BraveSql.build(UserEntity.class).selectMax(UserEntity::getBirthday, LocalDateTime.class);
+//        System.out.println(value);
+        DynamicSql<UserEntity> dynamicSql = DynamicSql.createDynamicSql();
+//        dynamicSql.andIn(UserEntity::getId, Arrays.asList(90000, 90001, 90002, 90003, 90004, 90005, 90006));
+        dynamicSql.groupBy(UserEntity::getUsername);
+        Map<String, LocalDate> map = BraveSql.build(dynamicSql, UserEntity.class)
+                .selectMax(UserEntity::getBirth, UserEntity::getUsername);
+        map.forEach((k, v) -> System.out.println(k + " --> " + v));
+    }
+
+    @Test
+    public void testSelectMin() {
+//        final LocalDateTime value = BraveSql.build(UserEntity.class).selectMax(UserEntity::getBirthday, LocalDateTime.class);
+//        System.out.println(value);
+        DynamicSql<UserEntity> dynamicSql = DynamicSql.createDynamicSql();
+//        dynamicSql.andIn(UserEntity::getId, Arrays.asList(90000, 90001, 90002, 90003, 90004, 90005, 90006));
+        dynamicSql.groupBy(UserEntity::getUsername);
+        Map<String, LocalDate> map = BraveSql.build(dynamicSql, UserEntity.class)
+                .selectMin(UserEntity::getBirth, UserEntity::getUsername);
+        map.forEach((k, v) -> System.out.println(k + " --> " + v));
+    }
 //    public static class LocalTimeConverterAdapter implements ConverterAdapter<LocalTime> {
 //
 //        @Override

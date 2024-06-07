@@ -7,7 +7,6 @@ import com.pengwz.dynamic.config.DataSourceManagement;
 import com.pengwz.dynamic.exception.BraveException;
 import com.pengwz.dynamic.sql.base.CustomizeSQL;
 import com.pengwz.dynamic.sql.base.Fn;
-import com.pengwz.dynamic.sql.base.Sqls;
 import com.pengwz.dynamic.sql.base.enumerate.FunctionEnum;
 import com.pengwz.dynamic.sql.base.impl.SqlImpl;
 import com.pengwz.dynamic.utils.CollectionUtils;
@@ -341,6 +340,18 @@ public class BraveSql<T> {
     }
 
     /**
+     * @see this#selectMax(Fn, Fn)
+     */
+    public <K, R> Map<K, R> selectMin(Fn<T, Object> fn, Fn<T, K> groupKey) {
+        return selectMin(ReflectUtils.fnToFieldName(fn), ReflectUtils.getReturnTypeFromSignature(groupKey),
+                ReflectUtils.getReturnTypeFromSignature(fn), ReflectUtils.fnToFieldName(groupKey));
+    }
+
+    public <K, R> Map<K, R> selectMin(String valueProperty, Class<K> keyClass, Class<R> valueClass, String keyProperty) {
+        return mustShare().selectAggregateFunction(valueProperty.trim(), FunctionEnum.MIN, keyClass, valueClass, keyProperty);
+    }
+
+    /**
      * 对指定字段求最大值
      *
      * @param fn 实体类字段名，通常是Get方法
@@ -380,6 +391,33 @@ public class BraveSql<T> {
      */
     public <R> R selectMax(String property, Class<R> targetClass) {
         return mustShare().selectAggregateFunction(property.trim(), FunctionEnum.MAX, targetClass);
+    }
+
+    /**
+     * 搭配分组字段对指定字段求最大值，并将其组装为Map返回。<br>
+     * 比如：<br>
+     * <pre>
+     *         DynamicSql<UserEntity> dynamicSql = DynamicSql.createDynamicSql();
+     *         dynamicSql.andIn(UserEntity::getId, Arrays.asList(1, 2, 3, 4, 5));
+     *         dynamicSql.groupBy(UserEntity::getUsername);
+     *         Map<String, LocalDate> map = BraveSql.build(dynamicSql, UserEntity.class)
+     *                 .selectMax(UserEntity::getBirth, UserEntity::getUsername);
+     *         map.forEach((k, v) -> System.out.println(k + ":" + v));
+     * </pre>
+     *
+     * @param fn       对应分组中最大结果字段，作为Value使用
+     * @param groupKey 分组字段，作为K使用
+     * @param <K>
+     * @param <R>
+     * @return LinkedHashMap，若没有数据，则返回空Map
+     */
+    public <K, R> Map<K, R> selectMax(Fn<T, Object> fn, Fn<T, K> groupKey) {
+        return selectMax(ReflectUtils.fnToFieldName(fn), ReflectUtils.getReturnTypeFromSignature(groupKey),
+                ReflectUtils.getReturnTypeFromSignature(fn), ReflectUtils.fnToFieldName(groupKey));
+    }
+
+    public <K, R> Map<K, R> selectMax(String valueProperty, Class<K> keyClass, Class<R> valueClass, String keyProperty) {
+        return mustShare().selectAggregateFunction(valueProperty.trim(), FunctionEnum.MAX, keyClass, valueClass, keyProperty);
     }
 
     /**
@@ -468,6 +506,22 @@ public class BraveSql<T> {
         }
         this.data = Collections.singletonList(data);
         return batchInsertOrUpdate(this.data);
+    }
+
+    /**
+     * 根据唯一约束、主键等判断表中记录是否存在。
+     * 若表中记录存在，进行更新操作，否则插入。
+     * 若属性为null，则会被忽略，除非指定了强制声明
+     *
+     * @param data 待插入或更新的数据
+     * @return 操作成功的数量
+     */
+    public Integer insertOrUpdateActive(T data) {
+        if (Objects.isNull(data)) {
+            return 0;
+        }
+        this.data = Collections.singletonList(data);
+        return mustShare().insertOrUpdateActive();
     }
 
     /**
@@ -665,7 +719,7 @@ public class BraveSql<T> {
      *
      * @return
      */
-    private Sqls<T> mustShare() {
+    private SqlImpl<T> mustShare() {
         // 解析where语句
         Table table = currentClass.getAnnotation(Table.class);
         if (Objects.isNull(table) || StringUtils.isEmpty(table.value())) {
