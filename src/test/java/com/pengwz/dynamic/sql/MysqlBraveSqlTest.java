@@ -311,6 +311,25 @@ public class MysqlBraveSqlTest {
     }
 
     @Test
+    public void testSelectSingle2() {
+        //测试i多个
+        DynamicSql<UserEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.andIn(UserEntity::getId, Arrays.asList(1, 2, 3));
+        UserEntity userEntity = BraveSql.build(dynamicSql, UserEntity.class).selectSingle();
+        System.out.println(userEntity);
+    }
+
+    @Test
+    public void testSelectSingle3() {
+        //测试 有没有连接泄露
+        long timeMillis = System.currentTimeMillis();
+        for (int i = 0; i < 10000; i++) {
+            testSelectSingle();
+        }
+        System.out.println("耗时 = " + (System.currentTimeMillis() - timeMillis));
+    }
+
+    @Test
     public void testSelectByPrimaryKey() {
         UserEntity userEntity = BraveSql.build(UserEntity.class).selectByPrimaryKey(1);
         System.out.println(userEntity);
