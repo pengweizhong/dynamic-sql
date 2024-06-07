@@ -3,7 +3,6 @@ package com.pengwz.dynamic.sql.base.impl;
 import com.pengwz.dynamic.anno.GeneratedValue;
 import com.pengwz.dynamic.anno.GenerationType;
 import com.pengwz.dynamic.check.Check;
-import com.pengwz.dynamic.config.DataSourceManagement;
 import com.pengwz.dynamic.constant.Constant;
 import com.pengwz.dynamic.exception.BraveException;
 import com.pengwz.dynamic.model.DataSourceInfo;
@@ -13,9 +12,13 @@ import com.pengwz.dynamic.sql.ContextApplication;
 import com.pengwz.dynamic.sql.PageInfo;
 import com.pengwz.dynamic.sql.ParseSql;
 import com.pengwz.dynamic.sql.PreparedSql;
+import com.pengwz.dynamic.sql.base.AbstractAccessor;
 import com.pengwz.dynamic.sql.base.Sqls;
 import com.pengwz.dynamic.sql.base.enumerate.FunctionEnum;
-import com.pengwz.dynamic.utils.*;
+import com.pengwz.dynamic.utils.CollectionUtils;
+import com.pengwz.dynamic.utils.ConverterUtils;
+import com.pengwz.dynamic.utils.ReflectUtils;
+import com.pengwz.dynamic.utils.StringUtils;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -32,11 +35,10 @@ import java.util.stream.Stream;
 
 import static com.pengwz.dynamic.anno.GenerationType.AUTO;
 import static com.pengwz.dynamic.anno.GenerationType.SEQUENCE;
-import static com.pengwz.dynamic.config.DataSourceManagement.close;
 import static com.pengwz.dynamic.constant.Constant.*;
 import static java.sql.Statement.RETURN_GENERATED_KEYS;
 
-public class SqlImpl<T> implements Sqls<T> {
+public class SqlImpl<T> extends AbstractAccessor implements Sqls<T> {
     private static final Log log = LogFactory.getLog(SqlImpl.class);
 
     private Class<?> currentClass;
@@ -46,7 +48,7 @@ public class SqlImpl<T> implements Sqls<T> {
     private Iterable<T> data;
     private List<String> updateNullProperties;
     private PreparedSql preparedSql;
-    private InterceptorHelper interceptorHelper;
+    //    private InterceptorHelper interceptorHelper;
     private String tableName;
     private String dataSourceName;
     private String whereSql;
@@ -55,7 +57,7 @@ public class SqlImpl<T> implements Sqls<T> {
     private ResultSet resultSet;
 
     @Override
-    public T selectByPrimaryKey(Object primaryKeyValue) {
+    public T selectByPrimaryKey(Object primaryKeyValue) throws SQLException, InstantiationException, IllegalAccessException {
         String columnList = ContextApplication.formatAllColumToStr(dataSourceName, tableName);
         String primaryKey = ContextApplication.getPrimaryKey(dataSourceName, tableName);
         preparedSql.addParameter(primaryKeyValue);
@@ -65,7 +67,7 @@ public class SqlImpl<T> implements Sqls<T> {
     }
 
     @Override
-    public T selectSingle() {
+    public T selectSingle() throws SQLException, InstantiationException, IllegalAccessException {
         String columnList = ContextApplication.formatAllColumToStr(dataSourceName, tableName);
         String sql;
         if (StringUtils.isEmpty(whereSql)) {
@@ -79,13 +81,13 @@ public class SqlImpl<T> implements Sqls<T> {
             return null;
         }
         if (queryList.size() > 1) {
-            interceptorHelper.transferAfter(new BraveException("期望返回一条数据，但是返回了" + queryList.size() + "条数据", "SQL：" + sql), sql);
+            throw new BraveException("期望返回1条数据，但是返回了" + queryList.size() + "条数据", "SQL：" + sql);
         }
         return queryList.isEmpty() ? null : queryList.get(0);
     }
 
     @Override
-    public List<T> select() {
+    public List<T> select() throws SQLException, InstantiationException, IllegalAccessException {
         String columnList = ContextApplication.formatAllColumToStr(dataSourceName, tableName);
         String sql = SELECT + SPACE + columnList + SPACE + FROM + SPACE + tableName;
         if (StringUtils.isNotEmpty(whereSql)) {
@@ -96,18 +98,18 @@ public class SqlImpl<T> implements Sqls<T> {
     }
 
     @Override
-    public <R> R selectAggregateFunction(String property, FunctionEnum functionEnum, Class<R> returnType) {
+    public <R> R selectAggregateFunction(String property, FunctionEnum functionEnum, Class<R> returnType) throws SQLException {
         String function = splicingFunction(property, functionEnum);
         String sql = SELECT + SPACE + function + SPACE + FROM + SPACE + tableName;
         if (StringUtils.isNotEmpty(whereSql)) {
             sql += SPACE + WHERE + SPACE + whereSql;
         }
         sql = ParseSql.parseSql(sql);
-        return executeQueryCount(sql, returnType, true);
+        return executeQueryCount(sql, returnType);
     }
 
     @Override
-    public <K, R> Map<K, R> selectAggregateFunction(String valueProperty, FunctionEnum functionEnum, Class<K> keyClass, Class<R> valueClass, String keyProperty) {
+    public <K, R> Map<K, R> selectAggregateFunction(String valueProperty, FunctionEnum functionEnum, Class<K> keyClass, Class<R> valueClass, String keyProperty) throws SQLException {
         String keyColumn = ContextApplication.getTableInfo(dataSourceName, tableName, keyProperty).getColumn();
         String valueColumn = ContextApplication.getTableInfo(dataSourceName, tableName, valueProperty).getColumn();
         String sql = SELECT + SPACE + keyColumn + COMMA + SPACE + splicingFunction(valueProperty, functionEnum) + " as " + valueColumn + SPACE + FROM + SPACE + tableName;
@@ -115,24 +117,15 @@ public class SqlImpl<T> implements Sqls<T> {
             sql += SPACE + WHERE + SPACE + whereSql;
         }
         sql = ParseSql.parseSql(sql);
-        Exception exception = null;
         LinkedHashMap<K, R> linkedHashMap = new LinkedHashMap<>();
-        try {
-            setPreparedStatementParam(sql, false);
-            if (interceptorHelper.transferBefore()) {
-                resultSet = preparedStatement.executeQuery();
-                while (resultSet.next()) {
-                    Object k = resultSet.getObject(Check.unSplicingName(keyColumn));
-                    Object v = resultSet.getObject(Check.unSplicingName(valueColumn));
-                    K convertK = ConverterUtils.convert(k, keyClass);
-                    R convertV = ConverterUtils.convert(v, valueClass);
-                    linkedHashMap.put(convertK, convertV);
-                }
-            }
-        } catch (Exception ex) {
-            exception = ex;
-        } finally {
-            interceptorHelper.transferAfter(exception, sql);
+        setPreparedStatementParam(sql, false);
+        resultSet = preparedStatement.executeQuery();
+        while (resultSet.next()) {
+            Object k = resultSet.getObject(Check.unSplicingName(keyColumn));
+            Object v = resultSet.getObject(Check.unSplicingName(valueColumn));
+            K convertK = ConverterUtils.convert(k, keyClass);
+            R convertV = ConverterUtils.convert(v, valueClass);
+            linkedHashMap.put(convertK, convertV);
         }
         return linkedHashMap;
     }
@@ -164,20 +157,19 @@ public class SqlImpl<T> implements Sqls<T> {
     }
 
     @Override
-    public List<T> selectAll() {
+    public List<T> selectAll() throws SQLException, InstantiationException, IllegalAccessException {
         String columnList = ContextApplication.formatAllColumToStr(dataSourceName, tableName);
         String sql = "select " + columnList + " from " + tableName;
         return executeQuery(sql);
     }
 
     @Override
-    public PageInfo<T> selectPageInfo() {
+    public PageInfo<T> selectPageInfo() throws SQLException, InstantiationException, IllegalAccessException {
         String columnList = ContextApplication.formatAllColumToStr(dataSourceName, tableName);
         String sqlCount = SELECT + SPACE + "count(1)" + SPACE + FROM + SPACE + tableName + (StringUtils.isEmpty(whereSql) ? SPACE : SPACE + WHERE + SPACE + whereSql.trim());
         sqlCount = ParseSql.parseSql(sqlCount);
-        int totalSize = executeQueryCount(sqlCount, Integer.class, false);
+        int totalSize = executeQueryCount(sqlCount, Integer.class);
         if (totalSize <= 0) {
-            close(dataSourceName, resultSet, preparedStatement, connection);
             buildPageInfo(pageInfo, new ArrayList<>(), totalSize);
             return pageInfo;
         }
@@ -238,31 +230,11 @@ public class SqlImpl<T> implements Sqls<T> {
         return stringBuilder.toString()/*.toUpperCase()*/;
     }
 
-    private <R> R executeQueryCount(String sql, Class<R> returnType, boolean isCloseConnection) {
-        Exception exception = null;
-        try {
-            setPreparedStatementParam(sql, false);
-            if (interceptorHelper.transferBefore()) {
-                resultSet = preparedStatement.executeQuery();
-                resultSet.next();
-                return ConverterUtils.convertJdbc(currentClass, resultSet, "1", returnType);
-            }
-        } catch (Exception ex) {
-            //如果发生异常，则必须归还链接资源
-            if (!isCloseConnection)
-                isCloseConnection = true;
-            exception = ex;
-        } finally {
-            if (isCloseConnection) {
-                close(dataSourceName, resultSet, preparedStatement, connection);
-            } else {
-                JdbcUtils.closeResultSet(resultSet);
-                JdbcUtils.closeStatement(preparedStatement);
-            }
-            interceptorHelper.transferAfter(exception, sql);
-        }
-        //不会走到这的  此处仅仅是为了编译器开心
-        return ConverterUtils.convert(0, returnType);
+    private <R> R executeQueryCount(String sql, Class<R> returnType) throws SQLException {
+        setPreparedStatementParam(sql, false);
+        resultSet = preparedStatement.executeQuery();
+        resultSet.next();
+        return ConverterUtils.convertJdbc(currentClass, resultSet, "1", returnType);
     }
 
     private void setPreparedStatementParam(String sql, boolean isBatch, int... generatedKeys) throws SQLException {
@@ -299,34 +271,24 @@ public class SqlImpl<T> implements Sqls<T> {
     }
 
     @SuppressWarnings("unchecked")
-    private List<T> executeQuery(String sql) {
+    private List<T> executeQuery(String sql) throws SQLException, InstantiationException, IllegalAccessException {
         List<T> list = new ArrayList<>();
-        Exception exception = null;
-        try {
-            List<TableInfo> tableInfos = ContextApplication.getTableInfos(dataSourceName, tableName);
-            setPreparedStatementParam(sql, false);
-            if (interceptorHelper.transferBefore()) {
-                resultSet = preparedStatement.executeQuery();
-                while (resultSet.next()) {
-                    T t = (T) currentClass.newInstance();
-                    for (TableInfo tableInfo : tableInfos) {
-                        Object o = ConverterUtils.convertJdbc(currentClass, resultSet, tableInfo);
-                        ReflectUtils.setFieldValue(tableInfo.getField(), t, o);
-                    }
-                    list.add(t);
-                }
+        List<TableInfo> tableInfos = ContextApplication.getTableInfos(dataSourceName, tableName);
+        setPreparedStatementParam(sql, false);
+        resultSet = preparedStatement.executeQuery();
+        while (resultSet.next()) {
+            T t = (T) currentClass.newInstance();
+            for (TableInfo tableInfo : tableInfos) {
+                Object o = ConverterUtils.convertJdbc(currentClass, resultSet, tableInfo);
+                ReflectUtils.setFieldValue(tableInfo.getField(), t, o);
             }
-        } catch (Exception ex) {
-            exception = ex;
-        } finally {
-            close(dataSourceName, resultSet, preparedStatement, connection);
-            interceptorHelper.transferAfter(exception, sql);
+            list.add(t);
         }
         return list;
     }
 
     @Override
-    public Integer batchInsert() {
+    public Integer batchInsert() throws SQLException {
         String columnToStr = ContextApplication.formatAllColumToStr(dataSourceName, tableName);
         List<TableInfo> tableInfos = ContextApplication.getTableInfos(dataSourceName, tableName);
         final StringBuilder sql = new StringBuilder();
@@ -340,7 +302,7 @@ public class SqlImpl<T> implements Sqls<T> {
     }
 
     @Override
-    public Integer insertActive() {
+    public Integer insertActive() throws SQLException {
         List<TableInfo> tableInfos = ContextApplication.getTableInfos(dataSourceName, tableName);
         T next = data.iterator().next();
         final StringBuilder prefix = new StringBuilder();
@@ -348,68 +310,42 @@ public class SqlImpl<T> implements Sqls<T> {
         prefix.append("insert into ").append(tableName).append(" ( ");
         final List<Object> parameter = preparedSql.startBatchParameter();
         for (TableInfo tableInfo : tableInfos) {
-            try {
-                Object invoke = getTableFieldValue(tableInfo, next, true);
-                final GeneratedValue generatedValue = tableInfo.getGeneratedValue();
-                //判断主键生成策略，非自增直接过滤
-                if (Objects.isNull(invoke) && (generatedValue == null || !generatedValue.strategy().equals(AUTO))) {
-                    continue;
-                }
-                prefix.append(SPACE).append(tableInfo.getColumn()).append(COMMA);
-                suffix.append(PLACEHOLDER + ", ");
-                parameter.add(invoke);
-            } catch (Exception ex) {
-                close(dataSourceName, resultSet, preparedStatement, connection);
-                ExceptionUtils.boxingAndThrowBraveException(ex);
+            Object invoke = getTableFieldValue(tableInfo, next, true);
+            final GeneratedValue generatedValue = tableInfo.getGeneratedValue();
+            //判断主键生成策略，非自增直接过滤
+            if (Objects.isNull(invoke) && (generatedValue == null || !generatedValue.strategy().equals(AUTO))) {
+                continue;
             }
+            prefix.append(SPACE).append(tableInfo.getColumn()).append(COMMA);
+            suffix.append(PLACEHOLDER + ", ");
+            parameter.add(invoke);
         }
         if (StringUtils.isEmpty(suffix.toString())) {
-            close(dataSourceName, resultSet, preparedStatement, connection);
             return 0;
         }
         suffix.deleteCharAt(suffix.lastIndexOf(","));
         prefix.deleteCharAt(prefix.lastIndexOf(","));
         prefix.append(" ) values (").append(suffix).append(")");
         String sql = prefix.toString();
-        Exception exception = null;
-        try {
-            setPreparedStatementParam(sql, true, RETURN_GENERATED_KEYS);
-            return executeSqlAndReturnAffectedRows();
-        } catch (Exception ex) {
-            exception = ex;
-        } finally {
-            close(dataSourceName, resultSet, preparedStatement, connection);
-            interceptorHelper.transferAfter(exception, sql);
-        }
-        return -1;
+        setPreparedStatementParam(sql, true, RETURN_GENERATED_KEYS);
+        return executeSqlAndReturnAffectedRows();
     }
 
 
-    private Integer setValuesExecuteSql(String sql, List<TableInfo> tableInfos) {
-        Iterator<T> iterator = data.iterator();
-        Exception exception = null;
-        try {
-            while (iterator.hasNext()) {
-                T next = iterator.next();
-                if (next == null) {
-                    interceptorHelper.transferAfter(new BraveException("新增的数据不可为空"), sql);
-                }
-                final List<Object> parameters = preparedSql.startBatchParameter();
-                for (int i = 1; i <= tableInfos.size(); i++) {
-                    TableInfo tableInfo = tableInfos.get(i - 1);
-                    Object fieldValue = getTableFieldValue(tableInfo, next, true);
-                    parameters.add(ConverterUtils.convertValueJdbc(fieldValue));
-                }
+    private Integer setValuesExecuteSql(String sql, List<TableInfo> tableInfos) throws SQLException {
+        for (T next : data) {
+            if (next == null) {
+                throw new BraveException("新增的数据不可为空");
             }
-            setPreparedStatementParam(sql, true, RETURN_GENERATED_KEYS);
-            return executeSqlAndReturnAffectedRows();
-        } catch (Exception ex) {
-            exception = ex;
-        } finally {
-            close(dataSourceName, resultSet, preparedStatement, connection);
-            interceptorHelper.transferAfter(exception, sql);
+            final List<Object> parameters = preparedSql.startBatchParameter();
+            for (int i = 1; i <= tableInfos.size(); i++) {
+                TableInfo tableInfo = tableInfos.get(i - 1);
+                Object fieldValue = getTableFieldValue(tableInfo, next, true);
+                parameters.add(ConverterUtils.convertValueJdbc(fieldValue));
+            }
         }
-        return -1;
+        setPreparedStatementParam(sql, true, RETURN_GENERATED_KEYS);
+        return executeSqlAndReturnAffectedRows();
     }
 
     /**
@@ -420,7 +356,7 @@ public class SqlImpl<T> implements Sqls<T> {
      * @param isGeneratedValue 主键值为null时，是否生成主键 true 生成，false不生成
      * @return 主键值
      */
-    private Object getTableFieldValue(TableInfo tableInfo, Object next, boolean isGeneratedValue) {
+    private Object getTableFieldValue(TableInfo tableInfo, Object next, boolean isGeneratedValue) throws SQLException {
         //先确定源字段是否有值
         Object invoke = ReflectUtils.getFieldValue(tableInfo.getField(), next);
         if (null != invoke) {
@@ -448,7 +384,7 @@ public class SqlImpl<T> implements Sqls<T> {
      * @param isGeneratedValue 是否生成新的主键
      * @return 主键值，若不生成主键，则返回 null
      */
-    private Object generatedPrimaryValue(TableInfo tableInfo, boolean isGeneratedValue) {
+    private Object generatedPrimaryValue(TableInfo tableInfo, boolean isGeneratedValue) throws SQLException {
         if (!isGeneratedValue) {
             return null;
         }
@@ -476,18 +412,10 @@ public class SqlImpl<T> implements Sqls<T> {
                 printSql(sql);
                 PreparedStatement ps = null;
                 ResultSet rs = null;
-                try {
-                    ps = connection.prepareStatement(sql);//NOSONAR
-                    rs = ps.executeQuery();
-                    rs.next();
-                    return rs.getObject(1, tableInfo.getField().getType());
-                } catch (SQLException sqlException) {
-                    //此处关闭。。。。
-                    close(dataSourceName, rs, ps, connection);
-                    ExceptionUtils.boxingAndThrowBraveException(sqlException, sql);
-                }
-                //不会走到这里
-                return null;
+                ps = connection.prepareStatement(sql);//NOSONAR
+                rs = ps.executeQuery();
+                rs.next();
+                return rs.getObject(1, tableInfo.getField().getType());
             //不会走到default这里
             default:
                 throw new IllegalStateException("Unexpected value: " + tableInfo.getGeneratedValue());
@@ -496,12 +424,7 @@ public class SqlImpl<T> implements Sqls<T> {
 
 
     private Integer executeSqlAndReturnAffectedRows() throws SQLException {
-        int successCount = -1;
-        if (!interceptorHelper.transferBefore()) {
-            return successCount;
-        }
-        int[] ints = preparedStatement.executeBatch();
-        successCount = ints.length;
+        int successCount = preparedStatement.executeBatch().length;
         TableInfo tableInfoPrimaryKey = ContextApplication.getTableInfoPrimaryKey(dataSourceName, tableName);
         //若没有设置主键，直接返回
         if (tableInfoPrimaryKey == null || tableInfoPrimaryKey.getGeneratedValue() == null)
@@ -517,6 +440,10 @@ public class SqlImpl<T> implements Sqls<T> {
         //使用数据库机制的，接收返回值并且对返回对象赋值
         Iterator<T> resultIterator = data.iterator();
         ResultSet generatedKeys = preparedStatement.getGeneratedKeys();
+        //判断结果是否为空
+        if (!generatedKeys.isBeforeFirst()) {
+            return successCount;
+        }
         while (resultIterator.hasNext()) {
             T next = resultIterator.next();
             final Object pkValue = ReflectUtils.getFieldValue(tableInfoPrimaryKey.getField(), next);
@@ -533,19 +460,16 @@ public class SqlImpl<T> implements Sqls<T> {
             }
             //如果用户没有给定主键值，那么就将系统返回的主键赋值到当前对象上
             //修改成的0，可以存在,新添加的0，不允许存在，会根据行号改变，所以这里用户赋值0的话，主键要进行重新赋值
-            if (pkValue == null || pkValue instanceof Number && ((Number) pkValue).doubleValue() == 0) {
-                ReflectUtils.setFieldValue(tableInfoPrimaryKey.getField(), next, object);
-            }
+            ReflectUtils.setFieldValue(tableInfoPrimaryKey.getField(), next, object);
         }
         return successCount;
     }
 
     @Override
-    public Integer insertOrUpdate() {
+    public Integer insertOrUpdate() throws SQLException {
         DataSourceInfo dataSourceInfo = ContextApplication.getDataSourceInfo(dataSourceName);
         if (dataSourceInfo.getDbType().equals(DbType.ORACLE)) {
-            close(dataSourceName, resultSet, preparedStatement, connection);
-            interceptorHelper.transferAfter(new BraveException("oracle 尚未支持 insertOrUpdate"), null);
+            throw new BraveException("Oracle尚未支持该方法");
         }
         String columnToStr = ContextApplication.formatAllColumToStr(dataSourceName, tableName);
         List<TableInfo> tableInfos = ContextApplication.getTableInfos(dataSourceName, tableName);
@@ -563,11 +487,10 @@ public class SqlImpl<T> implements Sqls<T> {
     }
 
     @Override
-    public Integer insertOrUpdateActive() {
+    public Integer insertOrUpdateActive() throws SQLException {
         DataSourceInfo dataSourceInfo = ContextApplication.getDataSourceInfo(dataSourceName);
         if (dataSourceInfo.getDbType().equals(DbType.ORACLE)) {
-            close(dataSourceName, resultSet, preparedStatement, connection);
-            interceptorHelper.transferAfter(new BraveException("Oracle 尚未支持 insertOrUpdate"), null);
+            throw new BraveException("Oracle尚未支持该方法");
         }
         //这里只会存在一个对象
         T next = data.iterator().next();
@@ -590,7 +513,7 @@ public class SqlImpl<T> implements Sqls<T> {
     }
 
     @Override
-    public Integer update() {
+    public Integer update() throws SQLException {
         List<TableInfo> tableInfos = ContextApplication.getTableInfos(dataSourceName, tableName);
         StringBuilder sql = new StringBuilder();
         sql.append("update ").append(tableName).append(" set");
@@ -601,7 +524,7 @@ public class SqlImpl<T> implements Sqls<T> {
     }
 
     @Override
-    public Integer updateActive() {
+    public Integer updateActive() throws SQLException {
         List<TableInfo> tableInfos = ContextApplication.getTableInfos(dataSourceName, tableName);
         StringBuilder sql = new StringBuilder();
         sql.append("update ").append(tableName).append(" set");
@@ -612,9 +535,8 @@ public class SqlImpl<T> implements Sqls<T> {
     }
 
 
-    private Integer baseUpdate(StringBuilder sql) {
+    private Integer baseUpdate(StringBuilder sql) throws SQLException {
         if (sql.toString().endsWith("set")) {
-            close(dataSourceName, resultSet, preparedStatement, connection);
             return 0;
         }
         String sqlPrefix = sql.substring(0, sql.length() - 1);
@@ -630,12 +552,11 @@ public class SqlImpl<T> implements Sqls<T> {
     }
 
     @Override
-    public Integer updateByPrimaryKey() {
+    public Integer updateByPrimaryKey() throws SQLException {
         List<TableInfo> tableInfos = ContextApplication.getTableInfos(dataSourceName, tableName);
         TableInfo tableInfoPrimaryKey = ContextApplication.getTableInfoPrimaryKey(dataSourceName, tableName);
         if (Objects.isNull(tableInfoPrimaryKey)) {
-            close(dataSourceName, resultSet, preparedStatement, connection);
-            interceptorHelper.transferAfter(new BraveException(tableName + " 表未配置主键"), null);
+            throw new BraveException(tableName + "表未配置主键");
         }
         StringBuilder sql = new StringBuilder();
         sql.append("update ").append(tableName).append(" set");
@@ -644,9 +565,8 @@ public class SqlImpl<T> implements Sqls<T> {
         return assertEndSet(tableInfoPrimaryKey, sql, next);
     }
 
-    private Integer assertEndSet(TableInfo tableInfoPrimaryKey, StringBuilder sql, T next) {
+    private Integer assertEndSet(TableInfo tableInfoPrimaryKey, StringBuilder sql, T next) throws SQLException {
         if (sql.toString().endsWith("set")) {
-            close(dataSourceName, resultSet, preparedStatement, connection);
             return 0;
         }
         String sqlPrefix = sql.substring(0, sql.length() - 1);
@@ -656,43 +576,30 @@ public class SqlImpl<T> implements Sqls<T> {
         return executeUpdateSqlAndReturnAffectedRows(parseSql);
     }
 
-    private void appendSetValueSql(List<TableInfo> tableInfos, StringBuilder sql, Object next) {
+    private void appendSetValueSql(List<TableInfo> tableInfos, StringBuilder sql, Object next) throws SQLException {
         int whereBeforeParamIndex = 0;
         for (TableInfo tableInfo : tableInfos) {
-            try {
-                sql.append(SPACE).append(tableInfo.getColumn()).append(SPACE).append(EQ).append(SPACE);
-                Object invoke = getTableFieldValue(tableInfo, next, false);
-                preparedSql.addParameter(whereBeforeParamIndex++, invoke);
-                sql.append(PLACEHOLDER).append(COMMA);
-            } catch (Exception ex) {
-                close(dataSourceName, resultSet, preparedStatement, connection);
-                interceptorHelper.transferAfter(ex, sql.toString());
-            }
+            sql.append(SPACE).append(tableInfo.getColumn()).append(SPACE).append(EQ).append(SPACE);
+            Object invoke = getTableFieldValue(tableInfo, next, false);
+            preparedSql.addParameter(whereBeforeParamIndex++, invoke);
+            sql.append(PLACEHOLDER).append(COMMA);
         }
     }
 
     private Object getPrimaryKeyValue(TableInfo tableInfoPrimaryKey, Object next) {
-        Object primaryKeyValue;
-        try {
-            primaryKeyValue = ReflectUtils.getFieldValue(tableInfoPrimaryKey.getField(), next);
-            if (Objects.isNull(primaryKeyValue)) {
-                throw new BraveException(tableName + " 表的主键值不存在");
-            }
-        } catch (Exception e) {
-            close(dataSourceName, resultSet, preparedStatement, connection);
-            interceptorHelper.transferAfter(new BraveException(tableName + " 表获取主键值失败，原因：" + e.getMessage(), e), null);
-            return null;
+        Object primaryKeyValue = ReflectUtils.getFieldValue(tableInfoPrimaryKey.getField(), next);
+        if (Objects.isNull(primaryKeyValue)) {
+            throw new BraveException(tableName + "表的主键值不存在");
         }
         return primaryKeyValue;
     }
 
     @Override
-    public Integer updateActiveByPrimaryKey() {
+    public Integer updateActiveByPrimaryKey() throws SQLException {
         List<TableInfo> tableInfos = ContextApplication.getTableInfos(dataSourceName, tableName);
         TableInfo tableInfoPrimaryKey = ContextApplication.getTableInfoPrimaryKey(dataSourceName, tableName);
         if (Objects.isNull(tableInfoPrimaryKey)) {
-            close(dataSourceName, resultSet, preparedStatement, connection);
-            interceptorHelper.transferAfter(new BraveException(tableName + " 表未配置主键"), null);
+            throw new BraveException(tableName + "表未配置主键");
         }
         T next = data.iterator().next();
         StringBuilder sql = new StringBuilder();
@@ -702,7 +609,7 @@ public class SqlImpl<T> implements Sqls<T> {
     }
 
     @Override
-    public Integer delete() {
+    public Integer delete() throws SQLException {
         StringBuilder sql = new StringBuilder();
         sql.append("delete from ").append(tableName);
         if (StringUtils.isEmpty(whereSql)) {
@@ -717,12 +624,10 @@ public class SqlImpl<T> implements Sqls<T> {
     }
 
     @Override
-    public Integer deleteByPrimaryKey(Object primaryKeyValue) {
+    public Integer deleteByPrimaryKey(Object primaryKeyValue) throws SQLException {
         TableInfo tableInfoPrimaryKey = ContextApplication.getTableInfoPrimaryKey(dataSourceName, tableName);
         if (Objects.isNull(tableInfoPrimaryKey)) {
-            close(dataSourceName, resultSet, preparedStatement, connection);
-            interceptorHelper.transferAfter(new BraveException(tableName + " 表未配置主键"), null);
-            return 0;
+            throw new BraveException(tableName + "表未配置主键");
         }
         String sql = "delete from " + tableName + " where " + tableInfoPrimaryKey.getColumn() +
                 Constant.EQ + SPACE + PLACEHOLDER;
@@ -731,20 +636,9 @@ public class SqlImpl<T> implements Sqls<T> {
         return executeUpdateSqlAndReturnAffectedRows(sql);
     }
 
-    private Integer executeUpdateSqlAndReturnAffectedRows(String sql) {
-        Exception exception = null;
-        try {
-            setPreparedStatementParam(sql, false);
-            if (interceptorHelper.transferBefore()) {
-                return preparedStatement.executeUpdate();
-            }
-        } catch (SQLException ex) {
-            exception = ex;
-        } finally {
-            close(dataSourceName, resultSet, preparedStatement, connection);
-            interceptorHelper.transferAfter(exception, sql);
-        }
-        return -1;
+    private Integer executeUpdateSqlAndReturnAffectedRows(String sql) throws SQLException {
+        setPreparedStatementParam(sql, false);
+        return preparedStatement.executeUpdate();
     }
 
     private void updateSqlCheckSetNullProperties(StringBuilder sql, List<TableInfo> tableInfos, T nextObject) {
@@ -807,11 +701,36 @@ public class SqlImpl<T> implements Sqls<T> {
         this.data = data;
         this.updateNullProperties = updateNullProperties;
         this.preparedSql = new PreparedSql(currentClass, params);
-        this.interceptorHelper = new InterceptorHelper(preparedSql);
+//        this.interceptorHelper = new InterceptorHelper(preparedSql);
     }
 
-    @Deprecated
-    public void before() {
-        connection = DataSourceManagement.initConnection(dataSourceName);
+    @Override
+    protected void setConnection(Connection connection) {
+        this.connection = connection;
     }
+
+    @Override
+    protected String getDataSourceName() {
+        return dataSourceName;
+    }
+
+    @Override
+    protected ResultSet getResultSet() {
+        return resultSet;
+    }
+
+    @Override
+    protected Connection getConnection() {
+        return connection;
+    }
+
+    @Override
+    protected PreparedStatement getStatement() {
+        return preparedStatement;
+    }
+
+//    @Override
+//    protected PreparedSql getPreparedSql() {
+//        return preparedSql;
+//    }
 }

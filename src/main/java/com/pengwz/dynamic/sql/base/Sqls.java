@@ -5,17 +5,18 @@ import com.pengwz.dynamic.sql.base.enumerate.FunctionEnum;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 
 public interface Sqls<T> {
     Log log = LogFactory.getLog(Sqls.class);
 
-    T selectByPrimaryKey(Object primaryKeyValue);
+    T selectByPrimaryKey(Object primaryKeyValue) throws SQLException, InstantiationException, IllegalAccessException;
 
-    T selectSingle();
+    T selectSingle() throws SQLException, InstantiationException, IllegalAccessException;
 
-    List<T> select();
+    List<T> select() throws SQLException, InstantiationException, IllegalAccessException;
 
     /**
      * 执行聚合函数，已验证5个，分别是
@@ -26,35 +27,35 @@ public interface Sqls<T> {
      * @param returnType   期待返回的类型
      * @return 期待执行的结果
      */
-    <R> R selectAggregateFunction(String property, FunctionEnum functionEnum, Class<R> returnType);
+    <R> R selectAggregateFunction(String property, FunctionEnum functionEnum, Class<R> returnType) throws SQLException;
 
-    <K, R> Map<K, R> selectAggregateFunction(String valueProperty, FunctionEnum functionEnum, Class<K> keyClass, Class<R> valueClass, String keyProperty);
+    <K, R> Map<K, R> selectAggregateFunction(String valueProperty, FunctionEnum functionEnum, Class<K> keyClass, Class<R> valueClass, String keyProperty) throws SQLException;
 
-    List<T> selectAll();
+    List<T> selectAll() throws SQLException, InstantiationException, IllegalAccessException;
 
-    PageInfo<T> selectPageInfo();
+    PageInfo<T> selectPageInfo() throws SQLException, InstantiationException, IllegalAccessException;
 
-    Integer batchInsert();
+    Integer batchInsert() throws SQLException;
 
-    Integer insertActive();
+    Integer insertActive() throws SQLException;
 
-    Integer insertOrUpdate();
+    Integer insertOrUpdate() throws SQLException;
 
-    Integer insertOrUpdateActive();
+    Integer insertOrUpdateActive() throws SQLException;
 
-    Integer update();
+    Integer update() throws SQLException;
 
-    Integer updateActive();
+    Integer updateActive() throws SQLException;
 
 //    Integer updateBatch();
 
-    Integer updateByPrimaryKey();
+    Integer updateByPrimaryKey() throws SQLException;
 
-    Integer updateActiveByPrimaryKey();
+    Integer updateActiveByPrimaryKey() throws SQLException;
 
-    Integer delete();
+    Integer delete() throws SQLException;
 
-    Integer deleteByPrimaryKey(Object primaryKeyValue);
+    Integer deleteByPrimaryKey(Object primaryKeyValue) throws SQLException;
 
     default void printSql(String sql) {
         if (log.isDebugEnabled()) {

@@ -130,6 +130,14 @@ public class ContextApplication {
         return getTableInfos(dataSourceClass.getCanonicalName(), tableName);
     }
 
+    public static List<TableInfo> getTableInfosOrNull(String dataSourceName, String tableName) {
+        try {
+            return getTableInfos(dataSourceName, tableName);
+        } catch (BraveException e) {
+            return null;
+        }
+    }
+
     public static List<TableInfo> getTableInfos(String dataSourceName, String tableName) {
         Map<String, List<TableInfo>> tableMap = dataBaseMap.get(dataSourceName);
         if (tableMap != null) {
@@ -138,8 +146,8 @@ public class ContextApplication {
                 return tableInfosCache;
             }
         }
-        return null;
-//        throw new BraveException("无法根据数据源" + dataSourceName + "获取表" + tableName + "信息");
+//        return null;
+        throw new BraveException("无法根据数据源" + dataSourceName + "获取表" + tableName + "信息");
 //        synchronized (ContextApplication.class) {
 //            List<TableInfo> tableInfos = tableMap.get(tableName);
 //            if (CollectionUtils.isNotEmpty(tableInfos)) {
@@ -172,7 +180,7 @@ public class ContextApplication {
             dataSourceName = aClass.getCanonicalName();
         }
         String tableName = Check.getTableName(table.value(), dataSourceName);
-        List<TableInfo> tableInfos = getTableInfos(dataSourceName, tableName);
+        List<TableInfo> tableInfos = getTableInfosOrNull(dataSourceName, tableName);
         if (CollectionUtils.isNotEmpty(tableInfos)) {
             return tableInfos;
         }

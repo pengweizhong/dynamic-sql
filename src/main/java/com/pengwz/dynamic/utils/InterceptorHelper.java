@@ -30,53 +30,53 @@ public class InterceptorHelper {
                 "参考位置：" + savedSqlInterceptor.getClass().getCanonicalName() + "，" + sqlInterceptor.getClass().getCanonicalName());
     }
 
-    public static SQLInterceptor getSQLInterceptor() {
-        return Optional.ofNullable(sqlInterceptorReference.get()).orElseGet(() -> new SQLInterceptor() {
-            @Override
-            public boolean doBefore(Class<?> entityClass, String sql, List<List<Object>> sqlParams) {
-                return true;
-            }
+//    public static SQLInterceptor getSQLInterceptor() {
+//        return Optional.ofNullable(sqlInterceptorReference.get()).orElseGet(() -> new SQLInterceptor() {
+//            @Override
+//            public boolean doBefore(Class<?> entityClass, String sql, List<List<Object>> sqlParams) {
+//                return true;
+//            }
+//
+//            @Override
+//            public void doAfter(Class<?> entityClass, BraveException braveException) {
+//                if (braveException != null) {
+//                    throw braveException;
+//                }
+//            }
+//        });
+//    }
 
-            @Override
-            public void doAfter(Class<?> entityClass, BraveException braveException) {
-                if (braveException != null) {
-                    throw braveException;
-                }
-            }
-        });
-    }
+//    public boolean transferBefore() {
+//        final SQLInterceptor sqlInterceptor = getSQLInterceptor();
+//        final List<List<Object>> batchPreparedParameters = preparedSql.getBatchPreparedParameters();
+//        if (batchPreparedParameters.isEmpty()) {
+//            final List<Object> preparedParameters = preparedSql.getPreparedParameters();
+//            if (!preparedParameters.isEmpty()) {
+//                batchPreparedParameters.add(preparedParameters);
+//            }
+//        }
+//        return sqlInterceptor.doBefore(preparedSql.getCurrentClass(), preparedSql.getSql(), batchPreparedParameters);
+//    }
 
-    public boolean transferBefore() {
-        final SQLInterceptor sqlInterceptor = getSQLInterceptor();
-        final List<List<Object>> batchPreparedParameters = preparedSql.getBatchPreparedParameters();
-        if (batchPreparedParameters.isEmpty()) {
-            final List<Object> preparedParameters = preparedSql.getPreparedParameters();
-            if (!preparedParameters.isEmpty()) {
-                batchPreparedParameters.add(preparedParameters);
-            }
-        }
-        return sqlInterceptor.doBefore(preparedSql.getCurrentClass(), preparedSql.getSql(), batchPreparedParameters);
-    }
-
-    public void transferAfter(Exception exception, String sql) {
-        final SQLInterceptor sqlInterceptor = getSQLInterceptor();
-        if (exception == null) {
-            sqlInterceptor.doAfter(preparedSql.getCurrentClass(), null);
-            return;
-        }
-        if (exception instanceof BraveException) {
-            sqlInterceptor.doAfter(preparedSql.getCurrentClass(), (BraveException) exception);
-            return;
-        }
-        try {
-            ExceptionUtils.boxingAndThrowBraveException(exception, sql);
-        } catch (BraveException ex) {
-            sqlInterceptor.doAfter(preparedSql.getCurrentClass(), ex);
-        }
-        if (exception != null) {
-            //防止用户吃掉异常，继续抛出
-            ExceptionUtils.boxingAndThrowBraveException(exception, sql);
-        }
-    }
+//    public void transferAfter(Exception exception, String sql) {
+//        final SQLInterceptor sqlInterceptor = getSQLInterceptor();
+//        if (exception == null) {
+//            sqlInterceptor.doAfter(preparedSql.getCurrentClass(), null);
+//            return;
+//        }
+//        if (exception instanceof BraveException) {
+//            sqlInterceptor.doAfter(preparedSql.getCurrentClass(), (BraveException) exception);
+//            return;
+//        }
+//        try {
+//            ExceptionUtils.boxingAndThrowBraveException(exception, sql);
+//        } catch (BraveException ex) {
+//            sqlInterceptor.doAfter(preparedSql.getCurrentClass(), ex);
+//        }
+//        if (exception != null) {
+//            //防止用户吃掉异常，继续抛出
+//            ExceptionUtils.boxingAndThrowBraveException(exception, sql);
+//        }
+//    }
 
 }

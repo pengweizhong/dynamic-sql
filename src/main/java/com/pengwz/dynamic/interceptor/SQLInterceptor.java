@@ -7,6 +7,7 @@ import java.util.List;
 /**
  * 全局SQL拦截器，可与业务进行绑定，比如判断SQL是否执行，统计SQL执行耗时等等；
  */
+@Deprecated
 public interface SQLInterceptor {
     /**
      * sql 执行前触发此方法，可以根据业务自行判断该SQL是否执行

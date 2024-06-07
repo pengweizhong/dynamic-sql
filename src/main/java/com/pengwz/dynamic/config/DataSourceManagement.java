@@ -4,8 +4,6 @@ import com.pengwz.dynamic.exception.BraveException;
 import com.pengwz.dynamic.model.DataSourceInfo;
 import com.pengwz.dynamic.model.DbType;
 import com.pengwz.dynamic.sql.ContextApplication;
-import com.pengwz.dynamic.sql.base.SqlSupplier;
-import com.pengwz.dynamic.sql.base.Sqls;
 import com.pengwz.dynamic.utils.ExceptionUtils;
 import org.springframework.jdbc.datasource.DataSourceUtils;
 import org.springframework.jdbc.support.JdbcUtils;
@@ -13,9 +11,9 @@ import org.springframework.jdbc.support.JdbcUtils;
 import javax.sql.DataSource;
 import java.lang.reflect.Method;
 import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -24,12 +22,11 @@ public final class DataSourceManagement {
     private DataSourceManagement() {
     }
 
-
-    public static void close(String dataSourceName, ResultSet resultSet, PreparedStatement preparedStatement, Connection connection) {
+    public static void close(String dataSourceName, ResultSet resultSet, Statement statement, Connection connection) {
         DataSourceInfo dataSourceInfo = ContextApplication.getDataSourceInfo(dataSourceName);
         JdbcUtils.closeResultSet(resultSet);
-        JdbcUtils.closeStatement(preparedStatement);
-        if (dataSourceInfo.getDataSourceBeanName() != null) {
+        JdbcUtils.closeStatement(statement);
+        if (dataSourceInfo.getDataSourceBeanName() != null && connection != null) {
             DataSourceUtils.releaseConnection(connection, dataSourceInfo.getDataSource());
         } else {
             JdbcUtils.closeConnection(connection);
@@ -52,14 +49,14 @@ public final class DataSourceManagement {
     @SuppressWarnings("all")
     public static String initDataSourceConfig(Class<?> dataSourceClass, String tableName) {
         String dataSourceName;
-        int checkWaitTime = 20 * 1000;
+        int checkWaitTime = 30 * 1000;
         long limitTime = System.currentTimeMillis() + checkWaitTime;
         while (true) {
             dataSourceName = getDataSourceName(dataSourceClass);
             if (dataSourceName != null) {
                 break;
             }
-            //20秒内循环获取
+            //x秒内循环获取
             if (limitTime <= System.currentTimeMillis()) {
                 break;
             }
@@ -144,10 +141,6 @@ public final class DataSourceManagement {
         Method[] declaredMethods = dataSourceClass.getDeclaredMethods();
         methods.addAll(Arrays.asList(declaredMethods));
         getAllMethod(dataSourceClass.getSuperclass(), methods);
-    }
-
-    public static <T, R> void execute(Sqls<T> sqls, SqlSupplier<R> option) {
-
     }
 
 }

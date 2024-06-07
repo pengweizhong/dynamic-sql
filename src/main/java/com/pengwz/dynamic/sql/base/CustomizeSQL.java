@@ -21,7 +21,7 @@ import java.util.stream.Collectors;
 /**
  * 执行自定义SQL
  */
-public class CustomizeSQL<T> {
+public class CustomizeSQL<T> extends AbstractAccessor {
 
     private static final Log log = LogFactory.getLog(CustomizeSQL.class);
 
@@ -29,7 +29,11 @@ public class CustomizeSQL<T> {
 
     private final String sql;
 
-    private final Connection connection;
+    private Connection connection;
+
+    private ResultSet resultSet;
+
+    private PreparedStatement preparedStatement;
 
     private final String dataSourceName;
 
@@ -40,7 +44,6 @@ public class CustomizeSQL<T> {
         this.sql = sql;
         this.dataSourceName = dataSource.getName();
         DataSourceManagement.initDataSourceConfig(dataSource, TABLE_NAME);
-        this.connection = DataSourceManagement.initConnection(dataSource.getName());
     }
 
     /**
@@ -65,7 +68,7 @@ public class CustomizeSQL<T> {
     }
 
     @Deprecated
-    public T selectSqlAndReturnSingle() {
+    public T selectSqlAndReturnSingle() throws SQLException, InstantiationException, IllegalAccessException {
         List<T> ts = selectSqlAndReturnList();
         if (ts.size() > 1) {
             throw new BraveException("期待返回1条结果，实际返回了" + ts.size() + "条");
@@ -74,7 +77,7 @@ public class CustomizeSQL<T> {
     }
 
     @Deprecated
-    public List<T> selectSqlAndReturnList() {
+    public List<T> selectSqlAndReturnList() throws SQLException, InstantiationException, IllegalAccessException {
         if (log.isDebugEnabled()) {
             log.debug(sql);
         }
@@ -82,27 +85,19 @@ public class CustomizeSQL<T> {
         List<TableInfo> tableInfos = initTableInfo();
         Map<String, TableInfo> tableInfoMap = tableInfos.stream().collect(Collectors.toMap(k -> Check.unSplicingName(k.getColumn()), v -> v));
         Field[] declaredFields = target.getDeclaredFields();
-        PreparedStatement preparedStatement = null;
-        ResultSet resultSet = null;
-        try {
-            preparedStatement = connection.prepareStatement(sql);
-            resultSet = preparedStatement.executeQuery();
-            while (resultSet.next()) {
-                T obj = target.newInstance();
-                for (Field field : declaredFields) {
-                    TableInfo tableInfo = tableInfoMap.get(Check.getColumnName(field));
-                    if (tableInfo == null) {
-                        continue;
-                    }
-                    Object object = ConverterUtils.convertJdbc(target, resultSet, tableInfo);
-                    ReflectUtils.setFieldValue(field, obj, object);
+        preparedStatement = connection.prepareStatement(sql);
+        resultSet = preparedStatement.executeQuery();
+        while (resultSet.next()) {
+            T obj = target.newInstance();
+            for (Field field : declaredFields) {
+                TableInfo tableInfo = tableInfoMap.get(Check.getColumnName(field));
+                if (tableInfo == null) {
+                    continue;
                 }
-                selectResult.add(obj);
+                Object object = ConverterUtils.convertJdbc(target, resultSet, tableInfo);
+                ReflectUtils.setFieldValue(field, obj, object);
             }
-        } catch (Exception e) {
-            ExceptionUtils.boxingAndThrowBraveException(e, sql);
-        } finally {
-            DataSourceManagement.close(dataSourceName, resultSet, preparedStatement, connection);
+            selectResult.add(obj);
         }
         return selectResult;
     }
@@ -114,32 +109,24 @@ public class CustomizeSQL<T> {
     }
 
     @Deprecated
-    public int executeDMLSql() {
+    public int executeDMLSql() throws SQLException {
         if (log.isDebugEnabled()) {
             log.debug(sql);
         }
-        PreparedStatement preparedStatement = null;
-        try {
-            preparedStatement = connection.prepareStatement(sql);
-            return preparedStatement.executeUpdate();
-        } catch (SQLException e) {
-            ExceptionUtils.boxingAndThrowBraveException(e, sql);
-        } finally {
-            DataSourceManagement.close(dataSourceName, null, preparedStatement, connection);
-        }
-        return -1;
+        preparedStatement = connection.prepareStatement(sql);
+        return preparedStatement.executeUpdate();
     }
 
-    public T executeQuerySingle() {
+    public T executeQuerySingle() throws SQLException, InstantiationException, IllegalAccessException {
         List<T> ts = executeQuery();
         if (ts.size() > 1) {
-            throw new BraveException("期待返回一条结果，但是返回了" + ts.size() + "条，发生在SQL：" + sql);
+            throw new BraveException("期待返回1条结果，但是返回了" + ts.size() + "条，发生在SQL：" + sql);
         }
         return ts.isEmpty() ? null : ts.get(0);
     }
 
     @SuppressWarnings("all")
-    public List<T> executeQuery() {
+    public List<T> executeQuery() throws SQLException, InstantiationException, IllegalAccessException {
         if (Map.class.isAssignableFrom(target)) {
             return (List<T>) executeQueryForMap();
         } else if (target.getClassLoader() == null) {
@@ -153,10 +140,9 @@ public class CustomizeSQL<T> {
         if (log.isDebugEnabled()) {
             log.debug(sql);
         }
-        PreparedStatement preparedStatement = null;
         try {
             preparedStatement = connection.prepareStatement(sql);
-            ResultSet resultSet = preparedStatement.executeQuery();
+            resultSet = preparedStatement.executeQuery();
             ResultSetMetaData metaData = resultSet.getMetaData();
             int columnCount = metaData.getColumnCount();
             List<Map<String, Object>> resultList = new ArrayList<>();
@@ -172,8 +158,6 @@ public class CustomizeSQL<T> {
             return resultList;
         } catch (SQLException | BraveException | ConversionException e) {
             ExceptionUtils.boxingAndThrowBraveException(e, sql);
-        } finally {
-            DataSourceManagement.close(dataSourceName, null, preparedStatement, connection);
         }
         return Collections.emptyList();
     }
@@ -181,70 +165,54 @@ public class CustomizeSQL<T> {
     /**
      * 处理单体对象，如 Integer，String等
      */
-    public List<T> executeQueryForObject() {
+    public List<T> executeQueryForObject() throws SQLException {
         if (log.isDebugEnabled()) {
             log.debug(sql);
         }
-        PreparedStatement preparedStatement = null;
-        try {
-            preparedStatement = connection.prepareStatement(sql);
-            ResultSet resultSet = preparedStatement.executeQuery();
-            ResultSetMetaData metaData = resultSet.getMetaData();
-            int columnCount = metaData.getColumnCount();
-            List<T> resultList = new ArrayList<>();
-            while (resultSet.next()) {
-                for (int i = 1; i <= columnCount; i++) {
-                    String columnName = metaData.getColumnName(i);
-                    T obj = ConverterUtils.convertJdbc(target, resultSet, columnName, target);
-                    resultList.add(obj);
-                }
+        preparedStatement = connection.prepareStatement(sql);
+        resultSet = preparedStatement.executeQuery();
+        ResultSetMetaData metaData = resultSet.getMetaData();
+        int columnCount = metaData.getColumnCount();
+        List<T> resultList = new ArrayList<>();
+        while (resultSet.next()) {
+            for (int i = 1; i <= columnCount; i++) {
+                String columnName = metaData.getColumnName(i);
+                T obj = ConverterUtils.convertJdbc(target, resultSet, columnName, target);
+                resultList.add(obj);
             }
-            return resultList;
-        } catch (SQLException | BraveException | ConversionException e) {
-            ExceptionUtils.boxingAndThrowBraveException(e, sql);
-        } finally {
-            DataSourceManagement.close(dataSourceName, null, preparedStatement, connection);
         }
-        return Collections.emptyList();
+        return resultList;
     }
 
     /**
      * 处理复合对象，如实体类
      */
-    public List<T> executeQueryForCompoundObject() {
+    public List<T> executeQueryForCompoundObject() throws SQLException, InstantiationException, IllegalAccessException {
         if (log.isDebugEnabled()) {
             log.debug(sql);
         }
-        PreparedStatement preparedStatement = null;
         List<TableInfo> tableInfos = initTableInfo();
         Map<String, TableInfo> tableInfoMap = tableInfos.stream().collect(Collectors.toMap(k -> Check.unSplicingName(k.getColumn()), v -> v));
-        try {
-            preparedStatement = connection.prepareStatement(sql);
-            ResultSet resultSet = preparedStatement.executeQuery();
-            ResultSetMetaData metaData = resultSet.getMetaData();
-            fillingColumnFieldMap(metaData);
-            int columnCount = metaData.getColumnCount();
-            List<T> resultList = new ArrayList<>();
-            while (resultSet.next()) {
-                T instance = target.newInstance();
-                for (int i = 1; i <= columnCount; i++) {
-                    String columnName = metaData.getColumnName(i);
-                    TableInfo tableInfo = tableInfoMap.get(columnName);
-                    if (tableInfo == null) {
-                        continue;
-                    }
-                    Object value = ConverterUtils.convertJdbc(target, resultSet, tableInfo);
-                    ReflectUtils.setFieldValue(tableInfo.getField(), instance, value);
+        preparedStatement = connection.prepareStatement(sql);
+        resultSet = preparedStatement.executeQuery();
+        ResultSetMetaData metaData = resultSet.getMetaData();
+        fillingColumnFieldMap(metaData);
+        int columnCount = metaData.getColumnCount();
+        List<T> resultList = new ArrayList<>();
+        while (resultSet.next()) {
+            T instance = target.newInstance();
+            for (int i = 1; i <= columnCount; i++) {
+                String columnName = metaData.getColumnName(i);
+                TableInfo tableInfo = tableInfoMap.get(columnName);
+                if (tableInfo == null) {
+                    continue;
                 }
-                resultList.add(instance);
+                Object value = ConverterUtils.convertJdbc(target, resultSet, tableInfo);
+                ReflectUtils.setFieldValue(tableInfo.getField(), instance, value);
             }
-            return resultList;
-        } catch (SQLException | InstantiationException | IllegalAccessException | BraveException e) {
-            ExceptionUtils.boxingAndThrowBraveException(e, sql);
-        } finally {
-            DataSourceManagement.close(dataSourceName, null, preparedStatement, connection);
+            resultList.add(instance);
         }
-        return Collections.emptyList();
+        return resultList;
     }
 
 
@@ -282,31 +250,44 @@ public class CustomizeSQL<T> {
         return Check.unSplicingName(columnName).trim();
     }
 
-    public void executeSql() {
-        PreparedStatement preparedStatement = null;
-        try {
-            preparedStatement = connection.prepareStatement(sql);
-            preparedStatement.execute(sql);
-        } catch (Exception ex) {
-            ExceptionUtils.boxingAndThrowBraveException(ex, sql);
-        } finally {
-            DataSourceManagement.close(dataSourceName, null, preparedStatement, connection);
-        }
+    public void executeSql() throws SQLException {
+        preparedStatement = connection.prepareStatement(sql);
+        preparedStatement.execute(sql);
     }
 
-    public boolean existTable() {
+    public boolean existTable() throws SQLException {
         boolean flag = false;
-        try {
-            DatabaseMetaData metaData = connection.getMetaData();
-            ResultSet tables = metaData.getTables(null, null, sql, new String[]{"TABLE"});
-            if (tables.next()) {
-                flag = true;
-            }
-        } catch (Exception ex) {
-            ExceptionUtils.boxingAndThrowBraveException(ex, sql);
-        } finally {
-            DataSourceManagement.close(dataSourceName, null, null, connection);
+        DatabaseMetaData metaData = connection.getMetaData();
+        resultSet = metaData.getTables(null, null, sql, new String[]{"TABLE"});
+        if (resultSet.next()) {
+            flag = true;
         }
         return flag;
     }
+
+    @Override
+    protected String getDataSourceName() {
+        return dataSourceName;
+    }
+
+    @Override
+    protected ResultSet getResultSet() {
+        return resultSet;
+    }
+
+    @Override
+    protected void setConnection(Connection connection) {
+        this.connection = connection;
+    }
+
+    @Override
+    protected Connection getConnection() {
+        return connection;
+    }
+
+    @Override
+    protected Statement getStatement() {
+        return preparedStatement;
+    }
+
 }

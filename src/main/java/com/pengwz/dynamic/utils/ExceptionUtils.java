@@ -10,6 +10,8 @@ import java.sql.SQLFeatureNotSupportedException;
 import java.util.Objects;
 
 public class ExceptionUtils {
+    private ExceptionUtils() {
+    }
 
     private static final Log log = LogFactory.getLog(ExceptionUtils.class);
 
@@ -17,7 +19,7 @@ public class ExceptionUtils {
         boxingAndThrowBraveException(throwable, null);
     }
 
-    public static <T extends Throwable> void boxingAndThrowBraveException(T throwable, String sql) {
+    public static <T extends Throwable> void boxingAndThrowBraveException(T throwable, String sql) {//NOSONAR
         if (Objects.isNull(throwable)) {
             throw new BraveException("意外的异常抛出", "异常不可为null");
         }

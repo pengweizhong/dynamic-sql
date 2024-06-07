@@ -6,6 +6,8 @@ import com.pengwz.dynamic.config.DataSourceConfig;
 import com.pengwz.dynamic.config.DataSourceManagement;
 import com.pengwz.dynamic.exception.BraveException;
 import com.pengwz.dynamic.sql.base.CustomizeSQL;
+import com.pengwz.dynamic.sql.base.ExecuteCustomSql;
+import com.pengwz.dynamic.sql.base.ExecuteSql;
 import com.pengwz.dynamic.sql.base.Fn;
 import com.pengwz.dynamic.sql.base.enumerate.FunctionEnum;
 import com.pengwz.dynamic.sql.base.impl.SqlImpl;
@@ -84,7 +86,8 @@ public class BraveSql<T> {
      * @see com.pengwz.dynamic.anno.Column 若成员变量标注了该注解，则注解内名称和结果集列名进行匹配
      */
     public List<T> executeQuery(String querySql) {
-        return new CustomizeSQL<T>(currentClass, querySql).executeQuery();
+        return ExecuteCustomSql.instance(new CustomizeSQL<>(currentClass, querySql))
+                .execute(sql -> sql.executeQuery());
     }
 
     /**
@@ -96,7 +99,8 @@ public class BraveSql<T> {
      * @see com.pengwz.dynamic.anno.Column 若成员变量标注了该注解，则注解内名称和结果集列名进行匹配
      */
     public List<T> executeQuery(String querySql, Class<? extends DataSourceConfig> dataSourceClass) {
-        return new CustomizeSQL<T>(dataSourceClass, currentClass, querySql).executeQuery();
+        return ExecuteCustomSql.instance(new CustomizeSQL<>(dataSourceClass, currentClass, querySql))
+                .execute(sql -> sql.executeQuery());
     }
 
     /**
@@ -107,7 +111,8 @@ public class BraveSql<T> {
      * @return SQL查询后的结果集
      */
     public T executeQuerySingle(String querySql) {
-        return new CustomizeSQL<T>(currentClass, querySql).executeQuerySingle();
+        return ExecuteCustomSql.instance(new CustomizeSQL<>(currentClass, querySql))
+                .execute(sql -> sql.executeQuerySingle());
     }
 
     /**
@@ -118,7 +123,8 @@ public class BraveSql<T> {
      * @return SQL查询后的结果集
      */
     public T executeQuerySingle(String querySql, Class<? extends DataSourceConfig> dataSourceClass) {
-        return new CustomizeSQL<T>(dataSourceClass, currentClass, querySql).executeQuerySingle();
+        return ExecuteCustomSql.instance(new CustomizeSQL<>(dataSourceClass, currentClass, querySql))
+                .execute(sql -> sql.executeQuerySingle());
     }
 
     /**
@@ -129,7 +135,8 @@ public class BraveSql<T> {
      * @param executeSql SQL语句
      */
     public static void executeSql(String executeSql) {
-        new CustomizeSQL<>(Void.class, executeSql).executeSql();
+        ExecuteCustomSql.instance(new CustomizeSQL<>(Void.class, executeSql))
+                .justExecute(sql -> sql.executeSql());
     }
 
     /**
@@ -141,7 +148,8 @@ public class BraveSql<T> {
      * @param dataSourceClass 指定数据源
      */
     public static void executeSql(String executeSql, Class<? extends DataSourceConfig> dataSourceClass) {
-        new CustomizeSQL<>(dataSourceClass, Void.class, executeSql).executeSql();
+        ExecuteCustomSql.instance(new CustomizeSQL<>(dataSourceClass, Void.class, executeSql))
+                .justExecute(sql -> sql.executeSql());
     }
 
     /**
@@ -151,7 +159,8 @@ public class BraveSql<T> {
      * @return 如果存在返回{@code true}，否则{@code false}
      */
     public static boolean existTable(String tableName) {
-        return new CustomizeSQL<>(Void.class, tableName).existTable();
+        return ExecuteCustomSql.instance(new CustomizeSQL<>(Void.class, tableName))
+                .execute(sql -> sql.existTable());
     }
 
     /**
@@ -162,7 +171,8 @@ public class BraveSql<T> {
      * @return 如果存在返回{@code true}，否则{@code false}
      */
     public static boolean existTable(String tableName, Class<? extends DataSourceConfig> dataSourceClass) {
-        return new CustomizeSQL<>(dataSourceClass, Void.class, tableName).existTable();
+        return ExecuteCustomSql.instance(new CustomizeSQL<>(dataSourceClass, Void.class, tableName))
+                .execute(sql -> sql.existTable());
     }
 
     /**
@@ -171,7 +181,7 @@ public class BraveSql<T> {
      * @return SQL查询后的结果集，若表中无数据，则返回空集合
      */
     public List<T> select() {
-        return mustShare().select();
+        return ExecuteSql.instance(initSql()).execute((sqls) -> sqls.select());
     }
 
     /**
@@ -181,10 +191,7 @@ public class BraveSql<T> {
      * @throws BraveException 若返回多条数据，则抛出此异常
      */
     public T selectSingle() {
-//        if (dynamicSql.getDeclarations().isEmpty()) {
-//            throw new BraveException("必须提供 where 条件语句");
-//        }
-        return mustShare().selectSingle();
+        return ExecuteSql.instance(initSql()).execute((sqls) -> sqls.selectSingle());
     }
 
     /**
@@ -198,7 +205,7 @@ public class BraveSql<T> {
         if (Objects.isNull(primaryValue)) {
             throw new BraveException("主键值不可为空");
         }
-        return mustShare().selectByPrimaryKey(primaryValue);
+        return ExecuteSql.instance(initSql()).execute((sqls) -> sqls.selectByPrimaryKey(primaryValue));
     }
 
     /**
@@ -231,7 +238,8 @@ public class BraveSql<T> {
      * @return 查询结果集总数量，若没有数据，则返回 0
      */
     public Integer selectCount(String property) {
-        return mustShare().selectAggregateFunction(property.trim(), FunctionEnum.COUNT, Integer.class);
+        return ExecuteSql.instance(initSql()).execute((sqls) ->
+                sqls.selectAggregateFunction(property.trim(), FunctionEnum.COUNT, Integer.class));
     }
 
     /**
@@ -251,7 +259,8 @@ public class BraveSql<T> {
      * @return 和值，若没有数据，返回 null
      */
     public BigDecimal selectSum(String property) {
-        return mustShare().selectAggregateFunction(property.trim(), FunctionEnum.SUM, BigDecimal.class);
+        return ExecuteSql.instance(initSql()).execute((sqls) ->
+                sqls.selectAggregateFunction(property.trim(), FunctionEnum.SUM, BigDecimal.class));
     }
 
     /**
@@ -293,7 +302,8 @@ public class BraveSql<T> {
      * @return 平均值，若没有数据，返回 null
      */
     public <R> R selectAvg(String property, Class<R> targetClass) {
-        return mustShare().selectAggregateFunction(property.trim(), FunctionEnum.AVG, targetClass);
+        return ExecuteSql.instance(initSql()).execute((sqls) ->
+                sqls.selectAggregateFunction(property.trim(), FunctionEnum.AVG, targetClass));
     }
 
     /**
@@ -336,7 +346,8 @@ public class BraveSql<T> {
      * @return 最小值，若没有数据，返回 null
      */
     public <R> R selectMin(String property, Class<R> targetClass) {
-        return mustShare().selectAggregateFunction(property.trim(), FunctionEnum.MIN, targetClass);
+        return ExecuteSql.instance(initSql()).execute((sqls) ->
+                sqls.selectAggregateFunction(property.trim(), FunctionEnum.MIN, targetClass));
     }
 
     /**
@@ -348,7 +359,8 @@ public class BraveSql<T> {
     }
 
     public <K, R> Map<K, R> selectMin(String valueProperty, Class<K> keyClass, Class<R> valueClass, String keyProperty) {
-        return mustShare().selectAggregateFunction(valueProperty.trim(), FunctionEnum.MIN, keyClass, valueClass, keyProperty);
+        return ExecuteSql.instance(initSql()).execute((sqls) ->
+                sqls.selectAggregateFunction(valueProperty.trim(), FunctionEnum.MIN, keyClass, valueClass, keyProperty));
     }
 
     /**
@@ -390,7 +402,8 @@ public class BraveSql<T> {
      * @return 最大值，若没有数据，返回 null
      */
     public <R> R selectMax(String property, Class<R> targetClass) {
-        return mustShare().selectAggregateFunction(property.trim(), FunctionEnum.MAX, targetClass);
+        return ExecuteSql.instance(initSql()).execute((sqls) ->
+                sqls.selectAggregateFunction(property.trim(), FunctionEnum.MAX, targetClass));
     }
 
     /**
@@ -417,7 +430,8 @@ public class BraveSql<T> {
     }
 
     public <K, R> Map<K, R> selectMax(String valueProperty, Class<K> keyClass, Class<R> valueClass, String keyProperty) {
-        return mustShare().selectAggregateFunction(valueProperty.trim(), FunctionEnum.MAX, keyClass, valueClass, keyProperty);
+        return ExecuteSql.instance(initSql()).execute((sqls) ->
+                sqls.selectAggregateFunction(valueProperty.trim(), FunctionEnum.MAX, keyClass, valueClass, keyProperty));
     }
 
     /**
@@ -429,7 +443,7 @@ public class BraveSql<T> {
      */
     public PageInfo<T> selectPageInfo(int pageSize) {
         pageInfo = new PageInfo<>(0, pageSize);
-        return mustShare().selectPageInfo();
+        return ExecuteSql.instance(initSql()).execute((sqls) -> sqls.selectPageInfo());
     }
 
     /**
@@ -442,7 +456,7 @@ public class BraveSql<T> {
      */
     public PageInfo<T> selectPageInfo(int pageIndex, int pageSize) {
         pageInfo = new PageInfo<>(pageIndex, pageSize);
-        return mustShare().selectPageInfo();
+        return ExecuteSql.instance(initSql()).execute((sqls) -> sqls.selectPageInfo());
     }
 
     /**
@@ -455,8 +469,7 @@ public class BraveSql<T> {
         if (Objects.isNull(data)) {
             return 0;
         }
-        this.data = Collections.singletonList(data);
-        return batchInsert(this.data);
+        return batchInsert(Collections.singletonList(data));
     }
 
     /**
@@ -470,7 +483,7 @@ public class BraveSql<T> {
             return 0;
         }
         this.data = Collections.singletonList(data);
-        return mustShare().insertActive();
+        return ExecuteSql.instance(initSql()).execute((sqls) -> sqls.insertActive());
     }
 
     /**
@@ -484,7 +497,7 @@ public class BraveSql<T> {
             return 0;
         }
         data = iterable;
-        return mustShare().batchInsert();
+        return ExecuteSql.instance(initSql()).execute((sqls) -> sqls.batchInsert());
     }
 
     /**
@@ -504,8 +517,7 @@ public class BraveSql<T> {
         if (Objects.isNull(data)) {
             return 0;
         }
-        this.data = Collections.singletonList(data);
-        return batchInsertOrUpdate(this.data);
+        return batchInsertOrUpdate(Collections.singletonList(data));
     }
 
     /**
@@ -521,7 +533,7 @@ public class BraveSql<T> {
             return 0;
         }
         this.data = Collections.singletonList(data);
-        return mustShare().insertOrUpdateActive();
+        return ExecuteSql.instance(initSql()).execute((sqls) -> sqls.insertOrUpdateActive());
     }
 
     /**
@@ -542,7 +554,7 @@ public class BraveSql<T> {
             throw new BraveException("必须提供待插入的数据");
         }
         this.data = iterable;
-        return mustShare().insertOrUpdate();
+        return ExecuteSql.instance(initSql()).execute((sqls) -> sqls.insertOrUpdate());
     }
 
 
@@ -557,7 +569,7 @@ public class BraveSql<T> {
             throw new BraveException("必须提供待更新的对象");
         }
         this.data = Collections.singletonList(data);
-        return mustShare().update();
+        return ExecuteSql.instance(initSql()).execute((sqls) -> sqls.update());
     }
 
     /**
@@ -571,7 +583,7 @@ public class BraveSql<T> {
             throw new BraveException("必须提供待更新的对象");
         }
         this.data = Collections.singletonList(data);
-        return mustShare().updateActive();
+        return ExecuteSql.instance(initSql()).execute((sqls) -> sqls.updateActive());
     }
 
 //    /**
@@ -585,7 +597,7 @@ public class BraveSql<T> {
 //            throw new BraveException("必须提供待插入的数据");
 //        }
 //        this.data = iterable;
-//        return mustShare().updateBatch();
+//        return initSql().updateBatch();
 //    }
 
     /**
@@ -599,7 +611,7 @@ public class BraveSql<T> {
             throw new BraveException("必须提供待更新的主键值");
         }
         this.data = Collections.singletonList(data);
-        return mustShare().updateByPrimaryKey();
+        return ExecuteSql.instance(initSql()).execute((sqls) -> sqls.updateByPrimaryKey());
     }
 
     /**
@@ -613,7 +625,7 @@ public class BraveSql<T> {
             throw new BraveException("必须提供待更新的主键值");
         }
         this.data = Collections.singletonList(data);
-        return mustShare().updateActiveByPrimaryKey();
+        return ExecuteSql.instance(initSql()).execute((sqls) -> sqls.updateActiveByPrimaryKey());
     }
 
     /**
@@ -622,7 +634,7 @@ public class BraveSql<T> {
      * @return 删除的数据量
      */
     public Integer delete() {
-        return mustShare().delete();
+        return ExecuteSql.instance(initSql()).execute((sqls) -> sqls.delete());
     }
 
     /**
@@ -635,7 +647,7 @@ public class BraveSql<T> {
         if (Objects.isNull(key)) {
             throw new BraveException("必须提供待删除的主键值");
         }
-        return mustShare().deleteByPrimaryKey(key);
+        return ExecuteSql.instance(initSql()).execute((sqls) -> sqls.deleteByPrimaryKey(key));
     }
 
     /**
@@ -719,7 +731,7 @@ public class BraveSql<T> {
      *
      * @return
      */
-    private SqlImpl<T> mustShare() {
+    private SqlImpl<T> initSql() {
         // 解析where语句
         Table table = currentClass.getAnnotation(Table.class);
         if (Objects.isNull(table) || StringUtils.isEmpty(table.value())) {
@@ -735,8 +747,6 @@ public class BraveSql<T> {
         SqlImpl<T> sqls = new SqlImpl<>();
         sqls.init(currentClass, pageInfo, data, dynamicSql.getUpdateNullProperties(),
                 Check.getTableName(tableName, defalutDataSource), defalutDataSource, whereSql, params);
-        //优化他
-        sqls.before();
         return sqls;
     }
 
