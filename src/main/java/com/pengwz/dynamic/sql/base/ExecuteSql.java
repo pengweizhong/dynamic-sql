@@ -29,7 +29,7 @@ public class ExecuteSql<T> {
             abstractAccessor.setConnection(connection);
             result = option.apply(sqls);
         } catch (Exception e) {
-            ExceptionUtils.boxingAndThrowBraveException(e);
+            ExceptionUtils.boxingAndThrowBraveException(e, abstractAccessor.getSqlString());
         } finally {
             DataSourceManagement.close(abstractAccessor.getDataSourceName(), abstractAccessor.getResultSet(),
                     abstractAccessor.getStatement(), abstractAccessor.getConnection());
