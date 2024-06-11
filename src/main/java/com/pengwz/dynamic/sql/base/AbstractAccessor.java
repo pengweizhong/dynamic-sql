@@ -16,5 +16,7 @@ public abstract class AbstractAccessor {
 
     protected abstract Statement getStatement();
 
+    protected abstract String getSqlString();
+
 //    protected abstract PreparedSql getPreparedSql();
 }

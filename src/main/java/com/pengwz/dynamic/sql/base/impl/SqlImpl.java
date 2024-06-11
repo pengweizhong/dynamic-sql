@@ -55,6 +55,7 @@ public class SqlImpl<T> extends AbstractAccessor implements Sqls<T> {
     private Connection connection;
     private PreparedStatement preparedStatement;
     private ResultSet resultSet;
+    private String sqlString;
 
     @Override
     public T selectByPrimaryKey(Object primaryKeyValue) throws SQLException, InstantiationException, IllegalAccessException {
@@ -119,6 +120,7 @@ public class SqlImpl<T> extends AbstractAccessor implements Sqls<T> {
         sql = ParseSql.parseSql(sql);
         LinkedHashMap<K, R> linkedHashMap = new LinkedHashMap<>();
         setPreparedStatementParam(sql, false);
+        this.sqlString = sql;
         resultSet = preparedStatement.executeQuery();
         while (resultSet.next()) {
             Object k = resultSet.getObject(Check.unSplicingName(keyColumn));
@@ -232,6 +234,7 @@ public class SqlImpl<T> extends AbstractAccessor implements Sqls<T> {
 
     private <R> R executeQueryCount(String sql, Class<R> returnType) throws SQLException {
         setPreparedStatementParam(sql, false);
+        this.sqlString = sql;
         resultSet = preparedStatement.executeQuery();
         resultSet.next();
         return ConverterUtils.convertJdbc(currentClass, resultSet, "1", returnType);
@@ -272,6 +275,7 @@ public class SqlImpl<T> extends AbstractAccessor implements Sqls<T> {
 
     @SuppressWarnings("unchecked")
     private List<T> executeQuery(String sql) throws SQLException, InstantiationException, IllegalAccessException {
+        this.sqlString = sql;
         List<T> list = new ArrayList<>();
         List<TableInfo> tableInfos = ContextApplication.getTableInfos(dataSourceName, tableName);
         setPreparedStatementParam(sql, false);
@@ -326,8 +330,8 @@ public class SqlImpl<T> extends AbstractAccessor implements Sqls<T> {
         suffix.deleteCharAt(suffix.lastIndexOf(","));
         prefix.deleteCharAt(prefix.lastIndexOf(","));
         prefix.append(" ) values (").append(suffix).append(")");
-        String sql = prefix.toString();
-        setPreparedStatementParam(sql, true, RETURN_GENERATED_KEYS);
+        this.sqlString = prefix.toString();
+        setPreparedStatementParam(sqlString, true, RETURN_GENERATED_KEYS);
         return executeSqlAndReturnAffectedRows();
     }
 
@@ -344,6 +348,7 @@ public class SqlImpl<T> extends AbstractAccessor implements Sqls<T> {
                 parameters.add(ConverterUtils.convertValueJdbc(fieldValue));
             }
         }
+        this.sqlString = sql;
         setPreparedStatementParam(sql, true, RETURN_GENERATED_KEYS);
         return executeSqlAndReturnAffectedRows();
     }
@@ -638,6 +643,7 @@ public class SqlImpl<T> extends AbstractAccessor implements Sqls<T> {
 
     private Integer executeUpdateSqlAndReturnAffectedRows(String sql) throws SQLException {
         setPreparedStatementParam(sql, false);
+        this.sqlString = sql;
         return preparedStatement.executeUpdate();
     }
 
@@ -729,6 +735,10 @@ public class SqlImpl<T> extends AbstractAccessor implements Sqls<T> {
         return preparedStatement;
     }
 
+    @Override
+    protected String getSqlString() {
+        return sqlString;
+    }
 //    @Override
 //    protected PreparedSql getPreparedSql() {
 //        return preparedSql;

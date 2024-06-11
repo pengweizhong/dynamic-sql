@@ -290,4 +290,9 @@ public class CustomizeSQL<T> extends AbstractAccessor {
         return preparedStatement;
     }
 
+    @Override
+    protected String getSqlString() {
+        return sql;
+    }
+
 }
