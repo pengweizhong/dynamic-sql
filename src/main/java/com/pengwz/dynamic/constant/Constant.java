@@ -6,6 +6,7 @@ import java.util.regex.Pattern;
 public class Constant {
 
     public static final Pattern GET_PATTERN = Pattern.compile("^get[A-Z].*");
+    public static final Pattern START_UPPER_PATTERN = Pattern.compile("^[A-Z].*");
     public static final Pattern IS_PATTERN = Pattern.compile("^is[A-Z].*");
 
     //格式：yyyy-MM-dd HH:mm:ss，例：2001-01-23 23:59:59

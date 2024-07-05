@@ -1,6 +1,5 @@
 package com.pengwz.dynamic.utils;
 
-import com.pengwz.dynamic.anno.Column;
 import com.pengwz.dynamic.exception.BraveException;
 import com.pengwz.dynamic.sql.base.Fn;
 
@@ -13,8 +12,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
 
-import static com.pengwz.dynamic.constant.Constant.GET_PATTERN;
-import static com.pengwz.dynamic.constant.Constant.IS_PATTERN;
+import static com.pengwz.dynamic.constant.Constant.*;
 
 public class ReflectUtils {
 
@@ -30,7 +28,8 @@ public class ReflectUtils {
     /**
      * 通过get规范来尝试获取字段名。<p>
      * 需要注意的是，当字段第一个字母小写，第二个字母大写的时候，生成的get方法会连续大写，
-     * 因为程序无法推断字段本质上是大写还是小写。对于这类情况，建议使用 {@link Column}注解解决此问题。
+     * 因为程序无法推断字段本质上是大写还是小写。这种情况按照开发习惯会主动匹配小写而不是大写，
+     * 如果字段本身就是大写，那么需要传入字符串而不是get函数
      * 如：
      * <pre>
      *      class Aoo{
@@ -56,8 +55,19 @@ public class ReflectUtils {
             getter = getter.substring(3);
         } else if (IS_PATTERN.matcher(getter).matches()) {
             getter = getter.substring(2);
+        } else {
+            //直接裁剪
+            if (getter.startsWith("get")) {
+                getter = getter.substring(3);
+            }
         }
-        return Introspector.decapitalize(getter);
+        getter = Introspector.decapitalize(getter);
+        if (START_UPPER_PATTERN.matcher(getter).matches()) {
+            String begin = getter.substring(0, 1).toLowerCase();
+            String end = getter.substring(1);
+            getter = begin + end;
+        }
+        return getter;
     }
 
     public static <C> Class<C> getReturnTypeFromSignature(Fn fn) {
