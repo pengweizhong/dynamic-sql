@@ -1,5 +1,6 @@
 package com.pengwz.dynamic.utils;
 
+import com.pengwz.dynamic.anno.Column;
 import com.pengwz.dynamic.exception.BraveException;
 import com.pengwz.dynamic.sql.base.Fn;
 
@@ -26,6 +27,28 @@ public class ReflectUtils {
     private static final Map<Class<?>, Method[]> declaredMethodsCache = new ConcurrentHashMap<>(256);
     private static final Map<Class<?>, Field[]> declaredFieldsCache = new ConcurrentHashMap<>(256);
 
+    /**
+     * 通过get规范来尝试获取字段名。<p>
+     * 需要注意的是，当字段第一个字母小写，第二个字母大写的时候，生成的get方法会连续大写，
+     * 因为程序无法推断字段本质上是大写还是小写。对于这类情况，建议使用 {@link Column}注解解决此问题。
+     * 如：
+     * <pre>
+     *      class Aoo{
+     *          String eTag;
+     *
+     *          //对于此类方法，程序成语
+     *          public String getETag(){
+     *              return eTag;
+     *          }
+     *          //这种写法似乎不是标准的get规范，说让可以解决这种问题，但是不建议
+     *          public String geteTag(){
+     *               return eTag;
+     *          }
+     *      }
+     * <pre/>
+     * @param fn get函数
+     * @return
+     */
     public static String fnToFieldName(Fn fn) {
         SerializedLambda serializedLambda = serializedLambda(fn);
         String getter = serializedLambda.getImplMethodName();
