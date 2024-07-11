@@ -9,7 +9,7 @@
     <name>pengwz-dynamic-sql</name>
 
     <inceptionYear>2020</inceptionYear>
-    <description>基于JDBC的单表查询动态SQL</description>
+    <description>基于JDBC的单表动态增删改查SQL</description>
     <url>https://github.com/pengweizhong/dynamic-sql</url>
 
     <developers>
