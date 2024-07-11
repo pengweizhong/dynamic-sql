@@ -788,4 +788,12 @@ public class MysqlBraveSqlTest {
         System.out.println(select);
     }
 
+    @Test
+    public void findInSet5() {
+        DynamicSql<UserEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.orFindInSet(UserEntity::getUsername, "世界", "-");
+        List<UserEntity> select = BraveSql.build(dynamicSql, UserEntity.class).select();
+        System.out.println(select);
+    }
+
 }

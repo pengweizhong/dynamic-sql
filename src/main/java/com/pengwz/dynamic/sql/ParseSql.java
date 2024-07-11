@@ -93,15 +93,16 @@ public class ParseSql {
             } else if (declaration.getCondition().equals(FIND_IN_SET)) {
                 whereSql.append(declaration.getAndOr()).append(SPACE);
                 whereSql.append(declaration.getCondition()).append("(?,");
+                params.add(matchFixValue(declaration.getValue(), dataSource, tableName, declaration.getProperty()));
                 String column = ContextApplication.getColumnByField(dataSource, tableName, declaration.getProperty());
                 if (declaration.getValue2() != null && StringUtils.isNotEmpty(declaration.getValue2().toString())) {
                     //拼接 REPLACE(`xxx`,'分割符',',')
-                    whereSql.append(" REPLACE(").append(column).append(", '").append(declaration.getValue2()).append("', ',')");
+                    whereSql.append(" REPLACE(").append(column).append(", ").append("?").append(", ',')");
+                    params.add(declaration.getValue2());
                 } else {
                     whereSql.append(column);
                 }
                 whereSql.append(")").append(SPACE);
-                params.add(matchFixValue(declaration.getValue(), dataSource, tableName, declaration.getProperty()));
             } else {
                 whereSql.append(declaration.getAndOr()).append(SPACE);
                 whereSql.append(ContextApplication.getColumnByField(dataSource, tableName, declaration.getProperty())).append(SPACE);
