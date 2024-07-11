@@ -754,4 +754,38 @@ public class MysqlBraveSqlTest {
         System.out.println(BraveSql.build(dynamicSql, UserEntity.class).select());
     }
 
+    @Test
+    public void findInSet() {
+        DynamicSql<UserEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.andEqualTo(UserEntity::getId, -1);
+        dynamicSql.andFindInSet(UserEntity::getUsername, "世界", "-");
+        List<UserEntity> select = BraveSql.build(dynamicSql, UserEntity.class).select();
+        System.out.println(select);
+    }
+
+    @Test
+    public void findInSet2() {
+        DynamicSql<UserEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.andEqualTo(UserEntity::getId, -1);
+        dynamicSql.orFindInSet(UserEntity::getUsername, "世界", "-");
+        List<UserEntity> select = BraveSql.build(dynamicSql, UserEntity.class).select();
+        System.out.println(select);
+    }
+
+    @Test
+    public void findInSet3() {
+        DynamicSql<UserEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.orFindInSet(UserEntity::getUsername, "世界", ",");
+        List<UserEntity> select = BraveSql.build(dynamicSql, UserEntity.class).select();
+        System.out.println(select);
+    }
+
+    @Test
+    public void findInSet4() {
+        DynamicSql<UserEntity> dynamicSql = DynamicSql.createDynamicSql();
+        dynamicSql.orFindInSet(UserEntity::getUsername, "世界", " ");
+        List<UserEntity> select = BraveSql.build(dynamicSql, UserEntity.class).select();
+        System.out.println(select);
+    }
+
 }

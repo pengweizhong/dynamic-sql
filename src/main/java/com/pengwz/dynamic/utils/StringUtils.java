@@ -5,12 +5,22 @@ import com.pengwz.dynamic.constant.Constant;
 import java.util.Objects;
 
 public class StringUtils {
+
+
     public static boolean isEmpty(String str) {
-        return Objects.isNull(str) || str.trim().length() == 0;
+        return Objects.isNull(str) || str.isEmpty();
     }
 
     public static boolean isNotEmpty(String str) {
         return !isEmpty(str);
+    }
+
+    public static boolean isBlank(String str) {
+        return Objects.isNull(str) || str.trim().isEmpty();
+    }
+
+    public static boolean isNotBlank(String str) {
+        return !isBlank(str);
     }
 
     /**

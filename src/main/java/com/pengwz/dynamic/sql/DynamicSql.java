@@ -8,6 +8,7 @@ import com.pengwz.dynamic.sql.base.impl.Max;
 import com.pengwz.dynamic.sql.base.impl.Min;
 import com.pengwz.dynamic.sql.base.impl.OrderBy;
 import com.pengwz.dynamic.utils.ReflectUtils;
+import com.pengwz.dynamic.utils.StringUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -398,6 +399,31 @@ public class DynamicSql<T> {
 
     public DynamicSql<T> andFindInSet(Fn<T, Object> fn, Object value) {
         return this.andFindInSet(ReflectUtils.fnToFieldName(fn), value);
+    }
+
+    public DynamicSql<T> orFindInSet(String property, Object value, String separator) {
+        //尽可能优化查询效率
+        if (StringUtils.isEmpty(separator) || separator.equals(COMMA)) {
+            return orFindInSet(property, value);
+        }
+        this.getDeclarations().add(Declaration.buildDeclaration(OR, property, FIND_IN_SET, value, separator));
+        return this;
+    }
+
+    public DynamicSql<T> orFindInSet(Fn<T, Object> fn, Object value, String separator) {
+        return this.orFindInSet(ReflectUtils.fnToFieldName(fn), value, separator);
+    }
+
+    public DynamicSql<T> andFindInSet(String property, Object value, String separator) {
+        if (StringUtils.isEmpty(separator) || separator.equals(COMMA)) {
+            return orFindInSet(property, value);
+        }
+        this.getDeclarations().add(Declaration.buildDeclaration(AND, property, FIND_IN_SET, value, separator));
+        return this;
+    }
+
+    public DynamicSql<T> andFindInSet(Fn<T, Object> fn, Object value, String separator) {
+        return this.andFindInSet(ReflectUtils.fnToFieldName(fn), value, separator);
     }
 
     /**
