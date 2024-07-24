@@ -290,7 +290,7 @@ public class DynamicSql<T> {
     }
 
     public DynamicSql<T> orIn(Fn<T, Object> fn, Iterable<?> values) {
-        return this.andIn(ReflectUtils.fnToFieldName(fn), values);
+        return this.orIn(ReflectUtils.fnToFieldName(fn), values);
     }
 
     public DynamicSql<T> andNotIn(String property, Iterable<?> values) {
@@ -308,7 +308,7 @@ public class DynamicSql<T> {
     }
 
     public DynamicSql<T> orNotIn(Fn<T, Object> fn, Iterable<?> values) {
-        return this.andNotIn(ReflectUtils.fnToFieldName(fn), values);
+        return this.orNotIn(ReflectUtils.fnToFieldName(fn), values);
     }
 
     public DynamicSql<T> andBetween(String property, Object value1, Object value2) {
@@ -380,7 +380,7 @@ public class DynamicSql<T> {
     }
 
     public DynamicSql<T> orNotLike(Fn<T, Object> fn, String value) {
-        return this.andNotLike(ReflectUtils.fnToFieldName(fn), value);
+        return this.orNotLike(ReflectUtils.fnToFieldName(fn), value);
     }
 
     public DynamicSql<T> orFindInSet(String property, Object value) {
@@ -535,13 +535,11 @@ public class DynamicSql<T> {
         this.getDeclarations().add(Declaration.buildDeclaration(GROUP, String.join(",", list), new GroupBy()));
     }
 
-    //@Deprecated
     public void groupBy(Fn<T, Object> fn) {
         String s = ReflectUtils.fnToFieldName(fn);
         this.getDeclarations().add(Declaration.buildDeclaration(GROUP, s, new GroupBy()));
     }
 
-    @Deprecated
     public void groupBy(String... personalCode) {
         this.getDeclarations().add(Declaration.buildDeclaration(GROUP, String.join(",", personalCode), new GroupBy()));
     }
