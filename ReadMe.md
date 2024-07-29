@@ -52,7 +52,8 @@ implementation group: 'com.pengwz', name: 'dynamic-sql', version: '2.1.7'
 	4.3 根据条件查询  
 	  - 4.3.1 [一般条件查询](#selectByCondition)  
 	  - 4.3.2 [分页查询](#selectByPages)  
-	  - 4.3.2 [复杂查询](#selectHard)  
+	  - 4.3.3 [嵌套查询](#selectHard)  
+	  - 4.3.4 [分割查询](#findInSet)
 5. 更新  
 	5.1 [根据条件更新](#updateByCondition)  
 	5.2 [根据主键更新](#updateByPrimaryKey)  
@@ -331,7 +332,7 @@ public class UserRoleEntity {
         Assert.assertEquals(5, pageInfo.getResultList().size());
     }
  ```
-#### 4.3.3 <span id="selectHard"/>复杂查询（创建带括号的查询）
+#### 4.3.3 <span id="selectHard"/>嵌套查询
 ```java
     @Test
     public void test5() {
@@ -347,6 +348,33 @@ public class UserRoleEntity {
         System.out.println(entities.size());
     }
  ```
+
+#### 4.3.4 <span id="findInSet"/>分割查询
+```java
+
+	/**
+	 *默认使用英文逗号对词组拆词进行查询
+	 */
+	@Test
+	public void findInSet3() {
+		DynamicSql<UserEntity> dynamicSql = DynamicSql.createDynamicSql();
+		dynamicSql.orFindInSet(UserEntity::getUsername, "世界");
+		List<UserEntity> select = BraveSql.build(dynamicSql, UserEntity.class).select();
+		System.out.println(select);
+	}
+	
+	/**
+	 *也可以自定义分隔符查询，例如空格、下划线等等
+	 */
+	@Test
+	public void findInSet5() {
+		DynamicSql<UserEntity> dynamicSql = DynamicSql.createDynamicSql();
+		dynamicSql.orFindInSet(UserEntity::getUsername, "世界", "-");
+		List<UserEntity> select = BraveSql.build(dynamicSql, UserEntity.class).select();
+		System.out.println(select);
+	}
+
+```
 
 ## 5. 更新
 ### 5.1 <span id="updateByCondition"/>根据条件更新
