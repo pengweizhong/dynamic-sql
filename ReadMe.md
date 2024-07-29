@@ -340,7 +340,7 @@ public class UserRoleEntity {
         //ID=50是不存在的，所以只会查询出2条数据
         DynamicSql<UserEntity> dynamicSql = DynamicSql.createDynamicSql();
         dynamicSql.andEqualTo(UserEntity::getUsername, "jerry");
-        //使用此方法创建组查询，此方法可以根据业务无线嵌套
+        //使用此方法创建组查询，此方法可以根据业务无限制嵌套
         dynamicSql.orComplex(sql -> sql.andEqualTo(UserEntity::getId, 5).orEqualTo(UserEntity::getId, 50)//.orComplex()：这里扔可以选择嵌套括号组
         );
         List<UserEntity> entities = BraveSql.build(dynamicSql, UserEntity.class).select();
