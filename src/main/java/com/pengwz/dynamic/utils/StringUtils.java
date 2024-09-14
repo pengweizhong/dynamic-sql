@@ -42,4 +42,34 @@ public class StringUtils {
         }
         return sb.toString();
     }
+
+    /**
+     * 比较两个字符串是否相同
+     *
+     * @param str1 字符串1
+     * @param str2 字符串2
+     * @return 是否相同
+     */
+    public static boolean isEquals(String str1, String str2) {
+        if (str1 == null) {
+            return str2 == null;
+        }
+        return str1.equals(str2);
+    }
+
+    public static boolean isNotEquals(String str1, String str2) {
+        return !isEquals(str1, str2);
+    }
+
+    public static boolean isEqualsIgnoreCase(String str1, String str2) {
+        if (str1 == null) {
+            return str2 == null;
+        }
+        return str1.equalsIgnoreCase(str2);
+    }
+
+    public static boolean isNotEqualsIgnoreCase(String str1, String str2) {
+        return !isEqualsIgnoreCase(str1, str2);
+    }
+
 }
