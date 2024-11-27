@@ -1,5 +1,5 @@
 package com.pengwz.dynamic.anno;
-
+@Deprecated
 public enum GenerationType {
 //    /**
 //     * 除了主键标识，其他什么也没有

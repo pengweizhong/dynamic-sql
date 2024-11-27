@@ -13,6 +13,7 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
  */
 @Target({FIELD})
 @Retention(RUNTIME)
+@Deprecated
 public @interface GeneratedValue {
     /**
      * 自增策略，默认使用数据库自增机制

@@ -9,6 +9,7 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 @Target({FIELD})
 @Retention(RUNTIME)
+@Deprecated
 public @interface ColumnJson {
     /**
      * 表列名，和物理表字段名称一致

@@ -1,5 +1,5 @@
 package com.pengwz.dynamic.anno;
-
+@Deprecated
 public enum JsonMode {
     /**
      * 写入模式
