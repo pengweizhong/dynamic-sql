@@ -1,10 +1,11 @@
-# release/2.1.8 发行说明
+# release/2.1.8 发行说明（存档）
 
 - 新增.selectMax(Fn, Fn)函数
 - 新增.selectMin(Fn, Fn)函数
 - 新增.insertOrUpdateActive(T)函数
 - 优化了所有涉及异常捕捉及资源释放的地方
 - 重载orFindInSet()以支持自定义分隔符查询
+- 此版本为最终版本，不再更新维护
 
 # release/2.1.7 发行说明
 
